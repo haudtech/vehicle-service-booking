@@ -1,0 +1,31 @@
+# Build
+bin/
+obj/
+
+# Visual Studio
+.vs/
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+
+# User files
+*.user
+*.suo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Test results
+TestResults/
+
+# Coverage
+coverage/
+
+# Secrets
+appsettings.Local.json
