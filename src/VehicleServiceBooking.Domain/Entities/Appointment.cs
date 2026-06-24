@@ -6,6 +6,8 @@ public class Appointment
 {
     public Guid Id { get; set; }
 
+    public Guid DealershipId { get; set; }
+
     public Guid CustomerId { get; set; }
 
     public Guid VehicleId { get; set; }

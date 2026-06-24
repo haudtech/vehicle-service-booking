@@ -1,40 +1,71 @@
+using System;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using VehicleServiceBooking.Application.Configuration;
+using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Services;
+using VehicleServiceBooking.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+//
+// Controllers
+//
 builder.Services.AddControllers();
+
+//
+// Swagger
+//
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+//
+// Scheduling Options (from appsettings.json)
+//
+builder.Services.Configure<SchedulingOptions>(
+    builder.Configuration.GetSection(SchedulingOptions.SectionName));
+
+builder.Services.AddSingleton<ISchedulingConfiguration>(sp =>
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SchedulingOptions>>().Value);
+
+//
+// DbContext (InMemory for now)
+//
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
+    options.UseInMemoryDatabase("VehicleServiceBookingDb");
+});
+
+//
+// Application DbContext abstraction
+//
+builder.Services.AddScoped<IApplicationDbContext>(sp =>
+    sp.GetRequiredService<ApplicationDbContext>());
+
+//
+// Application Services
+//
+builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+//
+// HTTP pipeline
+//
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseAuthorization();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
