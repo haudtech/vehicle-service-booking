@@ -29,10 +29,12 @@ public class AvailabilityRepository : IAvailabilityRepository
         CancellationToken cancellationToken)
     {
         // Get appointments that have services of the specified service type
+        // Filter by service timing (EstimatedStartTime/EstimatedEndTime)
         var appointments = await _dbContext.Appointments
-            .Where(a => a.Services.Any(s => s.ServiceTypeId == serviceTypeId)
-                && a.StartTime >= startTime
-                && a.EndTime <= endTime)
+            .Where(a => a.Services.Any(s => 
+                s.ServiceTypeId == serviceTypeId &&
+                s.EstimatedStartTime >= startTime &&
+                s.EstimatedEndTime <= endTime))
             .ToListAsync(cancellationToken);
 
         return appointments;
@@ -72,8 +74,12 @@ public class AvailabilityRepository : IAvailabilityRepository
         DateTime endTime,
         CancellationToken cancellationToken)
     {
+        // Get appointments that have services within the time range
+        // Filter by service timing (EstimatedStartTime/EstimatedEndTime)
         return await _dbContext.Appointments
-            .Where(a => a.StartTime >= startTime && a.EndTime <= endTime)
+            .Where(a => a.Services.Any(s =>
+                s.EstimatedStartTime >= startTime && 
+                s.EstimatedEndTime <= endTime))
             .ToListAsync(cancellationToken);
     }
 

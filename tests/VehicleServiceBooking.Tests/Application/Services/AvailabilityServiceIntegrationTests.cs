@@ -22,7 +22,6 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     private ApplicationDbContext _dbContext = null!;
     private IAvailabilityService _availabilityService = null!;
     private ISchedulingConfiguration _schedulingConfiguration = null!;
-    private IAvailabilityRepository _availabilityRepository = null!;
 
     public async Task InitializeAsync()
     {
@@ -35,11 +34,9 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         await _dbContext.Database.EnsureCreatedAsync();
 
         _schedulingConfiguration = new SchedulingConfiguration();
-        _availabilityRepository = new AvailabilityRepository(_dbContext);
         _availabilityService = new AvailabilityService(
             _schedulingConfiguration,
-            _dbContext,
-            _availabilityRepository
+            _dbContext
         );
     }
 

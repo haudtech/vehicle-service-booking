@@ -80,6 +80,17 @@ public class AppointmentServiceTests
         SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
         SetupMockDbSet(technician, new List<Technician> { technician });
         SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        
+        // Setup AppointmentStatusLookup
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
+        
         SetupMockDbSet<Appointment>(null, new List<Appointment>());
 
         _mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -174,6 +185,17 @@ public class AppointmentServiceTests
         SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
         SetupMockDbSet(technician, new List<Technician> { technician });
         SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        
+        // Setup AppointmentStatusLookup
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
+        
         SetupMockDbSet<Appointment>(null, new List<Appointment>());
 
         // Act & Assert
@@ -216,18 +238,38 @@ public class AppointmentServiceTests
         var serviceBay = new ServiceBay { Id = serviceBayId };
 
         // Existing appointment that conflicts
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
         var existingAppointment = new Appointment
         {
             Id = Guid.NewGuid(),
             DealershipId = dealershipId,
             CustomerId = customerId,
             VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            StartTime = startTime.AddMinutes(-30),
-            EndTime = endTime.AddMinutes(30),
-            Status = AppointmentStatus.Booked
+            AppointmentDate = DateOnly.FromDateTime(startTime),
+            StatusId = bookedStatus.Id,
+            Status = bookedStatus,
+            Services = new List<Service>
+            {
+                new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = Guid.NewGuid(), // Will be set by code
+                    ServiceTypeId = serviceTypeId,
+                    TechnicianId = technicianId,
+                    ServiceBayId = serviceBayId,
+                    DealershipId = dealershipId,
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
+                    SequenceOrder = 1,
+                    EstimatedStartTime = startTime.AddMinutes(-30),
+                    EstimatedEndTime = endTime.AddMinutes(30)
+                }
+            }
         };
 
         SetupMockDbSet(dealership, new List<Dealership> { dealership });
@@ -236,6 +278,7 @@ public class AppointmentServiceTests
         SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
         SetupMockDbSet(technician, new List<Technician> { technician });
         SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
 
         // Act & Assert
@@ -278,18 +321,38 @@ public class AppointmentServiceTests
         var serviceBay = new ServiceBay { Id = serviceBayId };
 
         // Existing appointment that doesn't conflict (ends before new one starts)
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
         var existingAppointment = new Appointment
         {
             Id = Guid.NewGuid(),
             DealershipId = dealershipId,
             CustomerId = customerId,
             VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            StartTime = DateTime.UtcNow.AddHours(1),
-            EndTime = DateTime.UtcNow.AddHours(1).AddMinutes(30),
-            Status = AppointmentStatus.Booked
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(1)),
+            StatusId = bookedStatus.Id,
+            Status = bookedStatus,
+            Services = new List<Service>
+            {
+                new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = Guid.NewGuid(),
+                    ServiceTypeId = serviceTypeId,
+                    TechnicianId = technicianId,
+                    ServiceBayId = serviceBayId,
+                    DealershipId = dealershipId,
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
+                    SequenceOrder = 1,
+                    EstimatedStartTime = DateTime.UtcNow.AddHours(1),
+                    EstimatedEndTime = DateTime.UtcNow.AddHours(1).AddMinutes(30)
+                }
+            }
         };
 
         SetupMockDbSet(dealership, new List<Dealership> { dealership });
@@ -298,6 +361,7 @@ public class AppointmentServiceTests
         SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
         SetupMockDbSet(technician, new List<Technician> { technician });
         SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
 
         _mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -325,20 +389,41 @@ public class AppointmentServiceTests
         var startTime = DateTime.UtcNow.AddHours(1);
         var endTime = startTime.AddHours(1);
         
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
         var appointment = new Appointment
         {
             Id = appointmentId,
             DealershipId = Guid.NewGuid(),
             CustomerId = Guid.NewGuid(),
             VehicleId = Guid.NewGuid(),
-            ServiceTypeId = Guid.NewGuid(),
-            TechnicianId = Guid.NewGuid(),
-            ServiceBayId = Guid.NewGuid(),
-            StartTime = startTime,
-            EndTime = endTime,
-            Status = AppointmentStatus.Booked
+            AppointmentDate = DateOnly.FromDateTime(startTime),
+            StatusId = bookedStatus.Id,
+            Status = bookedStatus,
+            Services = new List<Service>
+            {
+                new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = appointmentId,
+                    ServiceTypeId = Guid.NewGuid(),
+                    TechnicianId = Guid.NewGuid(),
+                    ServiceBayId = Guid.NewGuid(),
+                    DealershipId = Guid.NewGuid(),
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
+                    SequenceOrder = 1,
+                    EstimatedStartTime = startTime,
+                    EstimatedEndTime = endTime
+                }
+            }
         };
 
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(appointment, new List<Appointment> { appointment });
 
         // Act
@@ -372,18 +457,46 @@ public class AppointmentServiceTests
         var startTime1 = DateTime.UtcNow.AddHours(1);
         var startTime2 = DateTime.UtcNow.AddHours(3);
         
+        var bookedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Status = AppointmentStatus.Booked, 
+            Name = "Booked",
+            Description = "Appointment is scheduled"
+        };
+        var completedStatus = new AppointmentStatusLookup 
+        { 
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
+            Status = AppointmentStatus.Completed, 
+            Name = "Completed",
+            Description = "Service has been completed"
+        };
+        
         var appointment1 = new Appointment
         {
             Id = targetId,
             DealershipId = Guid.NewGuid(),
             CustomerId = Guid.NewGuid(),
             VehicleId = Guid.NewGuid(),
-            ServiceTypeId = Guid.NewGuid(),
-            TechnicianId = Guid.NewGuid(),
-            ServiceBayId = Guid.NewGuid(),
-            StartTime = startTime1,
-            EndTime = startTime1.AddHours(1),
-            Status = AppointmentStatus.Booked
+            AppointmentDate = DateOnly.FromDateTime(startTime1),
+            StatusId = bookedStatus.Id,
+            Status = bookedStatus,
+            Services = new List<Service>
+            {
+                new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = targetId,
+                    ServiceTypeId = Guid.NewGuid(),
+                    TechnicianId = Guid.NewGuid(),
+                    ServiceBayId = Guid.NewGuid(),
+                    DealershipId = Guid.NewGuid(),
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
+                    SequenceOrder = 1,
+                    EstimatedStartTime = startTime1,
+                    EstimatedEndTime = startTime1.AddHours(1)
+                }
+            }
         };
 
         var appointment2 = new Appointment
@@ -392,14 +505,29 @@ public class AppointmentServiceTests
             DealershipId = Guid.NewGuid(),
             CustomerId = Guid.NewGuid(),
             VehicleId = Guid.NewGuid(),
-            ServiceTypeId = Guid.NewGuid(),
-            TechnicianId = Guid.NewGuid(),
-            ServiceBayId = Guid.NewGuid(),
-            StartTime = startTime2,
-            EndTime = startTime2.AddHours(1),
-            Status = AppointmentStatus.Completed
+            AppointmentDate = DateOnly.FromDateTime(startTime2),
+            StatusId = completedStatus.Id,
+            Status = completedStatus,
+            Services = new List<Service>
+            {
+                new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = Guid.NewGuid(),
+                    ServiceTypeId = Guid.NewGuid(),
+                    TechnicianId = Guid.NewGuid(),
+                    ServiceBayId = Guid.NewGuid(),
+                    DealershipId = Guid.NewGuid(),
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
+                    SequenceOrder = 1,
+                    EstimatedStartTime = startTime2,
+                    EstimatedEndTime = startTime2.AddHours(1)
+                }
+            }
         };
 
+        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
+        SetupMockDbSet(completedStatus, new List<AppointmentStatusLookup> { completedStatus });
         SetupMockDbSet(null, new List<Appointment> { appointment1, appointment2 });
 
         // Act
@@ -469,6 +597,10 @@ public class AppointmentServiceTests
         else if (typeof(T) == typeof(ServiceBay))
         {
             _mockDbContext.Setup(m => m.ServiceBays).Returns((DbSet<ServiceBay>)(object)mockDbSet.Object);
+        }
+        else if (typeof(T) == typeof(AppointmentStatusLookup))
+        {
+            _mockDbContext.Setup(m => m.AppointmentStatusLookups).Returns((DbSet<AppointmentStatusLookup>)(object)mockDbSet.Object);
         }
         else if (typeof(T) == typeof(Appointment))
         {
@@ -555,7 +687,7 @@ public class TestAsyncQuery<T> : IAsyncEnumerable<T>, IQueryable<T>
 
     Expression IQueryable.Expression => _inner.Expression;
     public Type ElementType => typeof(T);
-    public IQueryProvider Provider => _inner.Provider;
+    public IQueryProvider Provider => new TestAsyncQueryProvider<T>(_inner.Provider);
 
     public IEnumerator<T> GetEnumerator()
     {

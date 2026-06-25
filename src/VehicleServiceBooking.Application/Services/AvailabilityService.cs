@@ -5,9 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Configuration.Interfaces;
-using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
-using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
 
@@ -17,16 +15,13 @@ public class AvailabilityService : IAvailabilityService
 {
     private readonly ISchedulingConfiguration _schedulingConfiguration;
     private readonly IApplicationDbContext _dbContext;
-    private readonly IAvailabilityRepository _availabilityRepository;
 
     public AvailabilityService(
         ISchedulingConfiguration schedulingConfiguration,
-        IApplicationDbContext dbContext,
-        IAvailabilityRepository availabilityRepository)
+        IApplicationDbContext dbContext)
     {
         _schedulingConfiguration = schedulingConfiguration;
         _dbContext = dbContext;
-        _availabilityRepository = availabilityRepository;
     }
 
     public async Task<List<AvailabilityOption>> GetAvailableSlotsAsync(
@@ -35,40 +30,29 @@ public class AvailabilityService : IAvailabilityService
         DateTime date,
         CancellationToken cancellationToken = default)
     {
-        // -----------------------------
-        // 1. Service duration
-        // -----------------------------
+        // Get service type duration
         var serviceType =
             await _dbContext.ServiceTypes
                 .FirstAsync(x => x.Id == serviceTypeId, cancellationToken);
 
         int durationMinutes = serviceType.DurationMinutes;
+        int requiredSlots = CalculateRequiredSlots(durationMinutes);
 
-        int requiredSlots =
-            CalculateRequiredSlots(durationMinutes);
-
-        // -----------------------------
-        // 2. Load technicians
-        // -----------------------------
+        // Load technicians for the dealership
         var technicians =
             await _dbContext.Technicians
                 .Where(t => t.DealershipId == dealershipId)
                 .ToListAsync(cancellationToken);
 
-        // -----------------------------
-        // 3. Load technician skills
-        // -----------------------------
+        // Load technician skills for the service type
         var technicianSkills =
             await _dbContext.TechnicianSkills
                 .Where(ts => ts.ServiceTypeId == serviceTypeId)
                 .ToListAsync(cancellationToken);
 
-        var eligibleTechnicians =
-            GetEligibleTechnicians(technicianSkills);
+        var eligibleTechnicians = GetEligibleTechnicians(technicianSkills);
 
-        // -----------------------------
-        // 4. Load schedules
-        // -----------------------------
+        // Load technician schedules for the date
         var schedules =
             await _dbContext.TechnicianSchedules
                 .Where(s =>
@@ -77,59 +61,53 @@ public class AvailabilityService : IAvailabilityService
                     s.DayOfWeek == date.DayOfWeek)
                 .ToListAsync(cancellationToken);
 
-        // -----------------------------
-        // 5. Load appointments
-        // -----------------------------
-        var appointments =
-            await _dbContext.Appointments
-                .Where(a =>
-                    a.DealershipId == dealershipId &&
-                    a.StartTime.Date == date.Date &&
-                    eligibleTechnicians.Contains(a.TechnicianId))
+        // Load services with technician assignments for conflict checking
+        // Filter by appointment date, not service start time
+        var servicesWithTechs =
+            await _dbContext.Services
+                .Where(s =>
+                    s.DealershipId == dealershipId &&
+                    s.TechnicianId != null &&
+                    s.Appointment.AppointmentDate == DateOnly.FromDateTime(date))
                 .ToListAsync(cancellationToken);
 
-        var bayAppointments =
-            await _dbContext.Appointments
-                .Where(a =>
-                    a.DealershipId == dealershipId &&
-                    a.StartTime.Date == date.Date)
+        // Load services for bay conflict checking
+        var bayServices =
+            await _dbContext.Services
+                .Where(s =>
+                    s.DealershipId == dealershipId &&
+                    s.Appointment.AppointmentDate == DateOnly.FromDateTime(date))
                 .ToListAsync(cancellationToken);
 
-        // -----------------------------
-        // 6. Load service bays
-        // -----------------------------
+        // Load service bays
         var serviceBays =
             await _dbContext.ServiceBays
                 .Where(b => b.DealershipId == dealershipId)
                 .ToListAsync(cancellationToken);
 
-        // -----------------------------
-        // 7. Generate slots
-        // -----------------------------
+        // Generate time slots for the working day
         var (start, end) = GetWorkingHoursWindow(date);
-
         var slots = GenerateTimeSlots(date, start, end);
+        var candidateWindows = GenerateCandidateBookingWindows(slots, requiredSlots);
 
-        var candidateWindows =
-            GenerateCandidateBookingWindows(slots, requiredSlots);
-
-        // -----------------------------
-        // 8. Build final allocation results
-        // -----------------------------
+        // Build availability options
         var results = new List<AvailabilityOption>();
 
         foreach (var window in candidateWindows)
         {
             foreach (var techId in eligibleTechnicians)
             {
-                if (!IsTechnicianAvailable(techId, window, appointments))
+                // Check technician availability
+                if (!IsTechnicianAvailable(techId, window, servicesWithTechs))
                     continue;
 
+                // Check technician schedule
                 if (!IsWithinTechnicianSchedule(techId, window, schedules))
                     continue;
 
+                // Find available bay
                 var bay = serviceBays.FirstOrDefault(b =>
-                    IsBayAvailable(b.Id, window, bayAppointments));
+                    IsBayAvailable(b.Id, window, bayServices));
 
                 if (bay == null)
                     continue;
@@ -146,9 +124,9 @@ public class AvailabilityService : IAvailabilityService
         return results;
     }
 
-    // -----------------------------
-    // Helpers
-    // -----------------------------
+    /// <summary>
+    /// Gets eligible technicians who have skills for the given service type
+    /// </summary>
     private HashSet<Guid> GetEligibleTechnicians(
         List<Domain.Entities.TechnicianSkill> skills)
     {
@@ -157,16 +135,24 @@ public class AvailabilityService : IAvailabilityService
             .ToHashSet();
     }
 
+    /// <summary>
+    /// Checks if a technician is available for the given time window
+    /// </summary>
     private bool IsTechnicianAvailable(
         Guid technicianId,
         TimeSlot window,
-        List<Domain.Entities.Appointment> appointments)
+        List<Domain.Entities.Service> services)
     {
-        return !appointments.Any(a =>
-            a.TechnicianId == technicianId &&
-            Overlaps(window.Start, window.End, a.StartTime, a.EndTime));
+        return !services.Any(s =>
+            s.TechnicianId == technicianId &&
+            s.EstimatedStartTime.HasValue &&
+            s.EstimatedEndTime.HasValue &&
+            Overlaps(window.Start, window.End, s.EstimatedStartTime.Value, s.EstimatedEndTime.Value));
     }
 
+    /// <summary>
+    /// Checks if the time window is within technician's schedule
+    /// </summary>
     private bool IsWithinTechnicianSchedule(
         Guid technicianId,
         TimeSlot window,
@@ -181,16 +167,24 @@ public class AvailabilityService : IAvailabilityService
             end <= s.EndTime);
     }
 
+    /// <summary>
+    /// Checks if a service bay is available for the given time window
+    /// </summary>
     private bool IsBayAvailable(
         Guid bayId,
         TimeSlot window,
-        List<Domain.Entities.Appointment> appointments)
+        List<Domain.Entities.Service> services)
     {
-        return !appointments.Any(a =>
-            a.ServiceBayId == bayId &&
-            Overlaps(window.Start, window.End, a.StartTime, a.EndTime));
+        return !services.Any(s =>
+            s.ServiceBayId == bayId &&
+            s.EstimatedStartTime.HasValue &&
+            s.EstimatedEndTime.HasValue &&
+            Overlaps(window.Start, window.End, s.EstimatedStartTime.Value, s.EstimatedEndTime.Value));
     }
 
+    /// <summary>
+    /// Calculates the number of time slots required for the service duration
+    /// </summary>
     private int CalculateRequiredSlots(int durationMinutes)
     {
         return (int)Math.Ceiling(
@@ -198,14 +192,18 @@ public class AvailabilityService : IAvailabilityService
             (double)_schedulingConfiguration.SlotLengthMinutes);
     }
 
+    /// <summary>
+    /// Gets the working hours window for the dealership
+    /// </summary>
     private (TimeSpan Start, TimeSpan End) GetWorkingHoursWindow(DateTime date)
     {
-        return (
-            new TimeSpan(8, 0, 0),
-            new TimeSpan(17, 0, 0)
-        );
+        // Default working hours: 8 AM to 5 PM
+        return (new TimeSpan(8, 0, 0), new TimeSpan(17, 0, 0));
     }
 
+    /// <summary>
+    /// Generates 15-minute time slots for the working day
+    /// </summary>
     private List<TimeSlot> GenerateTimeSlots(
         DateTime date,
         TimeSpan start,
@@ -217,7 +215,6 @@ public class AvailabilityService : IAvailabilityService
         while (current.Add(TimeSpan.FromMinutes(_schedulingConfiguration.SlotLengthMinutes)) <= end)
         {
             var slotStart = date.Date.Add(current);
-
             var slotEnd = slotStart.AddMinutes(_schedulingConfiguration.SlotLengthMinutes);
 
             result.Add(new TimeSlot
@@ -232,6 +229,9 @@ public class AvailabilityService : IAvailabilityService
         return result;
     }
 
+    /// <summary>
+    /// Generates candidate booking windows from individual slots based on required duration
+    /// </summary>
     private List<TimeSlot> GenerateCandidateBookingWindows(
         List<TimeSlot> slots,
         int requiredSlots)
@@ -253,6 +253,9 @@ public class AvailabilityService : IAvailabilityService
         return result;
     }
 
+    /// <summary>
+    /// Determines if two time ranges overlap
+    /// </summary>
     private bool Overlaps(
         DateTime startA,
         DateTime endA,

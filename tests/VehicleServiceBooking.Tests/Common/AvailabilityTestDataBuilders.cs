@@ -350,7 +350,7 @@ public class AppointmentBuilder
     private Guid _serviceBayId = Guid.NewGuid();
     private DateTime _startTime = DateTime.UtcNow.AddHours(1);
     private DateTime _endTime = DateTime.UtcNow.AddHours(2);
-    private Domain.Enums.AppointmentStatus _status = Domain.Enums.AppointmentStatus.Booked;
+    private Guid _statusId = Guid.Parse("00000000-0000-0000-0000-000000000001"); // Booked
 
     public static AppointmentBuilder ValidAppointment()
     {
@@ -397,25 +397,32 @@ public class AppointmentBuilder
 
     public AppointmentBuilder WithStatus(Domain.Enums.AppointmentStatus status)
     {
-        _status = status;
+        _statusId = status switch
+        {
+            Domain.Enums.AppointmentStatus.Booked => Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Domain.Enums.AppointmentStatus.InProgress => Guid.Parse("00000000-0000-0000-0000-000000000002"),
+            Domain.Enums.AppointmentStatus.Completed => Guid.Parse("00000000-0000-0000-0000-000000000003"),
+            Domain.Enums.AppointmentStatus.Cancelled => Guid.Parse("00000000-0000-0000-0000-000000000004"),
+            _ => Guid.Parse("00000000-0000-0000-0000-000000000001")
+        };
         return this;
     }
 
     public AppointmentBuilder InProgress()
     {
-        _status = Domain.Enums.AppointmentStatus.InProgress;
+        _statusId = Guid.Parse("00000000-0000-0000-0000-000000000002");
         return this;
     }
 
     public AppointmentBuilder Booked()
     {
-        _status = Domain.Enums.AppointmentStatus.Booked;
+        _statusId = Guid.Parse("00000000-0000-0000-0000-000000000001");
         return this;
     }
 
     public AppointmentBuilder Cancelled()
     {
-        _status = Domain.Enums.AppointmentStatus.Cancelled;
+        _statusId = Guid.Parse("00000000-0000-0000-0000-000000000004");
         return this;
     }
 
@@ -425,11 +432,8 @@ public class AppointmentBuilder
         {
             Id = _id,
             DealershipId = _dealershipId,
-            TechnicianId = _technicianId,
-            ServiceBayId = _serviceBayId,
-            StartTime = _startTime,
-            EndTime = _endTime,
-            Status = _status
+            AppointmentDate = DateOnly.FromDateTime(_startTime),
+            StatusId = _statusId
         };
     }
 }
@@ -810,12 +814,8 @@ public class AvailabilityIntegrationScenarioBuilder
                 DealershipId = _dealershipId,
                 CustomerId = Guid.NewGuid(),
                 VehicleId = Guid.NewGuid(),
-                TechnicianId = technicians[0].Id,
-                ServiceBayId = serviceBays[0].Id,
-                ServiceTypeId = _serviceTypeId,
-                StartTime = _existingAppointmentStart.Value,
-                EndTime = _existingAppointmentEnd.Value,
-                Status = Domain.Enums.AppointmentStatus.Booked
+                AppointmentDate = DateOnly.FromDateTime(_existingAppointmentStart.Value),
+                StatusId = Guid.Parse("00000000-0000-0000-0000-000000000001") // Booked
             };
             existingAppointments.Add(appointment);
         }

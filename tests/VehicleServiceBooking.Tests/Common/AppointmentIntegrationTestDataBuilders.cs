@@ -245,12 +245,8 @@ public class AppointmentIntegrationScenarioBuilder
                     DealershipId = _dealershipId,
                     CustomerId = Guid.NewGuid(),
                     VehicleId = Guid.NewGuid(),
-                    TechnicianId = technicians[i % _numberOfTechnicians].Id,
-                    ServiceBayId = serviceBays[i % _numberOfServiceBays].Id,
-                    ServiceTypeId = _serviceTypeId,
-                    StartTime = now.AddDays(1).AddHours(i * 2),
-                    EndTime = now.AddDays(1).AddHours(i * 2 + 1),
-                    Status = AppointmentStatus.Booked
+                    AppointmentDate = DateOnly.FromDateTime(now.AddDays(1).AddHours(i * 2)),
+                    StatusId = Guid.Parse("00000000-0000-0000-0000-000000000001") // Booked
                 };
                 existingAppointments.Add(appointment);
             }

@@ -102,11 +102,13 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         result.SlotEnd.Should().Be(endTime);
 
         // Verify appointment was saved to database
-        var savedAppointment = await _dbContext.Appointments.FindAsync(result.AppointmentId);
+        var savedAppointment = await _dbContext.Appointments
+            .Include(a => a.Status)
+            .FirstOrDefaultAsync(a => a.Id == result.AppointmentId);
         savedAppointment.Should().NotBeNull();
         savedAppointment!.DealershipId.Should().Be(dealership.Id);
         savedAppointment.CustomerId.Should().Be(customer.Id);
-        savedAppointment.Status.Should().Be(AppointmentStatus.Booked);
+        savedAppointment.Status!.Status.Should().Be(AppointmentStatus.Booked);
     }
 
     [Fact]
@@ -163,8 +165,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = existingAppointments[0].StartTime;
-        var endTime = existingAppointments[0].EndTime;
+        var startTime = existingAppointments[0].Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow;
+        var endTime = existingAppointments[0].Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
 
         // Request for overlapping slot
         var conflictingRequest = new CreateAppointmentRequest
@@ -174,7 +176,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             VehicleId = vehicle.Id,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
-            ServiceBayId = existingAppointments[0].ServiceBayId,
+            ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
             SlotStart = startTime,
             SlotEnd = endTime
         };
@@ -204,7 +206,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         // Request for non-overlapping slot (after existing appointment)
-        var existingEnd = existingAppointments[0].EndTime;
+        var existingEnd = existingAppointments[0].Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
         var newStart = existingEnd.AddHours(2);
         var newEnd = newStart.AddHours(1);
 
@@ -215,7 +217,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             VehicleId = vehicle.Id,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
-            ServiceBayId = existingAppointments[0].ServiceBayId,
+            ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
             SlotStart = newStart,
             SlotEnd = newEnd
         };
@@ -276,8 +278,9 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         var createdAppointment = await _dbContext.Appointments.FindAsync(result.AppointmentId);
         createdAppointment.Should().NotBeNull();
-        createdAppointment!.TechnicianId.Should().Be(technicians[0].Id);
-        createdAppointment.ServiceBayId.Should().Be(serviceBays[1].Id);
+        createdAppointment!.Services.Should().HaveCount(1);
+        createdAppointment.Services.First().TechnicianId.Should().Be(technicians[0].Id);
+        createdAppointment.Services.First().ServiceBayId.Should().Be(serviceBays[1].Id);
     }
 
     [Fact]
@@ -300,8 +303,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         var firstAppointment = existingAppointments[0];
-        var startTime = firstAppointment.StartTime;
-        var endTime = firstAppointment.EndTime;
+        var startTime = firstAppointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow;
+        var endTime = firstAppointment.Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
 
         // Try to create second appointment in same service bay with overlapping time
         var request = new CreateAppointmentRequest
@@ -311,7 +314,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             VehicleId = vehicle.Id,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[1].Id, // Different technician
-            ServiceBayId = firstAppointment.ServiceBayId, // Same bay!
+            ServiceBayId = firstAppointment.Services.First().ServiceBayId!.Value, // Same bay!
             SlotStart = startTime.AddMinutes(15),
             SlotEnd = endTime.AddMinutes(15)
         };
@@ -353,8 +356,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().Be(targetAppointment.Id);
-        result.SlotStart.Should().Be(targetAppointment.StartTime);
-        result.SlotEnd.Should().Be(targetAppointment.EndTime);
+        result.SlotStart.Should().Be(targetAppointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow);
+        result.SlotEnd.Should().Be(targetAppointment.Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1));
     }
 
     [Fact]
@@ -393,7 +396,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().Be(targetAppointment.Id);
-        result.SlotStart.Should().Be(targetAppointment.StartTime);
+        result.SlotStart.Should().Be(targetAppointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow);
     }
 
     [Fact]

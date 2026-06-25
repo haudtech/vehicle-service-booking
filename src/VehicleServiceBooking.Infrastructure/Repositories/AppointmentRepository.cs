@@ -35,10 +35,12 @@ public class AppointmentRepository : IAppointmentRepository
         CancellationToken cancellationToken)
     {
         // Get appointments that have services assigned to the specified service bay
+        // Filter by service timing (EstimatedStartTime/EstimatedEndTime)
         var appointments = await _dbContext.Appointments
-            .Where(a => a.Services.Any(s => s.ServiceBayId == serviceBayId)
-                && a.StartTime >= startTime
-                && a.EndTime <= endTime)
+            .Where(a => a.Services.Any(s => 
+                s.ServiceBayId == serviceBayId &&
+                s.EstimatedStartTime >= startTime &&
+                s.EstimatedEndTime <= endTime))
             .ToListAsync(cancellationToken);
 
         return appointments;
