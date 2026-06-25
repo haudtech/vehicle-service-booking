@@ -1,4 +1,5 @@
 using System;
+using VehicleServiceBooking.Application.Configuration.Interfaces;
 
 namespace VehicleServiceBooking.Application.Configuration;
 

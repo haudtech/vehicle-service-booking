@@ -4,10 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using VehicleServiceBooking.Application.Configuration;
+using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
+using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
 
 namespace VehicleServiceBooking.Application.Services;

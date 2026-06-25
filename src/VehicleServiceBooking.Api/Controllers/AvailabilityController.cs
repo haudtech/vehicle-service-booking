@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
+using VehicleServiceBooking.Application.Interfaces.Services;
 
 namespace VehicleServiceBooking.Api.Controllers;
 

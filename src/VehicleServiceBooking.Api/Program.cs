@@ -1,25 +1,10 @@
 using System;
 using System.IO;
-using System.Reflection;
 using DotNetEnv;
-using FluentValidation;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
-using VehicleServiceBooking.Application.Configuration;
-using VehicleServiceBooking.Application.DTOs;
-using VehicleServiceBooking.Application.Interfaces;
-using VehicleServiceBooking.Application.Interfaces.Persistence;
-using VehicleServiceBooking.Application.Interfaces.Repositories;
-using VehicleServiceBooking.Application.Services;
-using VehicleServiceBooking.Application.Validators;
-using VehicleServiceBooking.Api.Middleware;
-using VehicleServiceBooking.Infrastructure.Persistence;
-using VehicleServiceBooking.Infrastructure.Repositories;
+using VehicleServiceBooking.Api.Configuration;
 
 //
 // ============================================================================
@@ -55,232 +40,64 @@ if (File.Exists(envFile))
 
 var builder = WebApplication.CreateBuilder(args);
 
-// At this point, CreateBuilder has automatically loaded:
-// 1. appsettings.json
-// 2. appsettings.{Environment}.json (based on ASPNETCORE_ENVIRONMENT)
-// 3. Environment variables from OS/Docker/.env (highest priority)
-
 //
-// Controllers
+// ============================================================================
+// DEPENDENCY INJECTION ORCHESTRATION
+// ============================================================================
 //
-builder.Services.AddControllers();
-
+// The following extension methods register all services, configurations,
+// and options in a clean, maintainable way. Each extension is responsible
+// for a specific concern (controllers, swagger, CORS, database, services).
 //
-// FluentValidation
+// This orchestrator pattern keeps Program.cs clean and allows each
+// configuration concern to be modified independently.
 //
-builder.Services.AddScoped<IValidator<GetAvailabilityRequest>, GetAvailabilityRequestValidator>();
-builder.Services.AddScoped<IValidator<CreateAppointmentRequest>, CreateAppointmentRequestValidator>();
-
+// ============================================================================
 //
-// Swagger
-//
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Vehicle Service Booking API",
-        Version = "v1.0.0",
-        Description = "API for managing vehicle service appointments with real-time availability checking",
-        Contact = new OpenApiContact
-        {
-            Name = "Vehicle Service Booking Support",
-            Email = "support@vehicleservicebooking.com"
-        },
-        License = new OpenApiLicense
-        {
-            Name = "MIT License"
-        }
-    });
 
-    // Add XML comments from controller and DTO classes
-    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
-    if (File.Exists(xmlPath))
-    {
-        options.IncludeXmlComments(xmlPath);
-    }
+// Register application options (Scheduling, CORS configuration)
+builder.Services.AddApplicationOptions(builder.Configuration);
 
-    // Add authorization scheme (placeholder for future JWT implementation)
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        In = ParameterLocation.Header,
-        Description = "Please insert JWT token (future implementation)",
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "bearer"
-    });
+// Register controllers with validation
+builder.Services.AddControllersWithValidation();
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] { }
-        }
-    });
+// Register Swagger/OpenAPI documentation
+builder.Services.AddSwaggerDocumentation();
 
-    // Group endpoints by tags
-    options.TagActionsBy(api =>
-    {
-        if (api.GroupName != null)
-        {
-            return new[] { api.GroupName };
-        }
+// Register persistence layer (DbContext)
+builder.Services.AddPersistenceLayer(builder.Configuration);
 
-        var controllerActionDescriptor = api.ActionDescriptor as Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
-        if (controllerActionDescriptor != null)
-        {
-            return new[] { controllerActionDescriptor.ControllerName };
-        }
+// Register application services and repositories
+builder.Services.AddApplicationServices();
 
-        throw new InvalidOperationException("Unable to determine tag for endpoint.");
-    });
-
-    options.DocInclusionPredicate((name, api) => true);
-});
-
-//
-// Scheduling Options (from appsettings.json)
-//
-builder.Services.Configure<SchedulingOptions>(
-    builder.Configuration.GetSection(SchedulingOptions.SectionName));
-
-builder.Services.AddSingleton<ISchedulingConfiguration>(sp =>
-    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SchedulingOptions>>().Value);
-
-//
-// CORS (Cross-Origin Resource Sharing) Configuration
-//
-// Allows specified frontend applications to make requests to this API
-// Configuration is environment-specific (see appsettings.{Environment}.json)
-//
-builder.Services.Configure<CorsOptions>(
-    builder.Configuration.GetSection(CorsOptions.SectionName));
-
-var corsConfig = builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>()
-    ?? new CorsOptions();
-
-// Add CORS service with the configured policy
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(corsConfig.PolicyName, policy =>
-    {
-        // Configure allowed origins
-        if (corsConfig.AllowedOrigins.Length > 0 && corsConfig.AllowedOrigins[0] == "*")
-        {
-            policy.AllowAnyOrigin();
-        }
-        else
-        {
-            policy.WithOrigins(corsConfig.AllowedOrigins);
-        }
-
-        // Configure allowed HTTP methods
-        if (corsConfig.AllowedMethods.Length > 0)
-        {
-            policy.WithMethods(corsConfig.AllowedMethods);
-        }
-        else
-        {
-            policy.AllowAnyMethod();
-        }
-
-        // Configure allowed request headers
-        if (corsConfig.AllowedHeaders.Length > 0 && corsConfig.AllowedHeaders[0] == "*")
-        {
-            policy.AllowAnyHeader();
-        }
-        else
-        {
-            policy.WithHeaders(corsConfig.AllowedHeaders);
-        }
-
-        // Configure exposed response headers
-        if (corsConfig.ExposedHeaders.Length > 0)
-        {
-            policy.WithExposedHeaders(corsConfig.ExposedHeaders);
-        }
-
-        // Configure max age for preflight caching
-        if (corsConfig.MaxAge > 0)
-        {
-            policy.SetPreflightMaxAge(TimeSpan.FromSeconds(corsConfig.MaxAge));
-        }
-
-        // Configure credentials
-        if (corsConfig.AllowCredentials)
-        {
-            // Important: If AllowCredentials is true, AllowAnyOrigin() cannot be used
-            // Must specify exact origins
-            policy.AllowCredentials();
-        }
-    });
-});
-
-// Store CORS config as singleton for potential use in other services
-builder.Services.AddSingleton<ICorsConfiguration>(corsConfig);
-
-//
-// DbContext (InMemory for now)
-//
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    options.UseInMemoryDatabase("VehicleServiceBookingDb");
-});
-
-//
-// Application DbContext abstraction
-//
-builder.Services.AddScoped<IApplicationDbContext>(sp =>
-    sp.GetRequiredService<ApplicationDbContext>());
-
-//
-// Repository Pattern
-//
-builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-builder.Services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
-builder.Services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
-
-//
-// Application Services
-//
-builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
-builder.Services.AddScoped<IAppointmentService, AppointmentService>();
-
+// Build the application
 var app = builder.Build();
 
 //
-// HTTP pipeline - Middleware
+// ============================================================================
+// HTTP MIDDLEWARE PIPELINE ORCHESTRATION
+// ============================================================================
 //
-app.UseMiddleware<ValidationExceptionMiddleware>();
-
+// Middleware order is critical. They are executed in the order registered.
+// Current order (from first to last):
 //
-// CORS Middleware - Must be placed after UseRouting but before UseAuthorization
-// in some cases. Here it's placed early in the pipeline for all requests.
+// 1. Exception Handling - Catch and format exceptions
+// 2. Swagger Documentation - API documentation UI
+// 3. HTTPS Redirection - Enforce HTTPS
+// 4. Authorization - Will be used for JWT in Phase 3
+// 5. CORS - Must be after routing, before authorization in some cases
+// 6. Controllers - Map to controller actions
 //
-app.UseCors(corsConfig.PolicyName);
-
+// ============================================================================
 //
-// HTTP pipeline - Standard middleware
-//
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
-app.UseHttpsRedirection();
+// Configure middleware pipeline
+app.UseApplicationMiddleware();
 
-app.UseAuthorization();
+// Get CORS configuration and apply CORS middleware
+var corsConfig = builder.Services.BuildServiceProvider()
+    .GetRequiredService<VehicleServiceBooking.Application.Configuration.Interfaces.ICorsConfiguration>();
 
-app.MapControllers();
+app.UseCorsPolicy(corsConfig.PolicyName);
 
 app.Run();

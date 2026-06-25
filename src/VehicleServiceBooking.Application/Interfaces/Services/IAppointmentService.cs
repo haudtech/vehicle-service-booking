@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VehicleServiceBooking.Application.DTOs;
 
-namespace VehicleServiceBooking.Application.Interfaces;
+namespace VehicleServiceBooking.Application.Interfaces.Services;
 
 /// <summary>
 /// Service for managing appointment operations

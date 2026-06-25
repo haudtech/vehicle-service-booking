@@ -1,9 +1,10 @@
 using FluentAssertions;
 using Moq;
-using VehicleServiceBooking.Application.Configuration;
+using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
+using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;

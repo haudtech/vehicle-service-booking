@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VehicleServiceBooking.Application.Models;
 
-namespace VehicleServiceBooking.Application.Interfaces;
+namespace VehicleServiceBooking.Application.Interfaces.Services;
 
 public interface IAvailabilityService
 {
@@ -13,5 +13,4 @@ public interface IAvailabilityService
         Guid serviceTypeId,
         DateTime date,
         CancellationToken cancellationToken = default);
-
 }

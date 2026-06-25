@@ -7,6 +7,7 @@ using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
+using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
 

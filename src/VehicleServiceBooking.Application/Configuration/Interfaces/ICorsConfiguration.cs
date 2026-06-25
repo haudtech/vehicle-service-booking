@@ -1,4 +1,4 @@
-namespace VehicleServiceBooking.Application.Configuration;
+namespace VehicleServiceBooking.Application.Configuration.Interfaces;
 
 /// <summary>
 /// Configuration interface for CORS (Cross-Origin Resource Sharing) settings

@@ -1,3 +1,5 @@
+using VehicleServiceBooking.Application.Configuration.Interfaces;
+
 namespace VehicleServiceBooking.Application.Configuration;
 
 public class SchedulingOptions : ISchedulingConfiguration
