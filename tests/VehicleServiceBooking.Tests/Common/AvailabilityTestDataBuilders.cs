@@ -295,6 +295,134 @@ public class TechnicianScheduleBuilder
 }
 
 /// <summary>
+/// Test data builder for Customer entity.
+/// Provides a fluent API to create test customers with customizable values.
+/// </summary>
+public class CustomerBuilder
+{
+    private Guid _id = Guid.NewGuid();
+    private string _firstName = "John";
+    private string _lastName = "Doe";
+    private string _email = "john.doe@example.com";
+    private string _phoneNumber = "555-1234";
+
+    public static CustomerBuilder ValidCustomer()
+    {
+        return new CustomerBuilder();
+    }
+
+    public CustomerBuilder WithId(Guid id)
+    {
+        _id = id;
+        return this;
+    }
+
+    public CustomerBuilder WithFirstName(string firstName)
+    {
+        _firstName = firstName;
+        return this;
+    }
+
+    public CustomerBuilder WithLastName(string lastName)
+    {
+        _lastName = lastName;
+        return this;
+    }
+
+    public CustomerBuilder WithEmail(string email)
+    {
+        _email = email;
+        return this;
+    }
+
+    public CustomerBuilder WithPhoneNumber(string phoneNumber)
+    {
+        _phoneNumber = phoneNumber;
+        return this;
+    }
+
+    public Customer Build()
+    {
+        return new Customer
+        {
+            Id = _id,
+            FirstName = _firstName,
+            LastName = _lastName,
+            Email = _email,
+            PhoneNumber = _phoneNumber
+        };
+    }
+}
+
+/// <summary>
+/// Test data builder for Vehicle entity.
+/// Provides a fluent API to create test vehicles with customizable values.
+/// </summary>
+public class VehicleBuilder
+{
+    private Guid _id = Guid.NewGuid();
+    private Guid _customerId = Guid.NewGuid();
+    private string _vin = "1HGCV1F32LB123456";
+    private string _make = "Honda";
+    private string _model = "Civic";
+    private int? _year = 2020;
+
+    public static VehicleBuilder ValidVehicle()
+    {
+        return new VehicleBuilder();
+    }
+
+    public VehicleBuilder WithId(Guid id)
+    {
+        _id = id;
+        return this;
+    }
+
+    public VehicleBuilder WithCustomerId(Guid customerId)
+    {
+        _customerId = customerId;
+        return this;
+    }
+
+    public VehicleBuilder WithVin(string vin)
+    {
+        _vin = vin;
+        return this;
+    }
+
+    public VehicleBuilder WithMake(string make)
+    {
+        _make = make;
+        return this;
+    }
+
+    public VehicleBuilder WithModel(string model)
+    {
+        _model = model;
+        return this;
+    }
+
+    public VehicleBuilder WithYear(int? year)
+    {
+        _year = year;
+        return this;
+    }
+
+    public Vehicle Build()
+    {
+        return new Vehicle
+        {
+            Id = _id,
+            CustomerId = _customerId,
+            Vin = _vin,
+            Make = _make,
+            Model = _model,
+            Year = _year
+        };
+    }
+}
+
+/// <summary>
 /// Test data builder for ServiceBay entity.
 /// Provides a fluent API to create test service bays with customizable values.
 /// </summary>

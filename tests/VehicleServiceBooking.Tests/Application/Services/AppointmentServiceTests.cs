@@ -9,6 +9,7 @@ using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
 using VehicleServiceBooking.Infrastructure.Persistence;
+using VehicleServiceBooking.Tests.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
@@ -45,52 +46,16 @@ public class AppointmentServiceTests
     public async Task CreateAppointmentAsync_WithValidRequest_ShouldCreateAppointment()
     {
         // Arrange
-        var dealershipId = Guid.NewGuid();
-        var customerId = Guid.NewGuid();
-        var vehicleId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        var technicianId = Guid.NewGuid();
-        var serviceBayId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
+        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            SlotStart = startTime,
-            SlotEnd = endTime
-        };
-
-        // Setup mocks
-        var dealership = new Dealership { Id = dealershipId };
-        var customer = new Customer { Id = customerId };
-        var vehicle = new Vehicle { Id = vehicleId };
-        var serviceType = new ServiceType { Id = serviceTypeId };
-        var technician = new Technician { Id = technicianId };
-        var serviceBay = new ServiceBay { Id = serviceBayId };
-
-        SetupMockDbSet(dealership, new List<Dealership> { dealership });
-        SetupMockDbSet(customer, new List<Customer> { customer });
-        SetupMockDbSet(vehicle, new List<Vehicle> { vehicle });
-        SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
-        SetupMockDbSet(technician, new List<Technician> { technician });
-        SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
-        
-        // Setup AppointmentStatusLookup
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
+        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
+        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
+        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
+        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
+        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
+        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        
         SetupMockDbSet<Appointment>(null, new List<Appointment>());
 
         _mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -102,37 +67,20 @@ public class AppointmentServiceTests
             .ReturnsAsync((Appointment app, CancellationToken ct) => app);
 
         // Act
-        var result = await _appointmentService.CreateAppointmentAsync(request);
+        var result = await _appointmentService.CreateAppointmentAsync(scenario.Request);
 
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().NotBeEmpty();
-        result.SlotStart.Should().Be(startTime);
-        result.SlotEnd.Should().Be(endTime);
+        result.SlotStart.Should().Be(scenario.SlotStart);
+        result.SlotEnd.Should().Be(scenario.SlotEnd);
     }
 
     [Fact]
     public async Task CreateAppointmentAsync_WithNonExistentCustomer_ShouldThrowException()
     {
         // Arrange
-        var dealershipId = Guid.NewGuid();
-        var customerId = Guid.NewGuid();
-        var vehicleId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        var technicianId = Guid.NewGuid();
-        var serviceBayId = Guid.NewGuid();
-
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            SlotStart = DateTime.UtcNow.AddHours(1),
-            SlotEnd = DateTime.UtcNow.AddHours(2)
-        };
+        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
 
         // Setup mocks - empty lists to simulate non-existent entities
         SetupMockDbSet<Dealership>(null, new List<Dealership>());
@@ -145,7 +93,7 @@ public class AppointmentServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(request)
+            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
         );
     }
 
@@ -153,54 +101,24 @@ public class AppointmentServiceTests
     public async Task CreateAppointmentAsync_WithNonExistentVehicle_ShouldThrowException()
     {
         // Arrange
-        var dealershipId = Guid.NewGuid();
-        var customerId = Guid.NewGuid();
-        var vehicleId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        var technicianId = Guid.NewGuid();
-        var serviceBayId = Guid.NewGuid();
-
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            SlotStart = DateTime.UtcNow.AddHours(1),
-            SlotEnd = DateTime.UtcNow.AddHours(2)
-        };
+        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
 
         // Setup mocks
-        var dealership = new Dealership { Id = dealershipId };
-        var customer = new Customer { Id = customerId };
-        var serviceType = new ServiceType { Id = serviceTypeId };
-        var technician = new Technician { Id = technicianId };
-        var serviceBay = new ServiceBay { Id = serviceBayId };
-
-        SetupMockDbSet(dealership, new List<Dealership> { dealership });
-        SetupMockDbSet(customer, new List<Customer> { customer });
+        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
+        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
         SetupMockDbSet<Vehicle>(null, new List<Vehicle>()); // Empty - no vehicles
-        SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
-        SetupMockDbSet(technician, new List<Technician> { technician });
-        SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
+        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
+        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
         
-        // Setup AppointmentStatusLookup
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         
         SetupMockDbSet<Appointment>(null, new List<Appointment>());
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(request)
+            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
         );
     }
 
@@ -208,82 +126,25 @@ public class AppointmentServiceTests
     public async Task CreateAppointmentAsync_WithConflictingSlot_ShouldThrowException()
     {
         // Arrange
-        var dealershipId = Guid.NewGuid();
-        var customerId = Guid.NewGuid();
-        var vehicleId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        var technicianId = Guid.NewGuid();
-        var serviceBayId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
+        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
+        var conflictScenario = TestDataFactory.CreateConflictDetectionScenario();
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            SlotStart = startTime,
-            SlotEnd = endTime
-        };
+        // Use the conflicting appointment from the scenario
+        var existingAppointment = conflictScenario.ConflictingAppointment;
 
-        // Setup mocks
-        var dealership = new Dealership { Id = dealershipId };
-        var customer = new Customer { Id = customerId };
-        var vehicle = new Vehicle { Id = vehicleId };
-        var serviceType = new ServiceType { Id = serviceTypeId };
-        var technician = new Technician { Id = technicianId };
-        var serviceBay = new ServiceBay { Id = serviceBayId };
-
-        // Existing appointment that conflicts
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
-        var existingAppointment = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            AppointmentDate = DateOnly.FromDateTime(startTime),
-            StatusId = bookedStatus.Id,
-            Status = bookedStatus,
-            Services = new List<Service>
-            {
-                new Service
-                {
-                    Id = Guid.NewGuid(),
-                    AppointmentId = Guid.NewGuid(), // Will be set by code
-                    ServiceTypeId = serviceTypeId,
-                    TechnicianId = technicianId,
-                    ServiceBayId = serviceBayId,
-                    DealershipId = dealershipId,
-                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
-                    SequenceOrder = 1,
-                    EstimatedStartTime = startTime.AddMinutes(-30),
-                    EstimatedEndTime = endTime.AddMinutes(30)
-                }
-            }
-        };
-
-        SetupMockDbSet(dealership, new List<Dealership> { dealership });
-        SetupMockDbSet(customer, new List<Customer> { customer });
-        SetupMockDbSet(vehicle, new List<Vehicle> { vehicle });
-        SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
-        SetupMockDbSet(technician, new List<Technician> { technician });
-        SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
+        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
+        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
+        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
+        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
+        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(request)
+            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
         );
     }
 
@@ -291,76 +152,19 @@ public class AppointmentServiceTests
     public async Task CreateAppointmentAsync_WithNonConflictingExistingAppointment_ShouldSucceed()
     {
         // Arrange
-        var dealershipId = Guid.NewGuid();
-        var customerId = Guid.NewGuid();
-        var vehicleId = Guid.NewGuid();
-        var serviceTypeId = Guid.NewGuid();
-        var technicianId = Guid.NewGuid();
-        var serviceBayId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddHours(2);
-        var endTime = startTime.AddHours(1);
+        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
+        var conflictScenario = TestDataFactory.CreateConflictDetectionScenario();
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            ServiceTypeId = serviceTypeId,
-            TechnicianId = technicianId,
-            ServiceBayId = serviceBayId,
-            SlotStart = startTime,
-            SlotEnd = endTime
-        };
+        // Use the non-conflicting appointment from the scenario
+        var existingAppointment = conflictScenario.NonConflictingAppointment;
 
-        // Setup mocks
-        var dealership = new Dealership { Id = dealershipId };
-        var customer = new Customer { Id = customerId };
-        var vehicle = new Vehicle { Id = vehicleId };
-        var serviceType = new ServiceType { Id = serviceTypeId };
-        var technician = new Technician { Id = technicianId };
-        var serviceBay = new ServiceBay { Id = serviceBayId };
-
-        // Existing appointment that doesn't conflict (ends before new one starts)
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
-        var existingAppointment = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            DealershipId = dealershipId,
-            CustomerId = customerId,
-            VehicleId = vehicleId,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(1)),
-            StatusId = bookedStatus.Id,
-            Status = bookedStatus,
-            Services = new List<Service>
-            {
-                new Service
-                {
-                    Id = Guid.NewGuid(),
-                    AppointmentId = Guid.NewGuid(),
-                    ServiceTypeId = serviceTypeId,
-                    TechnicianId = technicianId,
-                    ServiceBayId = serviceBayId,
-                    DealershipId = dealershipId,
-                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
-                    SequenceOrder = 1,
-                    EstimatedStartTime = DateTime.UtcNow.AddHours(1),
-                    EstimatedEndTime = DateTime.UtcNow.AddHours(1).AddMinutes(30)
-                }
-            }
-        };
-
-        SetupMockDbSet(dealership, new List<Dealership> { dealership });
-        SetupMockDbSet(customer, new List<Customer> { customer });
-        SetupMockDbSet(vehicle, new List<Vehicle> { vehicle });
-        SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });
-        SetupMockDbSet(technician, new List<Technician> { technician });
-        SetupMockDbSet(serviceBay, new List<ServiceBay> { serviceBay });
+        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
+        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
+        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
+        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
+        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
+        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
 
@@ -368,13 +172,13 @@ public class AppointmentServiceTests
             .ReturnsAsync(1);
 
         // Act
-        var result = await _appointmentService.CreateAppointmentAsync(request);
+        var result = await _appointmentService.CreateAppointmentAsync(scenario.Request);
 
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().NotBeEmpty();
-        result.SlotStart.Should().Be(startTime);
-        result.SlotEnd.Should().Be(endTime);
+        result.SlotStart.Should().Be(scenario.SlotStart);
+        result.SlotEnd.Should().Be(scenario.SlotEnd);
     }
 
     #endregion
@@ -389,39 +193,8 @@ public class AppointmentServiceTests
         var startTime = DateTime.UtcNow.AddHours(1);
         var endTime = startTime.AddHours(1);
         
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
-        var appointment = new Appointment
-        {
-            Id = appointmentId,
-            DealershipId = Guid.NewGuid(),
-            CustomerId = Guid.NewGuid(),
-            VehicleId = Guid.NewGuid(),
-            AppointmentDate = DateOnly.FromDateTime(startTime),
-            StatusId = bookedStatus.Id,
-            Status = bookedStatus,
-            Services = new List<Service>
-            {
-                new Service
-                {
-                    Id = Guid.NewGuid(),
-                    AppointmentId = appointmentId,
-                    ServiceTypeId = Guid.NewGuid(),
-                    TechnicianId = Guid.NewGuid(),
-                    ServiceBayId = Guid.NewGuid(),
-                    DealershipId = Guid.NewGuid(),
-                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
-                    SequenceOrder = 1,
-                    EstimatedStartTime = startTime,
-                    EstimatedEndTime = endTime
-                }
-            }
-        };
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
+        var appointment = TestDataFactory.CreateAppointmentWithService(startTime, endTime, appointmentId: appointmentId);
 
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(appointment, new List<Appointment> { appointment });
@@ -457,74 +230,11 @@ public class AppointmentServiceTests
         var startTime1 = DateTime.UtcNow.AddHours(1);
         var startTime2 = DateTime.UtcNow.AddHours(3);
         
-        var bookedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Status = AppointmentStatus.Booked, 
-            Name = "Booked",
-            Description = "Appointment is scheduled"
-        };
-        var completedStatus = new AppointmentStatusLookup 
-        { 
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-            Status = AppointmentStatus.Completed, 
-            Name = "Completed",
-            Description = "Service has been completed"
-        };
+        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
+        var completedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Completed);
         
-        var appointment1 = new Appointment
-        {
-            Id = targetId,
-            DealershipId = Guid.NewGuid(),
-            CustomerId = Guid.NewGuid(),
-            VehicleId = Guid.NewGuid(),
-            AppointmentDate = DateOnly.FromDateTime(startTime1),
-            StatusId = bookedStatus.Id,
-            Status = bookedStatus,
-            Services = new List<Service>
-            {
-                new Service
-                {
-                    Id = Guid.NewGuid(),
-                    AppointmentId = targetId,
-                    ServiceTypeId = Guid.NewGuid(),
-                    TechnicianId = Guid.NewGuid(),
-                    ServiceBayId = Guid.NewGuid(),
-                    DealershipId = Guid.NewGuid(),
-                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
-                    SequenceOrder = 1,
-                    EstimatedStartTime = startTime1,
-                    EstimatedEndTime = startTime1.AddHours(1)
-                }
-            }
-        };
-
-        var appointment2 = new Appointment
-        {
-            Id = Guid.NewGuid(),
-            DealershipId = Guid.NewGuid(),
-            CustomerId = Guid.NewGuid(),
-            VehicleId = Guid.NewGuid(),
-            AppointmentDate = DateOnly.FromDateTime(startTime2),
-            StatusId = completedStatus.Id,
-            Status = completedStatus,
-            Services = new List<Service>
-            {
-                new Service
-                {
-                    Id = Guid.NewGuid(),
-                    AppointmentId = Guid.NewGuid(),
-                    ServiceTypeId = Guid.NewGuid(),
-                    TechnicianId = Guid.NewGuid(),
-                    ServiceBayId = Guid.NewGuid(),
-                    DealershipId = Guid.NewGuid(),
-                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"),
-                    SequenceOrder = 1,
-                    EstimatedStartTime = startTime2,
-                    EstimatedEndTime = startTime2.AddHours(1)
-                }
-            }
-        };
+        var appointment1 = TestDataFactory.CreateAppointmentWithService(startTime1, startTime1.AddHours(1), appointmentId: targetId);
+        var appointment2 = TestDataFactory.CreateAppointmentWithService(startTime2, startTime2.AddHours(1));
 
         SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
         SetupMockDbSet(completedStatus, new List<AppointmentStatusLookup> { completedStatus });

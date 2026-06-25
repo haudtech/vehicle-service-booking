@@ -111,12 +111,9 @@ public class AvailabilityServiceTests
         var serviceTypeId = Guid.NewGuid();
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
 
-        var serviceType = new ServiceType 
-        { 
-            Id = serviceTypeId, 
-            Name = "Oil Change",
-            DurationMinutes = 30 
-        };
+        var serviceType = ServiceTypeBuilder.ValidServiceType()
+            .WithId(serviceTypeId)
+            .Build();
 
         // No technicians with this skill
         var technicianSkills = new List<TechnicianSkill>();
@@ -219,36 +216,24 @@ public class AvailabilityServiceTests
         var technicianId = Guid.NewGuid();
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
 
-        var serviceType = new ServiceType 
-        { 
-            Id = serviceTypeId, 
-            Name = "Oil Change",
-            DurationMinutes = 30 
-        };
+        var serviceType = ServiceTypeBuilder.ValidServiceType()
+            .WithId(serviceTypeId)
+            .Build();
 
-        var technician = new Technician 
-        { 
-            Id = technicianId, 
-            DealershipId = dealershipId,
-            FirstName = "John",
-            LastName = "Doe"
-        };
+        var technician = TechnicianBuilder.ValidTechnician()
+            .WithId(technicianId)
+            .WithDealershipId(dealershipId)
+            .Build();
 
-        var technicianSkill = new TechnicianSkill
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technicianId,
-            ServiceTypeId = serviceTypeId
-        };
+        var technicianSkill = TechnicianSkillBuilder.ValidSkill()
+            .WithTechnicianId(technicianId)
+            .WithServiceTypeId(serviceTypeId)
+            .Build();
 
-        var technicianSchedule = new TechnicianSchedule
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technicianId,
-            DayOfWeek = date.DayOfWeek,
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(17, 0)
-        };
+        var technicianSchedule = TechnicianScheduleBuilder.ValidSchedule()
+            .WithTechnicianId(technicianId)
+            .WithDayOfWeek(date.DayOfWeek)
+            .Build();
 
         // No service bays available
         var serviceBays = new List<ServiceBay>();
@@ -284,67 +269,44 @@ public class AvailabilityServiceTests
         var serviceBayId = Guid.NewGuid();
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
 
-        var serviceType = new ServiceType 
-        { 
-            Id = serviceTypeId, 
-            Name = "Oil Change",
-            DurationMinutes = 30 
-        };
+        var serviceType = ServiceTypeBuilder.ValidServiceType()
+            .WithId(serviceTypeId)
+            .Build();
 
-        var technician1 = new Technician 
-        { 
-            Id = technician1Id, 
-            DealershipId = dealershipId,
-            FirstName = "John",
-            LastName = "Doe"
-        };
+        var technician1 = TechnicianBuilder.ValidTechnician()
+            .WithId(technician1Id)
+            .WithDealershipId(dealershipId)
+            .Build();
 
-        var technician2 = new Technician 
-        { 
-            Id = technician2Id, 
-            DealershipId = dealershipId,
-            FirstName = "Jane",
-            LastName = "Smith"
-        };
+        var technician2 = TechnicianBuilder.ValidTechnician()
+            .WithId(technician2Id)
+            .WithDealershipId(dealershipId)
+            .Build();
 
-        var technicianSkill1 = new TechnicianSkill
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technician1Id,
-            ServiceTypeId = serviceTypeId
-        };
+        var technicianSkill1 = TechnicianSkillBuilder.ValidSkill()
+            .WithTechnicianId(technician1Id)
+            .WithServiceTypeId(serviceTypeId)
+            .Build();
 
-        var technicianSkill2 = new TechnicianSkill
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technician2Id,
-            ServiceTypeId = serviceTypeId
-        };
+        var technicianSkill2 = TechnicianSkillBuilder.ValidSkill()
+            .WithTechnicianId(technician2Id)
+            .WithServiceTypeId(serviceTypeId)
+            .Build();
 
-        var technicianSchedule1 = new TechnicianSchedule
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technician1Id,
-            DayOfWeek = date.DayOfWeek,
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(17, 0)
-        };
+        var technicianSchedule1 = TechnicianScheduleBuilder.ValidSchedule()
+            .WithTechnicianId(technician1Id)
+            .WithDayOfWeek(date.DayOfWeek)
+            .Build();
 
-        var technicianSchedule2 = new TechnicianSchedule
-        {
-            Id = Guid.NewGuid(),
-            TechnicianId = technician2Id,
-            DayOfWeek = date.DayOfWeek,
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(17, 0)
-        };
+        var technicianSchedule2 = TechnicianScheduleBuilder.ValidSchedule()
+            .WithTechnicianId(technician2Id)
+            .WithDayOfWeek(date.DayOfWeek)
+            .Build();
 
-        var serviceBay = new ServiceBay
-        {
-            Id = serviceBayId,
-            DealershipId = dealershipId,
-            Name = "Bay 1"
-        };
+        var serviceBay = ServiceBayBuilder.ValidServiceBay()
+            .WithId(serviceBayId)
+            .WithDealershipId(dealershipId)
+            .Build();
 
         // Setup mock DbContext
         SetupMockDbSet(serviceType, new List<ServiceType> { serviceType });

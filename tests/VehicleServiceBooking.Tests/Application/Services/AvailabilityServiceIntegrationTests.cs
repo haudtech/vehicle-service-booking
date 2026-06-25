@@ -295,12 +295,10 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
                 .Build();
 
         // Create a different service type that has no technicians
-        var noTechServiceType = new ServiceType
-        {
-            Id = Guid.NewGuid(),
-            Name = "Tire Rotation",
-            DurationMinutes = 30
-        };
+        var noTechServiceType = ServiceTypeBuilder.ValidServiceType()
+            .WithName("Tire Rotation")
+            .WithDurationMinutes(30)
+            .Build();
 
         _dbContext.Dealerships.Add(dealership);
         _dbContext.ServiceTypes.Add(noTechServiceType);
