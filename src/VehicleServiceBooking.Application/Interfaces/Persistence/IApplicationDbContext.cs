@@ -8,6 +8,8 @@ namespace VehicleServiceBooking.Application.Interfaces.Persistence;
 
 public interface IApplicationDbContext
 {
+    DbContext DbContext { get; }
+
     DbSet<Appointment> Appointments { get; }
 
     DbSet<ServiceType> ServiceTypes { get; }
@@ -21,6 +23,12 @@ public interface IApplicationDbContext
     DbSet<ServiceBay> ServiceBays { get; }
 
     DbSet<BusinessHours> BusinessHours { get; }
+
+    DbSet<Customer> Customers { get; }
+
+    DbSet<Dealership> Dealerships { get; }
+
+    DbSet<Vehicle> Vehicles { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

@@ -4,8 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Configuration;
+using VehicleServiceBooking.Application.Interfaces;
+using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Models;
 
 namespace VehicleServiceBooking.Application.Services;
@@ -23,50 +24,166 @@ public class AvailabilityService : IAvailabilityService
         _dbContext = dbContext;
     }
 
-    public async Task<List<TimeSlot>> GetAvailableSlotsAsync(
+    public async Task<List<AvailabilityOption>> GetAvailableSlotsAsync(
         Guid dealershipId,
         Guid serviceTypeId,
         DateTime date,
         CancellationToken cancellationToken = default)
     {
-        int durationMinutes =
-            await GetServiceDurationAsync(serviceTypeId, cancellationToken);
+        // -----------------------------
+        // 1. Service duration
+        // -----------------------------
+        var serviceType =
+            await _dbContext.ServiceTypes
+                .FirstAsync(x => x.Id == serviceTypeId, cancellationToken);
+
+        int durationMinutes = serviceType.DurationMinutes;
 
         int requiredSlots =
             CalculateRequiredSlots(durationMinutes);
 
-        var (start, end) =
-            GetWorkingHoursWindow(date);
+        // -----------------------------
+        // 2. Load technicians
+        // -----------------------------
+        var technicians =
+            await _dbContext.Technicians
+                .Where(t => t.DealershipId == dealershipId)
+                .ToListAsync(cancellationToken);
 
-        var slots = GenerateTimeSlots(date, start, end);
+        // -----------------------------
+        // 3. Load technician skills
+        // -----------------------------
+        var technicianSkills =
+            await _dbContext.TechnicianSkills
+                .Where(ts => ts.ServiceTypeId == serviceTypeId)
+                .ToListAsync(cancellationToken);
 
-        var candidateWindows =
-            GenerateCandidateBookingWindows(slots, requiredSlots);
+        var eligibleTechnicians =
+            GetEligibleTechnicians(technicianSkills);
 
+        // -----------------------------
+        // 4. Load schedules
+        // -----------------------------
+        var schedules =
+            await _dbContext.TechnicianSchedules
+                .Where(s =>
+                    technicians.Select(t => t.Id)
+                        .Contains(s.TechnicianId) &&
+                    s.DayOfWeek == date.DayOfWeek)
+                .ToListAsync(cancellationToken);
+
+        // -----------------------------
+        // 5. Load appointments
+        // -----------------------------
         var appointments =
+            await _dbContext.Appointments
+                .Where(a =>
+                    a.DealershipId == dealershipId &&
+                    a.StartTime.Date == date.Date &&
+                    eligibleTechnicians.Contains(a.TechnicianId))
+                .ToListAsync(cancellationToken);
+
+        var bayAppointments =
             await _dbContext.Appointments
                 .Where(a =>
                     a.DealershipId == dealershipId &&
                     a.StartTime.Date == date.Date)
                 .ToListAsync(cancellationToken);
 
-        var availableWindows =
-            candidateWindows
-                .Where(window => !IsConflicting(window, appointments))
-                .ToList();
+        // -----------------------------
+        // 6. Load service bays
+        // -----------------------------
+        var serviceBays =
+            await _dbContext.ServiceBays
+                .Where(b => b.DealershipId == dealershipId)
+                .ToListAsync(cancellationToken);
 
-        return availableWindows;
+        // -----------------------------
+        // 7. Generate slots
+        // -----------------------------
+        var (start, end) = GetWorkingHoursWindow(date);
+
+        var slots = GenerateTimeSlots(date, start, end);
+
+        var candidateWindows =
+            GenerateCandidateBookingWindows(slots, requiredSlots);
+
+        // -----------------------------
+        // 8. Build final allocation results
+        // -----------------------------
+        var results = new List<AvailabilityOption>();
+
+        foreach (var window in candidateWindows)
+        {
+            foreach (var techId in eligibleTechnicians)
+            {
+                if (!IsTechnicianAvailable(techId, window, appointments))
+                    continue;
+
+                if (!IsWithinTechnicianSchedule(techId, window, schedules))
+                    continue;
+
+                var bay = serviceBays.FirstOrDefault(b =>
+                    IsBayAvailable(b.Id, window, bayAppointments));
+
+                if (bay == null)
+                    continue;
+
+                results.Add(new AvailabilityOption
+                {
+                    TimeSlot = window,
+                    TechnicianId = techId,
+                    ServiceBayId = bay.Id
+                });
+            }
+        }
+
+        return results;
     }
 
-    private async Task<int> GetServiceDurationAsync(
-        Guid serviceTypeId,
-        CancellationToken cancellationToken)
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    private HashSet<Guid> GetEligibleTechnicians(
+        List<Domain.Entities.TechnicianSkill> skills)
     {
-        var serviceType =
-            await _dbContext.ServiceTypes
-                .FirstAsync(x => x.Id == serviceTypeId, cancellationToken);
+        return skills
+            .Select(s => s.TechnicianId)
+            .ToHashSet();
+    }
 
-        return serviceType.DurationMinutes;
+    private bool IsTechnicianAvailable(
+        Guid technicianId,
+        TimeSlot window,
+        List<Domain.Entities.Appointment> appointments)
+    {
+        return !appointments.Any(a =>
+            a.TechnicianId == technicianId &&
+            Overlaps(window.Start, window.End, a.StartTime, a.EndTime));
+    }
+
+    private bool IsWithinTechnicianSchedule(
+        Guid technicianId,
+        TimeSlot window,
+        List<Domain.Entities.TechnicianSchedule> schedules)
+    {
+        var start = TimeOnly.FromTimeSpan(window.Start.TimeOfDay);
+        var end = TimeOnly.FromTimeSpan(window.End.TimeOfDay);
+
+        return schedules.Any(s =>
+            s.TechnicianId == technicianId &&
+            start >= s.StartTime &&
+            end <= s.EndTime);
+    }
+
+    private bool IsBayAvailable(
+        Guid bayId,
+        TimeSlot window,
+        List<Domain.Entities.Appointment> appointments)
+    {
+        return !appointments.Any(a =>
+            a.ServiceBayId == bayId &&
+            Overlaps(window.Start, window.End, a.StartTime, a.EndTime));
     }
 
     private int CalculateRequiredSlots(int durationMinutes)
@@ -129,14 +246,6 @@ public class AvailabilityService : IAvailabilityService
         }
 
         return result;
-    }
-
-    private bool IsConflicting(
-        TimeSlot window,
-        List<Domain.Entities.Appointment> appointments)
-    {
-        return appointments.Any(a =>
-            Overlaps(window.Start, window.End, a.StartTime, a.EndTime));
     }
 
     private bool Overlaps(

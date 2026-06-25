@@ -4,11 +4,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using VehicleServiceBooking.Application.Models;
 
-namespace VehicleServiceBooking.Application.Services;
+namespace VehicleServiceBooking.Application.Interfaces;
 
 public interface IAvailabilityService
 {
-    Task<List<TimeSlot>> GetAvailableSlotsAsync(
+    Task<List<AvailabilityOption>> GetAvailableSlotsAsync(
         Guid dealershipId,
         Guid serviceTypeId,
         DateTime date,

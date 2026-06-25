@@ -11,6 +11,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
     }
 
+    public DbContext DbContext => this;
+
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
     public DbSet<Technician> Technicians => Set<Technician>();
@@ -18,6 +20,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<TechnicianSkill> TechnicianSkills => Set<TechnicianSkill>();
     public DbSet<ServiceBay> ServiceBays => Set<ServiceBay>();
     public DbSet<BusinessHours> BusinessHours => Set<BusinessHours>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Dealership> Dealerships => Set<Dealership>();
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +38,29 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasKey(x => x.Id);
 
         modelBuilder.Entity<ServiceBay>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<TechnicianSkill>()
+            .HasKey(x => x.Id);
+
+        // Add unique constraint on TechnicianId + ServiceTypeId to prevent duplicates
+        modelBuilder.Entity<TechnicianSkill>()
+            .HasIndex(x => new { x.TechnicianId, x.ServiceTypeId })
+            .IsUnique();
+
+        modelBuilder.Entity<Customer>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<Dealership>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<Vehicle>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<BusinessHours>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<TechnicianSchedule>()
             .HasKey(x => x.Id);
     }
 }

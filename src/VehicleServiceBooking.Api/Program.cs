@@ -1,13 +1,21 @@
 using System;
+using System.IO;
+using System.Reflection;
+using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 using VehicleServiceBooking.Application.Configuration;
+using VehicleServiceBooking.Application.DTOs;
+using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Services;
+using VehicleServiceBooking.Application.Validators;
+using VehicleServiceBooking.Api.Middleware;
 using VehicleServiceBooking.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,10 +26,86 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 //
+// FluentValidation
+//
+builder.Services.AddScoped<IValidator<GetAvailabilityRequest>, GetAvailabilityRequestValidator>();
+builder.Services.AddScoped<IValidator<CreateAppointmentRequest>, CreateAppointmentRequestValidator>();
+
+//
 // Swagger
 //
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Vehicle Service Booking API",
+        Version = "v1.0.0",
+        Description = "API for managing vehicle service appointments with real-time availability checking",
+        Contact = new OpenApiContact
+        {
+            Name = "Vehicle Service Booking Support",
+            Email = "support@vehicleservicebooking.com"
+        },
+        License = new OpenApiLicense
+        {
+            Name = "MIT License"
+        }
+    });
+
+    // Add XML comments from controller and DTO classes
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
+    // Add authorization scheme (placeholder for future JWT implementation)
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please insert JWT token (future implementation)",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] { }
+        }
+    });
+
+    // Group endpoints by tags
+    options.TagActionsBy(api =>
+    {
+        if (api.GroupName != null)
+        {
+            return new[] { api.GroupName };
+        }
+
+        var controllerActionDescriptor = api.ActionDescriptor as Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
+        if (controllerActionDescriptor != null)
+        {
+            return new[] { controllerActionDescriptor.ControllerName };
+        }
+
+        throw new InvalidOperationException("Unable to determine tag for endpoint.");
+    });
+
+    options.DocInclusionPredicate((name, api) => true);
+});
 
 //
 // Scheduling Options (from appsettings.json)
@@ -50,11 +134,17 @@ builder.Services.AddScoped<IApplicationDbContext>(sp =>
 // Application Services
 //
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
 var app = builder.Build();
 
 //
-// HTTP pipeline
+// HTTP pipeline - Middleware
+//
+app.UseMiddleware<ValidationExceptionMiddleware>();
+
+//
+// HTTP pipeline - Standard middleware
 //
 if (app.Environment.IsDevelopment())
 {
