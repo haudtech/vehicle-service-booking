@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using DotNetEnv;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -13,12 +14,51 @@ using VehicleServiceBooking.Application.Configuration;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Application.Validators;
 using VehicleServiceBooking.Api.Middleware;
 using VehicleServiceBooking.Infrastructure.Persistence;
+using VehicleServiceBooking.Infrastructure.Repositories;
+
+//
+// ============================================================================
+// CONFIGURATION PRECEDENCE (Lowest to Highest Priority)
+// ============================================================================
+// 
+// 1. appsettings.json              - Base configuration (always loaded)
+// 2. appsettings.{Environment}.json - Environment overrides
+//    - Development  → appsettings.Development.json
+//    - Staging      → appsettings.Staging.json
+//    - Production   → appsettings.Production.json
+// 3. .env file                     - Local development overrides (highest)
+//    - Loaded by DotNetEnv before CreateBuilder
+//    - Converted to environment variables by the OS
+//    - Environment variables override appsettings files
+//
+// Usage:
+//   Development:  dotnet run              (uses .env if it exists)
+//   Staging:      ASPNETCORE_ENVIRONMENT=Staging dotnet run
+//   Production:   ASPNETCORE_ENVIRONMENT=Production dotnet run
+//
+// ============================================================================
+//
+
+// Load environment variables from .env file (for local development)
+// This must happen BEFORE CreateBuilder so environment variables are set
+// before configuration is read
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envFile))
+{
+    Env.Load(envFile);
+}
 
 var builder = WebApplication.CreateBuilder(args);
+
+// At this point, CreateBuilder has automatically loaded:
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json (based on ASPNETCORE_ENVIRONMENT)
+// 3. Environment variables from OS/Docker/.env (highest priority)
 
 //
 // Controllers
@@ -129,6 +169,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //
 builder.Services.AddScoped<IApplicationDbContext>(sp =>
     sp.GetRequiredService<ApplicationDbContext>());
+
+//
+// Repository Pattern
+//
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
+builder.Services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
 
 //
 // Application Services

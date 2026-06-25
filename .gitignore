@@ -29,3 +29,5 @@ coverage/
 
 # Secrets
 appsettings.Local.json
+.env
+.env.local

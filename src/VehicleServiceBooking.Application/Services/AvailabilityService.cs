@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Configuration;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Models;
 
 namespace VehicleServiceBooking.Application.Services;
@@ -15,13 +16,16 @@ public class AvailabilityService : IAvailabilityService
 {
     private readonly ISchedulingConfiguration _schedulingConfiguration;
     private readonly IApplicationDbContext _dbContext;
+    private readonly IAvailabilityRepository _availabilityRepository;
 
     public AvailabilityService(
         ISchedulingConfiguration schedulingConfiguration,
-        IApplicationDbContext dbContext)
+        IApplicationDbContext dbContext,
+        IAvailabilityRepository availabilityRepository)
     {
         _schedulingConfiguration = schedulingConfiguration;
         _dbContext = dbContext;
+        _availabilityRepository = availabilityRepository;
     }
 
     public async Task<List<AvailabilityOption>> GetAvailableSlotsAsync(

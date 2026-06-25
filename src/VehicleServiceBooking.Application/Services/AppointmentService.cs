@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
 
@@ -17,15 +18,18 @@ namespace VehicleServiceBooking.Application.Services;
 public class AppointmentService : IAppointmentService
 {
     private readonly IApplicationDbContext _dbContext;
+    private readonly IAppointmentRepository _appointmentRepository;
     private readonly IAvailabilityService _availabilityService;
     private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
         IApplicationDbContext dbContext,
+        IAppointmentRepository appointmentRepository,
         IAvailabilityService availabilityService,
         ILogger<AppointmentService> logger)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _appointmentRepository = appointmentRepository ?? throw new ArgumentNullException(nameof(appointmentRepository));
         _availabilityService = availabilityService ?? throw new ArgumentNullException(nameof(availabilityService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -67,8 +71,7 @@ public class AppointmentService : IAppointmentService
             };
 
             // Step 4: Persist to database
-            _dbContext.Appointments.Add(appointment);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _appointmentRepository.AddAsync(appointment, cancellationToken);
 
             _logger.LogInformation(
                 "Appointment created successfully: appointmentId={AppointmentId}",
