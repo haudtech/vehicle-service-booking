@@ -157,6 +157,78 @@ builder.Services.AddSingleton<ISchedulingConfiguration>(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SchedulingOptions>>().Value);
 
 //
+// CORS (Cross-Origin Resource Sharing) Configuration
+//
+// Allows specified frontend applications to make requests to this API
+// Configuration is environment-specific (see appsettings.{Environment}.json)
+//
+builder.Services.Configure<CorsOptions>(
+    builder.Configuration.GetSection(CorsOptions.SectionName));
+
+var corsConfig = builder.Configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>()
+    ?? new CorsOptions();
+
+// Add CORS service with the configured policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(corsConfig.PolicyName, policy =>
+    {
+        // Configure allowed origins
+        if (corsConfig.AllowedOrigins.Length > 0 && corsConfig.AllowedOrigins[0] == "*")
+        {
+            policy.AllowAnyOrigin();
+        }
+        else
+        {
+            policy.WithOrigins(corsConfig.AllowedOrigins);
+        }
+
+        // Configure allowed HTTP methods
+        if (corsConfig.AllowedMethods.Length > 0)
+        {
+            policy.WithMethods(corsConfig.AllowedMethods);
+        }
+        else
+        {
+            policy.AllowAnyMethod();
+        }
+
+        // Configure allowed request headers
+        if (corsConfig.AllowedHeaders.Length > 0 && corsConfig.AllowedHeaders[0] == "*")
+        {
+            policy.AllowAnyHeader();
+        }
+        else
+        {
+            policy.WithHeaders(corsConfig.AllowedHeaders);
+        }
+
+        // Configure exposed response headers
+        if (corsConfig.ExposedHeaders.Length > 0)
+        {
+            policy.WithExposedHeaders(corsConfig.ExposedHeaders);
+        }
+
+        // Configure max age for preflight caching
+        if (corsConfig.MaxAge > 0)
+        {
+            policy.SetPreflightMaxAge(TimeSpan.FromSeconds(corsConfig.MaxAge));
+        }
+
+        // Configure credentials
+        if (corsConfig.AllowCredentials)
+        {
+            // Important: If AllowCredentials is true, AllowAnyOrigin() cannot be used
+            // Must specify exact origins
+            policy.AllowCredentials();
+        }
+    });
+});
+
+// Store CORS config as singleton for potential use in other services
+builder.Services.AddSingleton<ICorsConfiguration>(corsConfig);
+
+//
 // DbContext (InMemory for now)
 //
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -189,6 +261,12 @@ var app = builder.Build();
 // HTTP pipeline - Middleware
 //
 app.UseMiddleware<ValidationExceptionMiddleware>();
+
+//
+// CORS Middleware - Must be placed after UseRouting but before UseAuthorization
+// in some cases. Here it's placed early in the pipeline for all requests.
+//
+app.UseCors(corsConfig.PolicyName);
 
 //
 // HTTP pipeline - Standard middleware
