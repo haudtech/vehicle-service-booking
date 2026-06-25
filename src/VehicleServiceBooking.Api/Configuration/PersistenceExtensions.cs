@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +12,9 @@ namespace VehicleServiceBooking.Api.Configuration;
 public static class PersistenceExtensions
 {
     /// <summary>
-    /// Registers the database context with appropriate provider
-    /// Currently uses InMemory for development; will be updated to SQL Server in Phase 3
+    /// Registers the database context with PostgreSQL provider
+    /// Supports development, staging, and production environments
+    /// Connection strings are configured in appsettings.{Environment}.json
     /// </summary>
     /// <param name="services">The dependency injection container</param>
     /// <param name="configuration">The application configuration</param>
@@ -21,19 +23,24 @@ public static class PersistenceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // TODO: Phase 3 - Update to use actual database
-        // Get connection string from configuration:
-        // var connectionString = configuration.GetConnectionString("DefaultConnection")
-        //     ?? throw new InvalidOperationException("Connection string not found: DefaultConnection");
-        //
-        // Then use:
-        // services.AddDbContext<ApplicationDbContext>(options =>
-        //     options.UseSqlServer(connectionString));
+        // Get connection string from configuration
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' not found in appsettings.json. " +
+                "Please ensure you have configured the connection string in appsettings.{Environment}.json");
 
-        // Phase 2: Use in-memory database for development
+        // Register ApplicationDbContext with PostgreSQL provider
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            options.UseInMemoryDatabase("VehicleServiceBookingDb");
+            options.UseNpgsql(
+                connectionString,
+                npgsqlOptions =>
+                {
+                    // Enable migrations assembly
+                    npgsqlOptions.MigrationsAssembly("VehicleServiceBooking.Infrastructure");
+                    // Enable retry on transient failures
+                    npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(10), null);
+                });
         });
 
         return services;

@@ -12,6 +12,10 @@ public interface IApplicationDbContext
 
     DbSet<Appointment> Appointments { get; }
 
+    DbSet<Service> Services { get; }
+
+    DbSet<ServiceStatusLookup> ServiceStatusLookups { get; }
+
     DbSet<ServiceType> ServiceTypes { get; }
 
     DbSet<Technician> Technicians { get; }
@@ -29,6 +33,8 @@ public interface IApplicationDbContext
     DbSet<Dealership> Dealerships { get; }
 
     DbSet<Vehicle> Vehicles { get; }
+
+    DbSet<AppointmentStatusLookup> AppointmentStatusLookups { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

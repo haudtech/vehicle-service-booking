@@ -28,11 +28,14 @@ public class AvailabilityRepository : IAvailabilityRepository
         DateTime endTime,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.Appointments
-            .Where(a => a.ServiceTypeId == serviceTypeId
+        // Get appointments that have services of the specified service type
+        var appointments = await _dbContext.Appointments
+            .Where(a => a.Services.Any(s => s.ServiceTypeId == serviceTypeId)
                 && a.StartTime >= startTime
                 && a.EndTime <= endTime)
             .ToListAsync(cancellationToken);
+
+        return appointments;
     }
 
     public async Task<IEnumerable<Technician>> GetTechniciansByDealershipAsync(

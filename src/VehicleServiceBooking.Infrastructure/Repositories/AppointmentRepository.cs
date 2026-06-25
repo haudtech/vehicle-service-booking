@@ -34,11 +34,14 @@ public class AppointmentRepository : IAppointmentRepository
         DateTime endTime,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.Appointments
-            .Where(a => a.ServiceBayId == serviceBayId
+        // Get appointments that have services assigned to the specified service bay
+        var appointments = await _dbContext.Appointments
+            .Where(a => a.Services.Any(s => s.ServiceBayId == serviceBayId)
                 && a.StartTime >= startTime
                 && a.EndTime <= endTime)
             .ToListAsync(cancellationToken);
+
+        return appointments;
     }
 
     public async Task<IEnumerable<Appointment>> GetByDealershipAsync(

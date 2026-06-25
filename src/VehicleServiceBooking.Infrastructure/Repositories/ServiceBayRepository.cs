@@ -43,11 +43,13 @@ public class ServiceBayRepository : IServiceBayRepository
         DateTime endTime,
         CancellationToken cancellationToken)
     {
-        var occupiedBays = await _dbContext.Appointments
-            .Where(a => a.DealershipId == dealershipId
-                && a.StartTime < endTime
-                && a.EndTime > startTime)
-            .Select(a => a.ServiceBayId)
+        // Get service bays that have services scheduled in the time range
+        var occupiedBays = await _dbContext.Services
+            .Where(s => s.DealershipId == dealershipId
+                && s.ServiceBayId != null
+                && s.Appointment.StartTime < endTime
+                && s.Appointment.EndTime > startTime)
+            .Select(s => s.ServiceBayId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
