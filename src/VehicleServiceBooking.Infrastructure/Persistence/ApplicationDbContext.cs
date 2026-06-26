@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Domain.Entities;
@@ -28,6 +29,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Dealership> Dealerships => Set<Dealership>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -226,6 +228,12 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Service>()
             .Property(x => x.Notes)
             .HasMaxLength(500);
+        modelBuilder.Entity<Service>()
+            .Property(x => x.EstimatedStartTimeSlotId)
+            .IsRequired(false);
+        modelBuilder.Entity<Service>()
+            .Property(x => x.EstimatedEndTimeSlotId)
+            .IsRequired(false);
 
         // Service -> ServiceType (Many-to-One)
         modelBuilder.Entity<Service>()
@@ -525,5 +533,84 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<TechnicianSchedule>()
             .Property(x => x.EndTime)
             .IsRequired();
+
+        // ==================== TIMESLOT CONFIGURATION ====================
+        
+        // Configure TimeSlot primary key
+        modelBuilder.Entity<TimeSlot>()
+            .HasKey(x => x.Id)
+            .HasName("PK_TimeSlots");
+
+        // Unique constraint on SequenceOrder
+        modelBuilder.Entity<TimeSlot>()
+            .HasIndex(x => x.SequenceOrder)
+            .IsUnique()
+            .HasDatabaseName("UK_TimeSlot_SequenceOrder");
+
+        // TimeSlot property constraints
+        modelBuilder.Entity<TimeSlot>()
+            .Property(x => x.SequenceOrder)
+            .IsRequired()
+            .ValueGeneratedNever();
+
+        modelBuilder.Entity<TimeSlot>()
+            .Property(x => x.SlotStartTime)
+            .IsRequired()
+            .HasColumnType("time");
+
+        modelBuilder.Entity<TimeSlot>()
+            .Property(x => x.SlotEndTime)
+            .IsRequired()
+            .HasColumnType("time");
+
+        modelBuilder.Entity<TimeSlot>()
+            .Property(x => x.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        // TimeSlot relationships to Service (for estimated timing)
+        modelBuilder.Entity<TimeSlot>()
+            .HasMany(x => x.EstimatedStartServices)
+            .WithOne(s => s.EstimatedStartTimeSlot)
+            .HasForeignKey("EstimatedStartTimeSlotId")
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_Service_TimeSlot_Start");
+
+        modelBuilder.Entity<TimeSlot>()
+            .HasMany(x => x.EstimatedEndServices)
+            .WithOne(s => s.EstimatedEndTimeSlot)
+            .HasForeignKey("EstimatedEndTimeSlotId")
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_Service_TimeSlot_End");
+
+        // ==================== TIMESLOT SEEDING ====================
+        
+        // Seed 18 TimeSlots: 08:00-17:00 in 30-minute increments
+        var timeSlots = new List<TimeSlot>();
+        var businessStart = new TimeOnly(8, 0);    // 08:00
+        var businessEnd = new TimeOnly(17, 0);     // 17:00
+        var currentSlotTime = businessStart;
+        int sequenceOrder = 1;
+        
+        while (currentSlotTime < businessEnd)
+        {
+            var slotEnd = currentSlotTime.AddMinutes(30);
+            
+            timeSlots.Add(new TimeSlot
+            {
+                Id = Guid.Parse($"00000001-0000-0000-0000-{sequenceOrder:00000000000000}"),
+                SequenceOrder = sequenceOrder,
+                SlotStartTime = currentSlotTime,
+                SlotEndTime = slotEnd,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+
+            currentSlotTime = slotEnd;
+            sequenceOrder++;
+        }
+
+        modelBuilder.Entity<TimeSlot>().HasData(timeSlots);
     }
 }

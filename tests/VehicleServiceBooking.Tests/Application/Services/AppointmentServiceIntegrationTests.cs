@@ -77,19 +77,21 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var startTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+        var endTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = appointmentDate,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            SlotStart = startTime,
-            SlotEnd = endTime
+            EstimatedStartTimeSlotId = startTimeSlotId,
+            EstimatedEndTimeSlotId = endTimeSlotId
         };
 
         // Act
@@ -98,8 +100,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().NotBeEmpty();
-        result.SlotStart.Should().Be(startTime);
-        result.SlotEnd.Should().Be(endTime);
+        result.SlotStart.Should().Be(appointmentDate.ToDateTime(new TimeOnly(8, 0)));   // Slot 1 starts at 08:00
+        result.SlotEnd.Should().Be(appointmentDate.ToDateTime(new TimeOnly(9, 0)));     // Slot 2 ends at 09:00
 
         // Verify appointment was saved to database
         var savedAppointment = await _dbContext.Appointments
@@ -132,11 +134,12 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             DealershipId = Guid.NewGuid(), // Non-existent dealership
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            SlotStart = DateTime.UtcNow.AddHours(1),
-            SlotEnd = DateTime.UtcNow.AddHours(2)
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         // Act - Service allows non-existent Dealership (it's validated by foreign key at DB level)
@@ -165,20 +168,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = existingAppointments[0].Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow;
-        var endTime = existingAppointments[0].Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
-
-        // Request for overlapping slot
+        // Request for overlapping slot using TimeSlot IDs
         var conflictingRequest = new CreateAppointmentRequest
         {
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            SlotStart = startTime,
-            SlotEnd = endTime
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         // Act & Assert
@@ -205,21 +206,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        // Request for non-overlapping slot (after existing appointment)
-        var existingEnd = existingAppointments[0].Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
-        var newStart = existingEnd.AddHours(2);
-        var newEnd = newStart.AddHours(1);
-
+        // Request for non-overlapping slot (different time slots)
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            SlotStart = newStart,
-            SlotEnd = newEnd
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000003"),  // Slot 3: 09:00-09:30
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000004")     // Slot 4: 09:30-10:00
         };
 
         // Act
@@ -253,8 +251,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = DateTime.UtcNow.AddHours(2);
-        var endTime = startTime.AddHours(1);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
         // Create second appointment with same technician in different bay (same time) - should succeed
         var request = new CreateAppointmentRequest
@@ -262,11 +259,12 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = appointmentDate,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[1].Id,
-            SlotStart = startTime.AddMinutes(15),
-            SlotEnd = endTime.AddMinutes(15)
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000005"),  // Slot 5: 10:00-10:30
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000006")     // Slot 6: 10:30-11:00
         };
 
         // Act
@@ -312,11 +310,12 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[1].Id, // Different technician
             ServiceBayId = firstAppointment.Services.First().ServiceBayId!.Value, // Same bay!
-            SlotStart = startTime.AddMinutes(15),
-            SlotEnd = endTime.AddMinutes(15)
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         // Act & Assert
@@ -416,19 +415,19 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = appointmentDate,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            SlotStart = startTime,
-            SlotEnd = endTime
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         // Act
@@ -463,18 +462,19 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var startTime = DateTime.UtcNow.AddHours(1);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealership.Id,
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
+            AppointmentDate = appointmentDate,
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            SlotStart = startTime,
-            SlotEnd = startTime.AddHours(1)
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         // Act
@@ -512,17 +512,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Act - Create 5 appointments
         for (int i = 0; i < 5; i++)
         {
-            var startTime = DateTime.UtcNow.AddHours(i + 1);
+            var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
             var request = new CreateAppointmentRequest
             {
                 DealershipId = dealership.Id,
                 CustomerId = customer.Id,
                 VehicleId = vehicle.Id,
+                AppointmentDate = appointmentDate,
                 ServiceTypeId = serviceType.Id,
                 TechnicianId = technicians[0].Id,
                 ServiceBayId = serviceBays[0].Id,
-                SlotStart = startTime,
-                SlotEnd = startTime.AddHours(1)
+                EstimatedStartTimeSlotId = Guid.Parse($"00000001-0000-0000-0000-{(i+1):00000000000000}"),
+                EstimatedEndTimeSlotId = Guid.Parse($"00000001-0000-0000-0000-{(i+2):00000000000000}")
             };
 
             var response = await _appointmentService.CreateAppointmentAsync(request);

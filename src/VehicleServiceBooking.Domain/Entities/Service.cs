@@ -4,6 +4,11 @@ namespace VehicleServiceBooking.Domain.Entities;
 /// Service represents a service type within an appointment.
 /// This junction table enables N:M relationship between Appointment and ServiceType,
 /// allowing customers to book multiple services in a single appointment.
+/// 
+/// TIMING MODEL:
+/// - EstimatedStartTimeSlotId/EstimatedEndTimeSlotId: References static TimeSlot (query-optimized)
+/// - ActualStartTime/ActualEndTime: Real-world execution times (arbitrary precision)
+/// - EstimatedStartTime/EstimatedEndTime: Computed properties for backward compatibility
 /// </summary>
 public class Service : BaseEntity
 {
@@ -39,27 +44,29 @@ public class Service : BaseEntity
     public Guid ServiceStatusId { get; set; }
 
     /// <summary>
+    /// Foreign key to the TimeSlot for estimated start time (grid-based scheduling)
+    /// References TimeSlot.Id to maintain alignment with 30-min slot grid
+    /// </summary>
+    public Guid? EstimatedStartTimeSlotId { get; set; }
+
+    /// <summary>
+    /// Foreign key to the TimeSlot for estimated end time (grid-based scheduling)
+    /// References TimeSlot.Id to maintain alignment with 30-min slot grid
+    /// </summary>
+    public Guid? EstimatedEndTimeSlotId { get; set; }
+
+    /// <summary>
     /// Sequential order of services within the appointment (1-based)
     /// </summary>
     public int SequenceOrder { get; set; }
 
     /// <summary>
-    /// Estimated start time for the service
-    /// </summary>
-    public DateTime? EstimatedStartTime { get; set; }
-
-    /// <summary>
-    /// Estimated end time for the service
-    /// </summary>
-    public DateTime? EstimatedEndTime { get; set; }
-
-    /// <summary>
-    /// Actual start time when the service began
+    /// Actual start time when the service began (arbitrary precision for real-world execution)
     /// </summary>
     public DateTime? ActualStartTime { get; set; }
 
     /// <summary>
-    /// Actual end time when the service was completed
+    /// Actual end time when the service was completed (arbitrary precision for real-world execution)
     /// </summary>
     public DateTime? ActualEndTime { get; set; }
 
@@ -68,7 +75,42 @@ public class Service : BaseEntity
     /// </summary>
     public string Notes { get; set; } = string.Empty;
 
-    // Navigation properties
+    // ============================================
+    // Computed Properties (Backward Compatibility)
+    // ============================================
+
+    /// <summary>
+    /// Estimated start time computed from TimeSlot reference and Appointment date.
+    /// This is NOT persisted in the database, but computed on-demand from:
+    /// - Appointment.AppointmentDate (the date)
+    /// - EstimatedStartTimeSlot.SlotStartTime (the time within the day)
+    /// 
+    /// Returns null if either EstimatedStartTimeSlot or Appointment is not loaded.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public DateTime? EstimatedStartTime =>
+        EstimatedStartTimeSlot != null && Appointment != null
+            ? Appointment.AppointmentDate.ToDateTime(EstimatedStartTimeSlot.SlotStartTime)
+            : null;
+
+    /// <summary>
+    /// Estimated end time computed from TimeSlot reference and Appointment date.
+    /// This is NOT persisted in the database, but computed on-demand from:
+    /// - Appointment.AppointmentDate (the date)
+    /// - EstimatedEndTimeSlot.SlotEndTime (the time within the day)
+    /// 
+    /// Returns null if either EstimatedEndTimeSlot or Appointment is not loaded.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public DateTime? EstimatedEndTime =>
+        EstimatedEndTimeSlot != null && Appointment != null
+            ? Appointment.AppointmentDate.ToDateTime(EstimatedEndTimeSlot.SlotEndTime)
+            : null;
+
+    // ============================================
+    // Navigation Properties
+    // ============================================
+
     /// <summary>
     /// Navigation property to the Appointment this service belongs to
     /// </summary>
@@ -98,4 +140,18 @@ public class Service : BaseEntity
     /// Navigation property to the ServiceStatus lookup
     /// </summary>
     public ServiceStatusLookup ServiceStatus { get; set; } = null!;
+
+    /// <summary>
+    /// Navigation property to the TimeSlot for estimated START time.
+    /// References the static TimeSlot table (30-min grid).
+    /// When loaded, EstimatedStartTime computed property will use this.
+    /// </summary>
+    public TimeSlot? EstimatedStartTimeSlot { get; set; }
+
+    /// <summary>
+    /// Navigation property to the TimeSlot for estimated END time.
+    /// References the static TimeSlot table (30-min grid).
+    /// When loaded, EstimatedEndTime computed property will use this.
+    /// </summary>
+    public TimeSlot? EstimatedEndTimeSlot { get; set; }
 }

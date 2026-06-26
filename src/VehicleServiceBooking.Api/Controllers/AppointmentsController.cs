@@ -116,9 +116,10 @@ public class AppointmentsController : ControllerBase
 
             _logger.LogInformation(
                 "Creating appointment: customerId={CustomerId}, vehicleId={VehicleId}, " +
-                "technicianId={TechnicianId}, slotStart={SlotStart}, slotEnd={SlotEnd}",
+                "technicianId={TechnicianId}, appointmentDate={AppointmentDate}, " +
+                "startTimeSlotId={StartTimeSlotId}, endTimeSlotId={EndTimeSlotId}",
                 request.CustomerId, request.VehicleId, request.TechnicianId,
-                request.SlotStart, request.SlotEnd);
+                request.AppointmentDate, request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId);
 
             // Call service to create appointment
             var response = await _appointmentService.CreateAppointmentAsync(request, cancellationToken);

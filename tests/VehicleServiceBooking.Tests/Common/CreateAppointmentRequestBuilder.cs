@@ -14,8 +14,9 @@ public class CreateAppointmentRequestBuilder
     private Guid _serviceTypeId = Guid.NewGuid();
     private Guid _technicianId = Guid.NewGuid();
     private Guid _serviceBayId = Guid.NewGuid();
-    private DateTime _slotStart = DateTime.UtcNow.AddHours(1);
-    private DateTime _slotEnd = DateTime.UtcNow.AddHours(2);
+    private DateOnly _appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+    private Guid _startTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+    private Guid _endTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
     /// <summary>
     /// Creates a valid request with default values.
@@ -143,51 +144,39 @@ public class CreateAppointmentRequestBuilder
     }
 
     /// <summary>
-    /// Sets both slot start and end times. 
-    /// If only start time is provided, end time defaults to 1 hour later.
+    /// Sets the appointment date.
     /// </summary>
-    public CreateAppointmentRequestBuilder WithSlotTimes(DateTime slotStart, DateTime slotEnd)
+    public CreateAppointmentRequestBuilder WithAppointmentDate(DateOnly appointmentDate)
     {
-        _slotStart = slotStart;
-        _slotEnd = slotEnd;
+        _appointmentDate = appointmentDate;
         return this;
     }
 
     /// <summary>
-    /// Sets slot start time (end time automatically adjusted to 1 hour later).
+    /// Sets both start and end time slot IDs.
     /// </summary>
-    public CreateAppointmentRequestBuilder WithSlotStart(DateTime slotStart)
+    public CreateAppointmentRequestBuilder WithTimeSlots(Guid startTimeSlotId, Guid endTimeSlotId)
     {
-        _slotStart = slotStart;
-        _slotEnd = slotStart.AddHours(1);
+        _startTimeSlotId = startTimeSlotId;
+        _endTimeSlotId = endTimeSlotId;
         return this;
     }
 
     /// <summary>
-    /// Sets slot end time before start time (invalid scenario).
+    /// Sets the start time slot ID.
     /// </summary>
-    public CreateAppointmentRequestBuilder WithEndTimeBeforeStartTime()
+    public CreateAppointmentRequestBuilder WithStartTimeSlotId(Guid startTimeSlotId)
     {
-        _slotEnd = _slotStart.AddMinutes(-30);
+        _startTimeSlotId = startTimeSlotId;
         return this;
     }
 
     /// <summary>
-    /// Sets slot end time equal to start time (invalid scenario).
+    /// Sets the end time slot ID.
     /// </summary>
-    public CreateAppointmentRequestBuilder WithEndTimeEqualToStartTime()
+    public CreateAppointmentRequestBuilder WithEndTimeSlotId(Guid endTimeSlotId)
     {
-        _slotEnd = _slotStart;
-        return this;
-    }
-
-    /// <summary>
-    /// Sets slot times to the past (invalid scenario).
-    /// </summary>
-    public CreateAppointmentRequestBuilder WithPastSlotTimes()
-    {
-        _slotStart = DateTime.UtcNow.AddHours(-2);
-        _slotEnd = DateTime.UtcNow.AddHours(-1);
+        _endTimeSlotId = endTimeSlotId;
         return this;
     }
 
@@ -201,11 +190,12 @@ public class CreateAppointmentRequestBuilder
             DealershipId = _dealershipId,
             CustomerId = _customerId,
             VehicleId = _vehicleId,
+            AppointmentDate = _appointmentDate,
             ServiceTypeId = _serviceTypeId,
             TechnicianId = _technicianId,
             ServiceBayId = _serviceBayId,
-            SlotStart = _slotStart,
-            SlotEnd = _slotEnd
+            EstimatedStartTimeSlotId = _startTimeSlotId,
+            EstimatedEndTimeSlotId = _endTimeSlotId
         };
     }
 }

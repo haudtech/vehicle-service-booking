@@ -36,6 +36,8 @@ public interface IApplicationDbContext
 
     DbSet<AppointmentStatusLookup> AppointmentStatusLookups { get; }
 
+    DbSet<TimeSlot> TimeSlots { get; }
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

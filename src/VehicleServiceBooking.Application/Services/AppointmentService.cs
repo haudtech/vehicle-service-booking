@@ -47,9 +47,9 @@ public class AppointmentService : IAppointmentService
         {
             _logger.LogInformation(
                 "Creating appointment: customerId={CustomerId}, vehicleId={VehicleId}, " +
-                "technicianId={TechnicianId}, slotStart={SlotStart}, slotEnd={SlotEnd}",
+                "technicianId={TechnicianId}, startTimeSlotId={StartTimeSlotId}, endTimeSlotId={EndTimeSlotId}",
                 request.CustomerId, request.VehicleId, request.TechnicianId,
-                request.SlotStart, request.SlotEnd);
+                request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId);
 
             // Step 1: Validate that all related entities exist
             await ValidateEntitiesExistAsync(request, cancellationToken);
@@ -73,7 +73,7 @@ public class AppointmentService : IAppointmentService
                 DealershipId = request.DealershipId,
                 CustomerId = request.CustomerId,
                 VehicleId = request.VehicleId,
-                AppointmentDate = DateOnly.FromDateTime(request.SlotStart),
+                AppointmentDate = request.AppointmentDate,
                 StatusId = bookedStatus.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -99,8 +99,8 @@ public class AppointmentService : IAppointmentService
                 DealershipId = request.DealershipId,
                 ServiceStatusId = pendingServiceStatus.Id,
                 SequenceOrder = 1,
-                EstimatedStartTime = request.SlotStart,
-                EstimatedEndTime = request.SlotEnd,
+                EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,  // Set from request
+                EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,      // Set from request
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -115,12 +115,28 @@ public class AppointmentService : IAppointmentService
                 "Appointment created successfully: appointmentId={AppointmentId}",
                 appointment.Id);
 
-            // Step 5: Return response
+            // Step 7: Return response (calculate times from TimeSlots)
+            var startSlot = await _dbContext.TimeSlots.FindAsync(
+                new object[] { request.EstimatedStartTimeSlotId }, 
+                cancellationToken: cancellationToken);
+            
+            var endSlot = await _dbContext.TimeSlots.FindAsync(
+                new object[] { request.EstimatedEndTimeSlotId }, 
+                cancellationToken: cancellationToken);
+
+            var slotStart = startSlot != null 
+                ? request.AppointmentDate.ToDateTime(startSlot.SlotStartTime)
+                : DateTime.UtcNow;
+            
+            var slotEnd = endSlot != null 
+                ? request.AppointmentDate.ToDateTime(endSlot.SlotEndTime)
+                : DateTime.UtcNow;
+
             return new CreateAppointmentResponse
             {
                 AppointmentId = appointment.Id,
-                SlotStart = request.SlotStart,
-                SlotEnd = request.SlotEnd,
+                SlotStart = slotStart,
+                SlotEnd = slotEnd,
                 CreatedAt = DateTime.UtcNow
             };
         }
@@ -162,9 +178,27 @@ public class AppointmentService : IAppointmentService
                 return null;
             }
 
-            // Get the earliest start time and latest end time from all services
-            var slotStart = appointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow;
-            var slotEnd = appointment.Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow;
+            // Get the earliest and latest TimeSlots from all services
+            var services = appointment.Services;
+            var startTimeSlotId = services.Min(s => s.EstimatedStartTimeSlotId);
+            var endTimeSlotId = services.Max(s => s.EstimatedEndTimeSlotId);
+
+            // Fetch the TimeSlots to calculate DateTime values
+            var startSlot = startTimeSlotId.HasValue 
+                ? await _dbContext.TimeSlots.FindAsync(new object[] { startTimeSlotId }, cancellationToken: cancellationToken)
+                : null;
+            
+            var endSlot = endTimeSlotId.HasValue 
+                ? await _dbContext.TimeSlots.FindAsync(new object[] { endTimeSlotId }, cancellationToken: cancellationToken)
+                : null;
+
+            var slotStart = startSlot != null
+                ? appointment.AppointmentDate.ToDateTime(startSlot.SlotStartTime)
+                : DateTime.UtcNow;
+            
+            var slotEnd = endSlot != null
+                ? appointment.AppointmentDate.ToDateTime(endSlot.SlotEndTime)
+                : DateTime.UtcNow;
 
             return new CreateAppointmentResponse
             {
@@ -253,28 +287,28 @@ public class AppointmentService : IAppointmentService
         // Check for conflicting appointments for the same vehicle at overlapping times
         // Query through Services to find overlapping time slots
         var conflictingAppointment = await _dbContext.Appointments
-            .Where(a => a.VehicleId == request.VehicleId && a.StatusId != cancelledStatusId)
+            .Where(a => a.VehicleId == request.VehicleId && a.StatusId != cancelledStatusId && a.AppointmentDate == request.AppointmentDate)
             .Include(a => a.Services)
             .FirstOrDefaultAsync(
                 a => a.Services.Any(s => 
-                    s.EstimatedStartTime != null &&
-                    s.EstimatedEndTime != null &&
-                    s.EstimatedStartTime < request.SlotEnd &&
-                    s.EstimatedEndTime > request.SlotStart),
+                    s.EstimatedStartTimeSlotId.HasValue &&
+                    s.EstimatedEndTimeSlotId.HasValue &&
+                    s.EstimatedStartTimeSlotId <= request.EstimatedEndTimeSlotId &&
+                    s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId),
                 cancellationToken);
 
         if (conflictingAppointment != null)
         {
             var conflictingService = conflictingAppointment.Services.FirstOrDefault(s =>
-                s.EstimatedStartTime != null &&
-                s.EstimatedEndTime != null &&
-                s.EstimatedStartTime < request.SlotEnd &&
-                s.EstimatedEndTime > request.SlotStart);
+                s.EstimatedStartTimeSlotId.HasValue &&
+                s.EstimatedEndTimeSlotId.HasValue &&
+                s.EstimatedStartTimeSlotId <= request.EstimatedEndTimeSlotId &&
+                s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId);
 
             throw new InvalidOperationException(
                 $"The selected time slot is no longer available. " +
-                $"Another appointment is already booked for this vehicle from {conflictingService?.EstimatedStartTime:g} " +
-                $"to {conflictingService?.EstimatedEndTime:g}");
+                $"Another appointment is already booked for this vehicle from slot {conflictingService?.EstimatedStartTimeSlotId} " +
+                $"to slot {conflictingService?.EstimatedEndTimeSlotId}");
         }
 
         _logger.LogDebug("Slot is available");

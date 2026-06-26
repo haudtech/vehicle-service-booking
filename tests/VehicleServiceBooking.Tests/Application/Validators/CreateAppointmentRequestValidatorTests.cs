@@ -156,14 +156,15 @@ public class CreateAppointmentRequestValidatorTests
 
     #endregion
 
-    #region SlotStart Time Validation Tests
+    #region AppointmentDate and TimeSlot Validation Tests
 
     [Fact]
-    public void Validate_WithPastSlotStart_ShouldFail()
+    public void Validate_WithPastAppointmentDate_ShouldFail()
     {
         // Arrange
+        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
         var request = new CreateAppointmentRequestBuilder()
-            .WithPastSlotTimes()
+            .WithAppointmentDate(pastDate)
             .Build();
 
         // Act
@@ -171,12 +172,11 @@ public class CreateAppointmentRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "SlotStart");
-        result.Errors.First(e => e.PropertyName == "SlotStart").ErrorCode.Should().Be("INVALID_SLOT_START");
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "AppointmentDate");
     }
 
     [Fact]
-    public void Validate_WithFutureSlotStart_ShouldPass()
+    public void Validate_WithFutureAppointmentDate_ShouldPass()
     {
         // Arrange
         var request = new CreateAppointmentRequestBuilder()
@@ -186,50 +186,15 @@ public class CreateAppointmentRequestValidatorTests
         var result = _validator.Validate(request);
 
         // Assert
-        result.Errors.Should().NotContain(e => e.PropertyName == "SlotStart");
-    }
-
-    #endregion
-
-    #region SlotEnd Time Validation Tests
-
-    [Fact]
-    public void Validate_WithSlotEndBeforeStart_ShouldFail()
-    {
-        // Arrange
-        var request = new CreateAppointmentRequestBuilder()
-            .WithEndTimeBeforeStartTime()
-            .Build();
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "SlotEnd");
-        result.Errors.First(e => e.PropertyName == "SlotEnd").ErrorCode.Should().Be("INVALID_SLOT_END");
+        result.Errors.Should().NotContain(e => e.PropertyName == "AppointmentDate");
     }
 
     [Fact]
-    public void Validate_WithSlotEndAfterStart_ShouldPass()
+    public void Validate_WithEmptyEstimatedStartTimeSlotId_ShouldFail()
     {
         // Arrange
         var request = new CreateAppointmentRequestBuilder()
-            .Build();
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        result.Errors.Should().NotContain(e => e.PropertyName == "SlotEnd");
-    }
-
-    [Fact]
-    public void Validate_WithSlotEndEqualToStart_ShouldFail()
-    {
-        // Arrange
-        var request = new CreateAppointmentRequestBuilder()
-            .WithEndTimeEqualToStartTime()
+            .WithStartTimeSlotId(Guid.Empty)
             .Build();
 
         // Act
@@ -237,7 +202,57 @@ public class CreateAppointmentRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "SlotEnd");
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "EstimatedStartTimeSlotId");
+    }
+
+    [Fact]
+    public void Validate_WithEmptyEstimatedEndTimeSlotId_ShouldFail()
+    {
+        // Arrange
+        var request = new CreateAppointmentRequestBuilder()
+            .WithEndTimeSlotId(Guid.Empty)
+            .Build();
+
+        // Act
+        var result = _validator.Validate(request);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "EstimatedEndTimeSlotId");
+    }
+
+    [Fact]
+    public void Validate_WithEndTimeSlotBeforeStartTimeSlot_ShouldFail()
+    {
+        // Arrange
+        var request = new CreateAppointmentRequestBuilder()
+            .WithTimeSlots(
+                Guid.Parse("00000001-0000-0000-0000-000000000005"),  // Slot 5
+                Guid.Parse("00000001-0000-0000-0000-000000000003")   // Slot 3 (before slot 5)
+            )
+            .Build();
+
+        // Act
+        var result = _validator.Validate(request);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "EstimatedEndTimeSlotId");
+    }
+
+    [Fact]
+    public void Validate_WithValidTimeSlots_ShouldPass()
+    {
+        // Arrange
+        var request = new CreateAppointmentRequestBuilder()
+            .Build();
+
+        // Act
+        var result = _validator.Validate(request);
+
+        // Assert
+        result.Errors.Should().NotContain(e => e.PropertyName == "EstimatedStartTimeSlotId");
+        result.Errors.Should().NotContain(e => e.PropertyName == "EstimatedEndTimeSlotId");
     }
 
     #endregion
@@ -248,10 +263,11 @@ public class CreateAppointmentRequestValidatorTests
     public void Validate_WithMultipleInvalidFields_ShouldReturnAllErrors()
     {
         // Arrange
+        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
         var request = new CreateAppointmentRequestBuilder()
             .WithEmptyDealershipId()
             .WithEmptyCustomerId()
-            .WithPastSlotTimes()
+            .WithAppointmentDate(pastDate)
             .Build();
 
         // Act
@@ -262,7 +278,7 @@ public class CreateAppointmentRequestValidatorTests
         result.Errors.Should().HaveCountGreaterThanOrEqualTo(3); // At least 3 errors
         result.Errors.Should().ContainSingle(e => e.PropertyName == "DealershipId");
         result.Errors.Should().ContainSingle(e => e.PropertyName == "CustomerId");
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "SlotStart");
+        result.Errors.Should().ContainSingle(e => e.PropertyName == "AppointmentDate");
     }
 
     [Fact]

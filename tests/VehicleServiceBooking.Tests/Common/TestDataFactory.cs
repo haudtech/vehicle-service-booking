@@ -11,7 +11,8 @@ namespace VehicleServiceBooking.Tests.Common;
 public static class TestDataFactory
 {
     /// <summary>
-    /// Creates a complete appointment service request scenario with all related entities
+    /// Creates a complete appointment service request scenario with all related entities.
+    /// Uses TimeSlot-based timing model (EstimatedStartTimeSlotId/EstimatedEndTimeSlotId + AppointmentDate).
     /// </summary>
     public static CreateAppointmentScenario CreateAppointmentWithAllEntities(
         Guid? dealershipId = null,
@@ -20,7 +21,9 @@ public static class TestDataFactory
         Guid? serviceTypeId = null,
         Guid? technicianId = null,
         Guid? serviceBayId = null,
-        DateTime? slotStart = null)
+        DateOnly? appointmentDate = null,
+        Guid? startTimeSlotId = null,
+        Guid? endTimeSlotId = null)
     {
         dealershipId ??= Guid.NewGuid();
         customerId ??= Guid.NewGuid();
@@ -28,8 +31,9 @@ public static class TestDataFactory
         serviceTypeId ??= Guid.NewGuid();
         technicianId ??= Guid.NewGuid();
         serviceBayId ??= Guid.NewGuid();
-        slotStart ??= DateTime.UtcNow.AddHours(1);
-        var slotEnd = slotStart.Value.AddHours(1);
+        appointmentDate ??= DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        startTimeSlotId ??= Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+        endTimeSlotId ??= Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
         var dealership = DealershipBuilder.ValidDealership()
             .WithId(dealershipId.Value)
@@ -58,16 +62,21 @@ public static class TestDataFactory
             .WithDealershipId(dealershipId.Value)
             .Build();
 
+        // Calculate DateTime from TimeSlots for response compatibility
+        var slotStart = appointmentDate.Value.ToDateTime(new TimeOnly(8, 0));   // Slot 1 starts at 08:00
+        var slotEnd = appointmentDate.Value.ToDateTime(new TimeOnly(9, 0));     // Slot 2 ends at 09:00
+
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealershipId.Value,
             CustomerId = customerId.Value,
             VehicleId = vehicleId.Value,
+            AppointmentDate = appointmentDate.Value,
             ServiceTypeId = serviceTypeId.Value,
             TechnicianId = technicianId.Value,
             ServiceBayId = serviceBayId.Value,
-            SlotStart = slotStart.Value,
-            SlotEnd = slotEnd
+            EstimatedStartTimeSlotId = startTimeSlotId.Value,
+            EstimatedEndTimeSlotId = endTimeSlotId.Value
         };
 
         return new CreateAppointmentScenario
@@ -79,8 +88,11 @@ public static class TestDataFactory
             ServiceType = serviceType,
             Technician = technician,
             ServiceBay = serviceBay,
-            SlotStart = slotStart.Value,
-            SlotEnd = slotEnd
+            SlotStart = slotStart,
+            SlotEnd = slotEnd,
+            AppointmentDate = appointmentDate.Value,
+            StartTimeSlotId = startTimeSlotId.Value,
+            EndTimeSlotId = endTimeSlotId.Value
         };
     }
 
@@ -171,8 +183,8 @@ public static class TestDataFactory
                     DealershipId = dealershipId.Value,
                     ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
                     SequenceOrder = 1,
-                    EstimatedStartTime = slotStart,
-                    EstimatedEndTime = slotEnd
+                    EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),  // Slot 1
+                    EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")     // Slot 2
                 }
             }
         };
@@ -221,19 +233,19 @@ public static class TestDataFactory
         var serviceTypeId = Guid.NewGuid();
         var technicianId = Guid.NewGuid();
         var serviceBayId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
         var request = new CreateAppointmentRequest
         {
             DealershipId = dealershipId,
             CustomerId = customerId,
             VehicleId = vehicleId,
+            AppointmentDate = appointmentDate,
             ServiceTypeId = serviceTypeId,
             TechnicianId = technicianId,
             ServiceBayId = serviceBayId,
-            SlotStart = startTime,
-            SlotEnd = endTime
+            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
         };
 
         var dealership = DealershipBuilder.ValidDealership()
@@ -262,6 +274,9 @@ public static class TestDataFactory
             .WithId(serviceBayId)
             .WithDealershipId(dealershipId)
             .Build();
+
+        var startTime = appointmentDate.ToDateTime(new TimeOnly(8, 0));   // Slot 1
+        var endTime = appointmentDate.ToDateTime(new TimeOnly(9, 0));     // Slot 2
 
         var (conflictingAppointment, nonConflictingAppointment) = 
             CreateAppointmentPair(startTime, dealershipId, serviceBayId, technicianId, serviceTypeId);
@@ -297,6 +312,9 @@ public class CreateAppointmentScenario
     public ServiceBay ServiceBay { get; set; } = null!;
     public DateTime SlotStart { get; set; }
     public DateTime SlotEnd { get; set; }
+    public DateOnly AppointmentDate { get; set; }
+    public Guid StartTimeSlotId { get; set; }
+    public Guid EndTimeSlotId { get; set; }
 }
 
 /// <summary>
