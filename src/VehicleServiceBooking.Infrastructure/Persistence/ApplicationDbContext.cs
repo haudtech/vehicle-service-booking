@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Models.ViewModels;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
 
@@ -30,6 +31,41 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Dealership> Dealerships => Set<Dealership>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
+
+    // ==================== VIEW DbSETS (READ-ONLY) ====================
+    
+    /// <summary>
+    /// Query-only DbSet for TechnicianAvailableSlots view.
+    /// Returns pre-computed available time slots for each technician on the query date.
+    /// 
+    /// Usage: 
+    /// var availability = await _dbContext.TechnicianAvailableSlotsView
+    ///     .Where(x => x.TechnicianId == techId && x.DealershipId == dealershipId)
+    ///     .ToListAsync();
+    /// </summary>
+    public DbSet<TechnicianAvailableSlot> TechnicianAvailableSlotsView => Set<TechnicianAvailableSlot>();
+
+    /// <summary>
+    /// Query-only DbSet for ServiceBayAvailableSlots view.
+    /// Returns pre-computed available time slots for each service bay on the query date.
+    /// 
+    /// Usage:
+    /// var availability = await _dbContext.ServiceBayAvailableSlotsView
+    ///     .Where(x => x.ServiceBayId == bayId && x.DealershipId == dealershipId)
+    ///     .ToListAsync();
+    /// </summary>
+    public DbSet<ServiceBayAvailableSlot> ServiceBayAvailableSlotsView => Set<ServiceBayAvailableSlot>();
+
+    /// <summary>
+    /// Query-only DbSet for ServiceTypeAvailability master view.
+    /// Returns pre-computed availability combining service requirements with technician and bay availability.
+    /// 
+    /// Usage:
+    /// var availability = await _dbContext.ServiceTypeAvailabilityView
+    ///     .Where(x => x.ServiceTypeId == serviceTypeId && x.DealershipId == dealershipId && x.CanFitService)
+    ///     .ToListAsync();
+    /// </summary>
+    public DbSet<ServiceTypeAvailabilityView> ServiceTypeAvailabilityView => Set<ServiceTypeAvailabilityView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -335,6 +371,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(x => x.Address)
             .HasMaxLength(500)
             .IsRequired();
+        modelBuilder.Entity<Dealership>()
+            .Property(x => x.Address)
+            .HasMaxLength(500)
+            .IsRequired();
 
         // Dealership -> BusinessHours (One-to-Many)
         modelBuilder.Entity<BusinessHours>()
@@ -390,6 +430,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ServiceType>()
             .Property(x => x.DurationMinutes)
             .IsRequired();
+        // DurationMinutes must be between 30 and 480 minutes (per original entity constraint)
+        modelBuilder.Entity<ServiceType>()
+            .HasCheckConstraint("CK_ServiceType_DurationMinutes_Range",
+                "DurationMinutes >= 30 AND DurationMinutes <= 480");
 
         // ==================== TECHNICIAN CONFIGURATION ====================
         
@@ -481,9 +525,17 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(x => x.Vin)
             .HasMaxLength(17)
             .IsRequired();
+        // VIN must be exactly 17 characters (per original entity constraint)
+        modelBuilder.Entity<Vehicle>()
+            .HasCheckConstraint("CK_Vehicle_VIN_Length", 
+                "LENGTH(Vin) = 17");
         modelBuilder.Entity<Vehicle>()
             .Property(x => x.Year)
             .IsRequired(false); // Optional field
+        // Year must be between 1900 and 2100 (per original entity constraint)
+        modelBuilder.Entity<Vehicle>()
+            .HasCheckConstraint("CK_Vehicle_Year_Range", 
+                "Year IS NULL OR (Year >= 1900 AND Year <= 2100)");
 
         // ==================== TECHNICIAN SKILL CONFIGURATION ====================
         
@@ -582,6 +634,26 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasForeignKey("EstimatedEndTimeSlotId")
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("FK_Service_TimeSlot_End");
+
+        // ==================== VIEW CONFIGURATIONS (READ-ONLY) ====================
+        
+        // TechnicianAvailableSlots View Configuration
+        modelBuilder.Entity<TechnicianAvailableSlot>()
+            .HasNoKey()
+            .ToView("TechnicianAvailableSlots")
+            .HasComment("SQL View: Pre-computed available time slots for each technician on the query date");
+
+        // ServiceBayAvailableSlots View Configuration
+        modelBuilder.Entity<ServiceBayAvailableSlot>()
+            .HasNoKey()
+            .ToView("ServiceBayAvailableSlots")
+            .HasComment("SQL View: Pre-computed available time slots for each service bay on the query date");
+
+        // ServiceTypeAvailability View Configuration
+        modelBuilder.Entity<ServiceTypeAvailabilityView>()
+            .HasNoKey()
+            .ToView("ServiceTypeAvailability")
+            .HasComment("SQL View: Master availability view combining service requirements with technician and bay availability");
 
         // ==================== TIMESLOT SEEDING ====================
         

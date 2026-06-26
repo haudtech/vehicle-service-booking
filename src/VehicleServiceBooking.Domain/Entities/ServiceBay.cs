@@ -1,10 +1,9 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace VehicleServiceBooking.Domain.Entities;
 
 /// <summary>
 /// ServiceBay entity representing a service bay at a dealership
 /// where vehicle services are performed
+/// Configuration for properties is in ApplicationDbContext.OnModelCreating()
 /// </summary>
 public class ServiceBay : BaseEntity
 {
@@ -23,8 +22,6 @@ public class ServiceBay : BaseEntity
     /// Service bay name/identifier (max 50 characters)
     /// Examples: Bay A, Bay 1, Lift 1
     /// </summary>
-    [MaxLength(50)]
-    [Required]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>

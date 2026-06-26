@@ -1,9 +1,8 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace VehicleServiceBooking.Domain.Entities;
 
 /// <summary>
 /// Technician entity representing a service technician at a dealership
+/// Configuration for properties is in ApplicationDbContext.OnModelCreating()
 /// </summary>
 public class Technician : BaseEntity
 {
@@ -21,15 +20,11 @@ public class Technician : BaseEntity
     /// <summary>
     /// Technician's first name (max 100 characters)
     /// </summary>
-    [MaxLength(100)]
-    [Required]
     public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
     /// Technician's last name (max 100 characters)
     /// </summary>
-    [MaxLength(100)]
-    [Required]
     public string LastName { get; set; } = string.Empty;
 
     /// <summary>

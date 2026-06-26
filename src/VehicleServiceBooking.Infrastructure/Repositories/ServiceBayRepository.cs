@@ -12,19 +12,18 @@ namespace VehicleServiceBooking.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for ServiceBay entity persistence operations
+/// Inherits from GenericRepository to leverage common query patterns with AsNoTracking()
 /// </summary>
-public class ServiceBayRepository : IServiceBayRepository
+public class ServiceBayRepository : GenericRepository<ServiceBay>, IServiceBayRepository
 {
-    private readonly IApplicationDbContext _dbContext;
-
     public ServiceBayRepository(IApplicationDbContext dbContext)
+        : base(dbContext)
     {
-        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
-    public async Task<ServiceBay?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public override async Task<ServiceBay?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _dbContext.ServiceBays
+        return await GetQueryable()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
@@ -32,7 +31,7 @@ public class ServiceBayRepository : IServiceBayRepository
         Guid dealershipId,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.ServiceBays
+        return await GetQueryable()
             .Where(s => s.DealershipId == dealershipId)
             .ToListAsync(cancellationToken);
     }
@@ -45,7 +44,8 @@ public class ServiceBayRepository : IServiceBayRepository
     {
         // Get service bays that have services scheduled in the time range
         // Check EstimatedStartTime/EstimatedEndTime on Service, not Appointment
-        var occupiedBays = await _dbContext.Services
+        var occupiedBays = await DbContext.DbContext.Set<Service>()
+            .AsNoTracking()
             .Where(s => s.DealershipId == dealershipId
                 && s.ServiceBayId != null
                 && s.EstimatedStartTime != null
@@ -56,37 +56,8 @@ public class ServiceBayRepository : IServiceBayRepository
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        return await _dbContext.ServiceBays
+        return await GetQueryable()
             .Where(s => s.DealershipId == dealershipId && !occupiedBays.Contains(s.Id))
             .ToListAsync(cancellationToken);
-    }
-
-    public async Task<ServiceBay> AddAsync(ServiceBay serviceBay, CancellationToken cancellationToken)
-    {
-        _dbContext.ServiceBays.Add(serviceBay);
-        await SaveChangesAsync(cancellationToken);
-        return serviceBay;
-    }
-
-    public async Task<ServiceBay> UpdateAsync(ServiceBay serviceBay, CancellationToken cancellationToken)
-    {
-        _dbContext.ServiceBays.Update(serviceBay);
-        await SaveChangesAsync(cancellationToken);
-        return serviceBay;
-    }
-
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var serviceBay = await GetByIdAsync(id, cancellationToken);
-        if (serviceBay != null)
-        {
-            _dbContext.ServiceBays.Remove(serviceBay);
-            await SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    public async Task SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

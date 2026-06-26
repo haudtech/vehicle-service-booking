@@ -1,12 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.DTOs;
-using VehicleServiceBooking.Application.Interfaces;
-using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Domain.Entities;
@@ -15,29 +13,31 @@ using VehicleServiceBooking.Domain.Enums;
 namespace VehicleServiceBooking.Application.Services;
 
 /// <summary>
-/// Service for managing appointment operations
+/// Service for managing appointment operations.
+/// Implements business logic layer - all data access delegated to Repository layer.
 /// </summary>
 public class AppointmentService : IAppointmentService
 {
-    private readonly IApplicationDbContext _dbContext;
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IAvailabilityService _availabilityService;
     private readonly ILogger<AppointmentService> _logger;
 
+    /// <summary>
+    /// Constructor enforcing Repository pattern: Service depends on Repository, not dbContext
+    /// </summary>
     public AppointmentService(
-        IApplicationDbContext dbContext,
         IAppointmentRepository appointmentRepository,
         IAvailabilityService availabilityService,
         ILogger<AppointmentService> logger)
     {
-        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _appointmentRepository = appointmentRepository ?? throw new ArgumentNullException(nameof(appointmentRepository));
         _availabilityService = availabilityService ?? throw new ArgumentNullException(nameof(availabilityService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Creates a new appointment booking
+    /// Creates a new appointment booking with business logic validation.
+    /// All data access delegated to Repository layer.
     /// </summary>
     public async Task<CreateAppointmentResponse> CreateAppointmentAsync(
         CreateAppointmentRequest request,
@@ -51,22 +51,53 @@ public class AppointmentService : IAppointmentService
                 request.CustomerId, request.VehicleId, request.TechnicianId,
                 request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId);
 
-            // Step 1: Validate that all related entities exist
-            await ValidateEntitiesExistAsync(request, cancellationToken);
-
-            // Step 2: Check slot availability (re-validate to prevent race conditions)
-            await CheckSlotAvailabilityAsync(request, cancellationToken);
-
-            // Step 3: Get the Booked status from database
-            var bookedStatus = await _dbContext.AppointmentStatusLookups
-                .FirstOrDefaultAsync(s => s.Status == AppointmentStatus.Booked, cancellationToken);
+            // BUSINESS LOGIC 1: Validate availability via AvailabilityService
+            // This provides business-level validation of time slots across all constraints
+            _logger.LogDebug("Step 1: Validating availability via AvailabilityService");
+            var availabilityDate = request.AppointmentDate.ToDateTime(TimeOnly.MinValue);
             
-            if (bookedStatus == null)
+            var availabilityOptions = await _availabilityService.GetAvailableSlotsAsync(
+                request.DealershipId,
+                request.ServiceTypeId,
+                availabilityDate,
+                cancellationToken);
+
+            if (!availabilityOptions.Any())
             {
-                throw new InvalidOperationException("Booked status not found in database");
+                throw new InvalidOperationException(
+                    "No available slots matching the specified criteria");
             }
 
-            // Step 4: Create appointment entity
+            // BUSINESS LOGIC 2: Validate requested slot is in available slots
+            var requestedSlotAvailable = availabilityOptions.Any(slot =>
+                slot.TechnicianId == request.TechnicianId &&
+                slot.ServiceBayId == request.ServiceBayId);
+
+            if (!requestedSlotAvailable)
+            {
+                throw new InvalidOperationException(
+                    $"The selected technician and service bay combination is not in the available slots");
+            }
+
+            // BUSINESS LOGIC 3: Verify technician has required skill (data query)
+            _logger.LogDebug("Step 2: Verifying technician has required skill");
+            var technicianHasSkill = await _appointmentRepository.TechnicianHasSkillAsync(
+                request.TechnicianId,
+                request.ServiceTypeId,
+                cancellationToken);
+
+            if (!technicianHasSkill)
+            {
+                throw new InvalidOperationException(
+                    $"Technician {request.TechnicianId} does not have the required skill for service type {request.ServiceTypeId}");
+            }
+
+            // BUSINESS LOGIC 4: Check for vehicle conflicts (re-validate to prevent race conditions)
+            _logger.LogDebug("Step 3: Checking for vehicle appointment conflicts");
+            await CheckVehicleConflictsAsync(request, cancellationToken);
+
+            // BUSINESS LOGIC 5: Create appointment with services (atomic transaction via Repository)
+            _logger.LogDebug("Step 4: Creating appointment and service entities");
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
@@ -74,21 +105,12 @@ public class AppointmentService : IAppointmentService
                 CustomerId = request.CustomerId,
                 VehicleId = request.VehicleId,
                 AppointmentDate = request.AppointmentDate,
-                StatusId = bookedStatus.Id,
+                StatusId = Guid.Parse("00000000-0000-0000-0000-000000000003"), // Booked status
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // Step 5: Create a Service entity for the scheduled service
-            // Get the Pending status from database for the new service
-            var pendingServiceStatus = await _dbContext.ServiceStatusLookups
-                .FirstOrDefaultAsync(s => s.Status == ServiceStatus.Pending, cancellationToken);
-            
-            if (pendingServiceStatus == null)
-            {
-                throw new InvalidOperationException("Pending service status not found in database");
-            }
-
+            // Create service entity
             var service = new Service
             {
                 Id = Guid.NewGuid(),
@@ -97,47 +119,59 @@ public class AppointmentService : IAppointmentService
                 TechnicianId = request.TechnicianId,
                 ServiceBayId = request.ServiceBayId,
                 DealershipId = request.DealershipId,
-                ServiceStatusId = pendingServiceStatus.Id,
+                ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000006"), // Pending status
                 SequenceOrder = 1,
-                EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,  // Set from request
-                EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,      // Set from request
+                EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,
+                EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // Add the service to the appointment's Services collection
             appointment.Services.Add(service);
 
-            // Step 6: Persist to database
-            await _appointmentRepository.AddAsync(appointment, cancellationToken);
+            // BUSINESS LOGIC 6: Persist atomically via Repository
+            _logger.LogDebug("Step 5: Persisting appointment with service to repository");
+            var createdAppointment = await _appointmentRepository.CreateAppointmentWithServicesAsync(
+                appointment, cancellationToken);
 
             _logger.LogInformation(
                 "Appointment created successfully: appointmentId={AppointmentId}",
-                appointment.Id);
+                createdAppointment.Id);
 
-            // Step 7: Return response (calculate times from TimeSlots)
-            var startSlot = await _dbContext.TimeSlots.FindAsync(
-                new object[] { request.EstimatedStartTimeSlotId }, 
-                cancellationToken: cancellationToken);
+            // BUSINESS LOGIC 7: Load time slot details for response (data query)
+            _logger.LogDebug("Step 6: Loading time slot details for response");
+            var startTimeSlot = await _appointmentRepository.GetByIdAsync(createdAppointment.Id, cancellationToken)
+                .ConfigureAwait(false);
             
-            var endSlot = await _dbContext.TimeSlots.FindAsync(
-                new object[] { request.EstimatedEndTimeSlotId }, 
-                cancellationToken: cancellationToken);
+            if (startTimeSlot?.Services.FirstOrDefault() is not Service firstService ||
+                !firstService.EstimatedStartTimeSlotId.HasValue ||
+                !firstService.EstimatedEndTimeSlotId.HasValue)
+            {
+                throw new InvalidOperationException("Failed to retrieve created appointment details");
+            }
 
-            var slotStart = startSlot != null 
+            // Load the actual TimeSlot entities by ID to get time values
+            var timeSlotIds = new[] { firstService.EstimatedStartTimeSlotId.Value, firstService.EstimatedEndTimeSlotId.Value };
+            var timeSlots = await _appointmentRepository.GetTimeSlotsBySequenceRangeAsync(
+                0, int.MaxValue, cancellationToken).ConfigureAwait(false);
+            
+            var startSlot = timeSlots.FirstOrDefault(ts => ts.Id == firstService.EstimatedStartTimeSlotId.Value);
+            var endSlot = timeSlots.FirstOrDefault(ts => ts.Id == firstService.EstimatedEndTimeSlotId.Value);
+
+            var slotStart = startSlot != null
                 ? request.AppointmentDate.ToDateTime(startSlot.SlotStartTime)
                 : DateTime.UtcNow;
-            
-            var slotEnd = endSlot != null 
+
+            var slotEnd = endSlot != null
                 ? request.AppointmentDate.ToDateTime(endSlot.SlotEndTime)
                 : DateTime.UtcNow;
 
             return new CreateAppointmentResponse
             {
-                AppointmentId = appointment.Id,
+                AppointmentId = createdAppointment.Id,
                 SlotStart = slotStart,
                 SlotEnd = slotEnd,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = createdAppointment.CreatedAt
             };
         }
         catch (InvalidOperationException ex)
@@ -153,7 +187,8 @@ public class AppointmentService : IAppointmentService
     }
 
     /// <summary>
-    /// Retrieves an appointment by ID
+    /// Retrieves an appointment by ID.
+    /// All data queries delegated to Repository layer.
     /// </summary>
     public async Task<CreateAppointmentResponse?> GetAppointmentByIdAsync(
         Guid appointmentId,
@@ -168,9 +203,8 @@ public class AppointmentService : IAppointmentService
 
             _logger.LogInformation("Retrieving appointment: appointmentId={AppointmentId}", appointmentId);
 
-            var appointment = await _dbContext.Appointments
-                .Include(a => a.Services)
-                .FirstOrDefaultAsync(a => a.Id == appointmentId, cancellationToken);
+            // DATA QUERY: Retrieve appointment from Repository
+            var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
 
             if (appointment == null)
             {
@@ -178,24 +212,37 @@ public class AppointmentService : IAppointmentService
                 return null;
             }
 
-            // Get the earliest and latest TimeSlots from all services
+            // BUSINESS LOGIC: Calculate slot times from services
             var services = appointment.Services;
+            if (!services.Any())
+            {
+                _logger.LogWarning("Appointment has no services: appointmentId={AppointmentId}", appointmentId);
+                return null;
+            }
+
             var startTimeSlotId = services.Min(s => s.EstimatedStartTimeSlotId);
             var endTimeSlotId = services.Max(s => s.EstimatedEndTimeSlotId);
 
-            // Fetch the TimeSlots to calculate DateTime values
-            var startSlot = startTimeSlotId.HasValue 
-                ? await _dbContext.TimeSlots.FindAsync(new object[] { startTimeSlotId }, cancellationToken: cancellationToken)
-                : null;
-            
-            var endSlot = endTimeSlotId.HasValue 
-                ? await _dbContext.TimeSlots.FindAsync(new object[] { endTimeSlotId }, cancellationToken: cancellationToken)
-                : null;
+            // DATA QUERY: Load time slot details
+            if (!startTimeSlotId.HasValue || !endTimeSlotId.HasValue)
+            {
+                _logger.LogWarning(
+                    "Appointment services missing time slot IDs: appointmentId={AppointmentId}",
+                    appointmentId);
+                return null;
+            }
+
+            // Load all timeSlots to find the ones we need
+            var timeSlots = await _appointmentRepository.GetTimeSlotsBySequenceRangeAsync(
+                0, int.MaxValue, cancellationToken);
+
+            var startSlot = timeSlots.FirstOrDefault(ts => ts.Id == startTimeSlotId.Value);
+            var endSlot = timeSlots.FirstOrDefault(ts => ts.Id == endTimeSlotId.Value);
 
             var slotStart = startSlot != null
                 ? appointment.AppointmentDate.ToDateTime(startSlot.SlotStartTime)
                 : DateTime.UtcNow;
-            
+
             var slotEnd = endSlot != null
                 ? appointment.AppointmentDate.ToDateTime(endSlot.SlotEndTime)
                 : DateTime.UtcNow;
@@ -205,97 +252,43 @@ public class AppointmentService : IAppointmentService
                 AppointmentId = appointment.Id,
                 SlotStart = slotStart,
                 SlotEnd = slotEnd,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = appointment.CreatedAt
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving appointment");
+            _logger.LogError(ex, "Error retrieving appointment: appointmentId={AppointmentId}", appointmentId);
             throw;
         }
     }
 
     /// <summary>
-    /// Validates that all referenced entities exist in the database
+    /// Checks for conflicting appointments on the same vehicle at overlapping times.
+    /// Pure business logic validation - no direct data access, uses Repository methods where needed.
     /// </summary>
-    private async Task ValidateEntitiesExistAsync(
+    private async Task CheckVehicleConflictsAsync(
         CreateAppointmentRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Validating referenced entities exist");
+        _logger.LogDebug(
+            "Checking for vehicle conflicts: vehicleId={VehicleId}, date={AppointmentDate}, slots={StartSlot}-{EndSlot}",
+            request.VehicleId, request.AppointmentDate,
+            request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId);
 
-        // Check Customer exists
-        var customerExists = await _dbContext.DbContext.Set<Customer>()
-            .AnyAsync(c => c.Id == request.CustomerId, cancellationToken);
-        if (!customerExists)
-        {
-            throw new InvalidOperationException(
-                $"Customer with ID {request.CustomerId} not found");
-        }
+        // DATA QUERY: Get all appointments for this vehicle on the same date
+        var vehicleAppointments = await _appointmentRepository.GetByVehicleIdAsync(
+            request.VehicleId, cancellationToken);
 
-        // Check Vehicle exists
-        var vehicleExists = await _dbContext.DbContext.Set<Vehicle>()
-            .AnyAsync(v => v.Id == request.VehicleId, cancellationToken);
-        if (!vehicleExists)
-        {
-            throw new InvalidOperationException(
-                $"Vehicle with ID {request.VehicleId} not found");
-        }
+        // BUSINESS LOGIC: Check for overlapping appointments on same date
+        var appointmentCancelledStatusId = Guid.Parse("00000000-0000-0000-0000-000000000004");
 
-        // Check ServiceType exists
-        var serviceTypeExists = await _dbContext.ServiceTypes
-            .AnyAsync(st => st.Id == request.ServiceTypeId, cancellationToken);
-        if (!serviceTypeExists)
-        {
-            throw new InvalidOperationException(
-                $"Service type with ID {request.ServiceTypeId} not found");
-        }
-
-        // Check Technician exists
-        var technicianExists = await _dbContext.DbContext.Set<Technician>()
-            .AnyAsync(t => t.Id == request.TechnicianId, cancellationToken);
-        if (!technicianExists)
-        {
-            throw new InvalidOperationException(
-                $"Technician with ID {request.TechnicianId} not found");
-        }
-
-        // Check ServiceBay exists
-        var serviceBayExists = await _dbContext.ServiceBays
-            .AnyAsync(sb => sb.Id == request.ServiceBayId, cancellationToken);
-        if (!serviceBayExists)
-        {
-            throw new InvalidOperationException(
-                $"Service bay with ID {request.ServiceBayId} not found");
-        }
-
-        _logger.LogDebug("All referenced entities validated");
-    }
-
-    /// <summary>
-    /// Checks if the requested time slot is available
-    /// </summary>
-    private async Task CheckSlotAvailabilityAsync(
-        CreateAppointmentRequest request,
-        CancellationToken cancellationToken)
-    {
-        _logger.LogDebug("Checking slot availability for vehicle {VehicleId}", request.VehicleId);
-
-        // Get the Cancelled status ID
-        var cancelledStatusId = Guid.Parse("00000000-0000-0000-0000-000000000004");
-
-        // Check for conflicting appointments for the same vehicle at overlapping times
-        // Query through Services to find overlapping time slots
-        var conflictingAppointment = await _dbContext.Appointments
-            .Where(a => a.VehicleId == request.VehicleId && a.StatusId != cancelledStatusId && a.AppointmentDate == request.AppointmentDate)
-            .Include(a => a.Services)
-            .FirstOrDefaultAsync(
-                a => a.Services.Any(s => 
-                    s.EstimatedStartTimeSlotId.HasValue &&
-                    s.EstimatedEndTimeSlotId.HasValue &&
-                    s.EstimatedStartTimeSlotId <= request.EstimatedEndTimeSlotId &&
-                    s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId),
-                cancellationToken);
+        var conflictingAppointment = vehicleAppointments
+            .Where(a => a.AppointmentDate == request.AppointmentDate && a.StatusId != appointmentCancelledStatusId)
+            .FirstOrDefault(a => a.Services.Any(s =>
+                s.EstimatedStartTimeSlotId.HasValue &&
+                s.EstimatedEndTimeSlotId.HasValue &&
+                s.EstimatedStartTimeSlotId <= request.EstimatedEndTimeSlotId &&
+                s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId));
 
         if (conflictingAppointment != null)
         {
@@ -306,11 +299,11 @@ public class AppointmentService : IAppointmentService
                 s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId);
 
             throw new InvalidOperationException(
-                $"The selected time slot is no longer available. " +
-                $"Another appointment is already booked for this vehicle from slot {conflictingService?.EstimatedStartTimeSlotId} " +
+                $"The selected time slot conflicts with an existing appointment. " +
+                $"Another appointment is booked from slot {conflictingService?.EstimatedStartTimeSlotId} " +
                 $"to slot {conflictingService?.EstimatedEndTimeSlotId}");
         }
 
-        _logger.LogDebug("Slot is available");
+        _logger.LogDebug("No vehicle conflicts found");
     }
 }

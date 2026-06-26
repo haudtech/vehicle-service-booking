@@ -44,6 +44,17 @@ public interface IAppointmentRepository
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Gets all appointments for a specific vehicle
+    /// Used for conflict detection and vehicle history queries
+    /// </summary>
+    /// <param name="vehicleId">The vehicle ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of appointments for the vehicle with services included</returns>
+    Task<IEnumerable<Appointment>> GetByVehicleIdAsync(
+        Guid vehicleId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Adds a new appointment to the repository
     /// </summary>
     /// <param name="appointment">The appointment to add</param>
@@ -71,4 +82,74 @@ public interface IAppointmentRepository
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     Task SaveChangesAsync(CancellationToken cancellationToken);
+
+    // ==================== PHASE 4: MULTI-SERVICE SUPPORT METHODS ====================
+
+    /// <summary>
+    /// Check if a service bay is available for a specific time slot on a given date
+    /// Uses ServiceBayAvailableSlots view to verify no conflicts
+    /// 
+    /// Business Logic: NONE - Pure data query from view
+    /// Performance: Single view query (< 10ms)
+    /// Used by: AppointmentService to validate bay assignment
+    /// </summary>
+    /// <param name="serviceBayId">The service bay ID to check</param>
+    /// <param name="startSequenceOrder">Starting TimeSlot sequence order</param>
+    /// <param name="endSequenceOrder">Ending TimeSlot sequence order</param>
+    /// <param name="appointmentDate">The date of appointment</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if bay is available for entire duration, false otherwise</returns>
+    Task<bool> IsBayAvailableForSlotAsync(
+        Guid serviceBayId,
+        int startSequenceOrder,
+        int endSequenceOrder,
+        DateOnly appointmentDate,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Verify that a technician has the required skill for a specific service type
+    /// Uses TechnicianSkill entity to validate qualification
+    /// 
+    /// Business Logic: NONE - Pure data query
+    /// Used by: AppointmentService to validate technician assignment
+    /// </summary>
+    /// <param name="technicianId">The technician ID</param>
+    /// <param name="serviceTypeId">The service type ID requiring the skill</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if technician has skill, false otherwise</returns>
+    Task<bool> TechnicianHasSkillAsync(
+        Guid technicianId,
+        Guid serviceTypeId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Create an appointment atomically with all its services in a single transaction
+    /// Handles: Adding Appointment + Services + TimeSlotAssignments in one go
+    /// 
+    /// Business Logic: NONE - Pure persistence
+    /// Transaction: ACID - All or nothing
+    /// Used by: AppointmentService when creating multi-service appointments
+    /// </summary>
+    /// <param name="appointment">The appointment to create (with Services collection)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The created appointment with generated ID and all services</returns>
+    Task<Appointment> CreateAppointmentWithServicesAsync(
+        Appointment appointment,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Get all TimeSlot IDs for a duration-based range
+    /// Used to populate appointment's TimeSlotAssignments
+    /// 
+    /// Business Logic: NONE - Pure data query
+    /// Used by: AppointmentService when creating appointment service records
+    /// </summary>
+    /// <param name="startSequenceOrder">Starting sequence order</param>
+    /// <param name="endSequenceOrder">Ending sequence order (inclusive)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of TimeSlot entities in sequence order</returns>
+    Task<IEnumerable<TimeSlot>> GetTimeSlotsBySequenceRangeAsync(
+        int startSequenceOrder,
+        int endSequenceOrder,
+        CancellationToken cancellationToken);
 }

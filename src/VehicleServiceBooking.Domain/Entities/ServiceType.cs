@@ -1,9 +1,8 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace VehicleServiceBooking.Domain.Entities;
 
 /// <summary>
 /// ServiceType entity representing a type of vehicle service
+/// Configuration for properties is in ApplicationDbContext.OnModelCreating()
 /// </summary>
 public class ServiceType : BaseEntity
 {
@@ -12,16 +11,12 @@ public class ServiceType : BaseEntity
     /// Service type name (max 100 characters)
     /// Examples: Oil Change, Brake Service, Tire Rotation
     /// </summary>
-    [MaxLength(100)]
-    [Required]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Expected duration of service in minutes
-    /// Range: 15 to 480 minutes (15 min to 8 hours)
+    /// Range: 30 to 480 minutes (30 min to 8 hours)
     /// </summary>
-    [Range(30, 480)]
-    [Required]
     public int DurationMinutes { get; set; }
 
     /// <summary>

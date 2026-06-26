@@ -1,9 +1,8 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace VehicleServiceBooking.Domain.Entities;
 
 /// <summary>
 /// Dealership entity representing a vehicle service dealership
+/// Configuration for properties is in ApplicationDbContext.OnModelCreating()
 /// </summary>
 public class Dealership : BaseEntity
 {
@@ -11,15 +10,11 @@ public class Dealership : BaseEntity
     /// <summary>
     /// Dealership name (max 150 characters)
     /// </summary>
-    [MaxLength(150)]
-    [Required]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Dealership physical address (max 500 characters)
     /// </summary>
-    [MaxLength(500)]
-    [Required]
     public string Address { get; set; } = string.Empty;
 
     /// <summary>

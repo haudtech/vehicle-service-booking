@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using VehicleServiceBooking.Application.Models.ViewModels;
 using VehicleServiceBooking.Domain.Entities;
 
 namespace VehicleServiceBooking.Application.Interfaces.Persistence;
@@ -37,6 +38,26 @@ public interface IApplicationDbContext
     DbSet<AppointmentStatusLookup> AppointmentStatusLookups { get; }
 
     DbSet<TimeSlot> TimeSlots { get; }
+
+    // ==================== VIEW DbSETS (READ-ONLY) ====================
+
+    /// <summary>
+    /// Query-only DbSet for TechnicianAvailableSlots view.
+    /// Returns pre-computed available time slots for each technician on the query date.
+    /// </summary>
+    DbSet<TechnicianAvailableSlot> TechnicianAvailableSlotsView { get; }
+
+    /// <summary>
+    /// Query-only DbSet for ServiceBayAvailableSlots view.
+    /// Returns pre-computed available time slots for each service bay on the query date.
+    /// </summary>
+    DbSet<ServiceBayAvailableSlot> ServiceBayAvailableSlotsView { get; }
+
+    /// <summary>
+    /// Query-only DbSet for ServiceTypeAvailability master view.
+    /// Returns pre-computed availability combining service requirements with technician and bay availability.
+    /// </summary>
+    DbSet<ServiceTypeAvailabilityView> ServiceTypeAvailabilityView { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
