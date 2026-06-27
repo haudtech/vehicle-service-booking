@@ -119,7 +119,7 @@ public class AppointmentService : IAppointmentService
                 TechnicianId = request.TechnicianId,
                 ServiceBayId = request.ServiceBayId,
                 DealershipId = request.DealershipId,
-                ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000006"), // Pending status
+                ServiceStatusId = Guid.Parse("00000000-0000-0000-0001-000000000001"), // Pending status
                 SequenceOrder = 1,
                 EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,
                 EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,

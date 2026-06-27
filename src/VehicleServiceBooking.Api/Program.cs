@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using DotNetEnv;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using VehicleServiceBooking.Api.Configuration;
 
 //
@@ -39,6 +39,8 @@ if (File.Exists(envFile))
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddLoggingAndTracing();
 
 //
 // ============================================================================
@@ -93,6 +95,8 @@ var app = builder.Build();
 
 // Configure middleware pipeline
 app.UseApplicationMiddleware();
+
+app.UseSerilogRequestLogging();
 
 // Get CORS configuration and apply CORS middleware
 var corsConfig = builder.Services.BuildServiceProvider()
