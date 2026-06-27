@@ -225,6 +225,15 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+
+        // Conflict validation is vehicle-based in AppointmentService.
+        // Ensure seeded existing appointments target the same vehicle/date.
+        foreach (var appointment in existingAppointments)
+        {
+            appointment.VehicleId = vehicle.Id;
+            appointment.AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        }
+
         _dbContext.Appointments.AddRange(existingAppointments);
 
         SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);

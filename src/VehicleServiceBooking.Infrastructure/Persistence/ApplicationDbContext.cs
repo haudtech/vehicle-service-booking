@@ -433,7 +433,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // DurationMinutes must be between 30 and 480 minutes (per original entity constraint)
         modelBuilder.Entity<ServiceType>()
             .ToTable(t => t.HasCheckConstraint("CK_ServiceType_DurationMinutes_Range",
-                "DurationMinutes >= 30 AND DurationMinutes <= 480"));
+                "\"DurationMinutes\" >= 30 AND \"DurationMinutes\" <= 480"));
 
         // ==================== TECHNICIAN CONFIGURATION ====================
         
@@ -528,14 +528,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // VIN must be exactly 17 characters (per original entity constraint)
         modelBuilder.Entity<Vehicle>()
             .ToTable(t => t.HasCheckConstraint("CK_Vehicle_VIN_Length", 
-                "LENGTH(Vin) = 17"));
+                "LENGTH(\"Vin\") = 17"));
         modelBuilder.Entity<Vehicle>()
             .Property(x => x.Year)
             .IsRequired(false); // Optional field
         // Year must be between 1900 and 2100 (per original entity constraint)
         modelBuilder.Entity<Vehicle>()
             .ToTable(t => t.HasCheckConstraint("CK_Vehicle_Year_Range", 
-                "Year IS NULL OR (Year >= 1900 AND Year <= 2100)"));
+                "\"Year\" IS NULL OR (\"Year\" >= 1900 AND \"Year\" <= 2100)"));
 
         // ==================== TECHNICIAN SKILL CONFIGURATION ====================
         
