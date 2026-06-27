@@ -62,7 +62,7 @@ public class AppointmentService : IAppointmentService
                 availabilityDate,
                 cancellationToken);
 
-            if (!availabilityOptions.Any())
+            if (availabilityOptions == null || !availabilityOptions.Any())
             {
                 throw new InvalidOperationException(
                     "No available slots matching the specified criteria");
@@ -105,7 +105,7 @@ public class AppointmentService : IAppointmentService
                 CustomerId = request.CustomerId,
                 VehicleId = request.VehicleId,
                 AppointmentDate = request.AppointmentDate,
-                StatusId = Guid.Parse("00000000-0000-0000-0000-000000000003"), // Booked status
+                StatusId = Guid.Parse("00000000-0000-0000-0000-000000000001"), // Booked status
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

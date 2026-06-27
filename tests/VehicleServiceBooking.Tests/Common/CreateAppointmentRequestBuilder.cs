@@ -15,8 +15,8 @@ public class CreateAppointmentRequestBuilder
     private Guid _technicianId = Guid.NewGuid();
     private Guid _serviceBayId = Guid.NewGuid();
     private DateOnly _appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-    private Guid _startTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
-    private Guid _endTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
+    private Guid _startTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+    private Guid _endTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
     /// <summary>
     /// Creates a valid request with default values.

@@ -45,13 +45,13 @@ public interface IApplicationDbContext
     /// Query-only DbSet for TechnicianAvailableSlots view.
     /// Returns pre-computed available time slots for each technician on the query date.
     /// </summary>
-    DbSet<TechnicianAvailableSlot> TechnicianAvailableSlotsView { get; }
+    DbSet<TechnicianAvailableSlotsView> TechnicianAvailableSlotsView { get; }
 
     /// <summary>
     /// Query-only DbSet for ServiceBayAvailableSlots view.
     /// Returns pre-computed available time slots for each service bay on the query date.
     /// </summary>
-    DbSet<ServiceBayAvailableSlot> ServiceBayAvailableSlotsView { get; }
+    DbSet<ServiceBayAvailableSlotsView> ServiceBayAvailableSlotsView { get; }
 
     /// <summary>
     /// Query-only DbSet for ServiceTypeAvailability master view.

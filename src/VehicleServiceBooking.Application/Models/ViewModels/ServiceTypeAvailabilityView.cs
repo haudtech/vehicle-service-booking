@@ -12,9 +12,24 @@ namespace VehicleServiceBooking.Application.Models.ViewModels;
 public class ServiceTypeAvailabilityView
 {
     /// <summary>
-    /// The service type ID
+    /// The service type ID (Part of composite key)
     /// </summary>
     public Guid ServiceTypeId { get; set; }
+
+    /// <summary>
+    /// The starting time slot ID (Part of composite key)
+    /// </summary>
+    public Guid TimeSlotId { get; set; }
+
+    /// <summary>
+    /// Qualified technician ID (Part of composite key)
+    /// </summary>
+    public Guid TechnicianId { get; set; }
+
+    /// <summary>
+    /// Available service bay ID (Part of composite key)
+    /// </summary>
+    public Guid ServiceBayId { get; set; }
 
     /// <summary>
     /// Service type name (for display)
@@ -33,11 +48,6 @@ public class ServiceTypeAvailabilityView
     public int RequiredSlots { get; set; }
 
     /// <summary>
-    /// The starting time slot ID
-    /// </summary>
-    public Guid TimeSlotId { get; set; }
-
-    /// <summary>
     /// Sequential order of starting slot (1-18)
     /// </summary>
     public int SequenceOrder { get; set; }
@@ -53,11 +63,6 @@ public class ServiceTypeAvailabilityView
     public TimeOnly SlotEndTime { get; set; }
 
     /// <summary>
-    /// Qualified technician ID
-    /// </summary>
-    public Guid TechnicianId { get; set; }
-
-    /// <summary>
     /// Technician's first name
     /// </summary>
     public string FirstName { get; set; } = string.Empty;
@@ -66,11 +71,6 @@ public class ServiceTypeAvailabilityView
     /// Technician's last name
     /// </summary>
     public string LastName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Available service bay ID
-    /// </summary>
-    public Guid ServiceBayId { get; set; }
 
     /// <summary>
     /// Service bay name (for display)

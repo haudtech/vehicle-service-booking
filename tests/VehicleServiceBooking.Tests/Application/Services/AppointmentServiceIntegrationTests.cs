@@ -4,6 +4,7 @@ using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
+using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
@@ -40,8 +41,28 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _mockAvailabilityService = new Mock<IAvailabilityService>();
         _mockLogger = new Mock<ILogger<AppointmentService>>();
 
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid dealershipId, Guid serviceTypeId, DateTime date, CancellationToken cancellationToken) =>
+                new List<AvailabilityOption>
+                {
+                    new AvailabilityOption
+                    {
+                        TimeSlot = new VehicleServiceBooking.Application.Models.TimeSlot
+                        {
+                            Start = date.Date.AddHours(8),
+                            End = date.Date.AddHours(8).AddMinutes(30)
+                        },
+                        TechnicianId = Guid.Empty,
+                        ServiceBayId = Guid.Empty
+                    }
+                });
+
         _appointmentService = new AppointmentService(
-            _dbContext,
             _appointmentRepository,
             _mockAvailabilityService.Object,
             _mockLogger.Object
@@ -56,6 +77,40 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Clean up resources
         await _dbContext.Database.EnsureDeletedAsync();
         await _dbContext.DisposeAsync();
+    }
+
+    private void SetupAvailabilityServiceForRequest(Guid technicianId, Guid serviceBayId, DateTime date)
+    {
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AvailabilityOption>
+            {
+                new AvailabilityOption
+                {
+                    TimeSlot = new VehicleServiceBooking.Application.Models.TimeSlot
+                    {
+                        Start = date.Date.AddHours(8),
+                        End = date.Date.AddHours(8).AddMinutes(30)
+                    },
+                    TechnicianId = technicianId,
+                    ServiceBayId = serviceBayId
+                }
+            });
+    }
+
+    private void SeedTechnicianSkills(IEnumerable<Guid> technicianIds, Guid serviceTypeId)
+    {
+        _dbContext.TechnicianSkills.AddRange(
+            technicianIds.Select(id => new TechnicianSkill
+            {
+                Id = Guid.NewGuid(),
+                TechnicianId = id,
+                ServiceTypeId = serviceTypeId
+            }));
     }
 
     #region CreateAppointmentAsync Integration Tests
@@ -74,12 +129,13 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
         var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-        var startTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
-        var endTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
+        var startTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+        var endTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
         var request = new CreateAppointmentRequest
         {
@@ -93,6 +149,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             EstimatedStartTimeSlotId = startTimeSlotId,
             EstimatedEndTimeSlotId = endTimeSlotId
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -126,6 +184,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -138,9 +197,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act - Service allows non-existent Dealership (it's validated by foreign key at DB level)
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -166,6 +227,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceBays.AddRange(serviceBays);
         _dbContext.Appointments.AddRange(existingAppointments);
 
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
         await _dbContext.SaveChangesAsync();
 
         // Request for overlapping slot using TimeSlot IDs
@@ -178,9 +240,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
+
+        SetupAvailabilityServiceForRequest(conflictingRequest.TechnicianId, conflictingRequest.ServiceBayId, conflictingRequest.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -203,6 +267,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
         _dbContext.Appointments.AddRange(existingAppointments);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -216,9 +281,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000003"),  // Slot 3: 09:00-09:30
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000004")     // Slot 4: 09:30-10:00
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000003"),  // Slot 3: 09:00-09:30
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000004")     // Slot 4: 09:30-10:00
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -248,6 +315,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
         _dbContext.Appointments.AddRange(existingAppointments);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -263,9 +331,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[1].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000005"),  // Slot 5: 10:00-10:30
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000006")     // Slot 6: 10:30-11:00
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000005"),  // Slot 5: 10:00-10:30
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000006")     // Slot 6: 10:30-11:00
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -314,9 +384,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[1].Id, // Different technician
             ServiceBayId = firstAppointment.Services.First().ServiceBayId!.Value, // Same bay!
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -355,8 +427,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().Be(targetAppointment.Id);
-        result.SlotStart.Should().Be(targetAppointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow);
-        result.SlotEnd.Should().Be(targetAppointment.Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1));
+        result.SlotStart.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
+        result.SlotEnd.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
     }
 
     [Fact]
@@ -395,7 +467,8 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         // Assert
         result.Should().NotBeNull();
         result.AppointmentId.Should().Be(targetAppointment.Id);
-        result.SlotStart.Should().Be(targetAppointment.Services.Min(s => s.EstimatedStartTime) ?? DateTime.UtcNow);
+        result.SlotStart.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
+        result.SlotEnd.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
     }
 
     [Fact]
@@ -412,6 +485,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -426,9 +500,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act
         var createdResponse = await _appointmentService.CreateAppointmentAsync(request);
@@ -459,6 +535,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -473,9 +550,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             ServiceTypeId = serviceType.Id,
             TechnicianId = technicians[0].Id,
             ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
+
+        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act
         var response = await _appointmentService.CreateAppointmentAsync(request);
@@ -504,6 +583,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.ServiceTypes.Add(serviceType);
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -522,9 +602,11 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 ServiceTypeId = serviceType.Id,
                 TechnicianId = technicians[0].Id,
                 ServiceBayId = serviceBays[0].Id,
-                EstimatedStartTimeSlotId = Guid.Parse($"00000001-0000-0000-0000-{(i+1):00000000000000}"),
-                EstimatedEndTimeSlotId = Guid.Parse($"00000001-0000-0000-0000-{(i+2):00000000000000}")
+                EstimatedStartTimeSlotId = Guid.Parse($"00000000-0000-0000-0000-{(i+1):000000000000}"),
+                EstimatedEndTimeSlotId = Guid.Parse($"00000000-0000-0000-0000-{(i+2):000000000000}")
             };
+
+            SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
             var response = await _appointmentService.CreateAppointmentAsync(request);
             appointmentIds.Add(response.AppointmentId);

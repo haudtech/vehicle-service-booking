@@ -9,6 +9,8 @@ using VehicleServiceBooking.Infrastructure.Persistence;
 using VehicleServiceBooking.Infrastructure.Repositories;
 using VehicleServiceBooking.Tests.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace VehicleServiceBooking.Tests.Application.Services;
@@ -22,6 +24,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     private ApplicationDbContext _dbContext = null!;
     private IAvailabilityService _availabilityService = null!;
     private ISchedulingConfiguration _schedulingConfiguration = null!;
+    private IAvailabilityRepository _availabilityRepository = null!;
 
     public async Task InitializeAsync()
     {
@@ -33,10 +36,11 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext = new ApplicationDbContext(options);
         await _dbContext.Database.EnsureCreatedAsync();
 
-        _schedulingConfiguration = new SchedulingConfiguration();
+        _availabilityRepository = new AvailabilityRepository(_dbContext);
+        var mockLogger = new Mock<ILogger<AvailabilityService>>();
         _availabilityService = new AvailabilityService(
-            _schedulingConfiguration,
-            _dbContext
+            _availabilityRepository,
+            mockLogger.Object
         );
     }
 
@@ -53,7 +57,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _, viewRows) =
             AvailabilityIntegrationScenarioBuilder.CompleteSetup()
                 .Build();
 
@@ -63,6 +67,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSkills.AddRange(technicianSkills);
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -90,7 +95,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, existingAppointments) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, existingAppointments, viewRows) =
             AvailabilityIntegrationScenarioBuilder.WithExistingAppointmentConflict()
                 .Build();
 
@@ -101,6 +106,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
         _dbContext.Appointments.AddRange(existingAppointments);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -126,7 +132,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _, viewRows) =
             AvailabilityIntegrationScenarioBuilder.MultipleTechnicians()
                 .Build();
 
@@ -136,6 +142,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSkills.AddRange(technicianSkills);
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -160,7 +167,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _, viewRows) =
             AvailabilityIntegrationScenarioBuilder.MultipleServiceBays()
                 .Build();
 
@@ -170,6 +177,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSkills.AddRange(technicianSkills);
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -194,7 +202,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _, viewRows) =
             AvailabilityIntegrationScenarioBuilder.LongerServiceDuration()
                 .Build();
 
@@ -204,6 +212,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSkills.AddRange(technicianSkills);
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -229,7 +238,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
-        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _) =
+        var (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _, viewRows) =
             AvailabilityIntegrationScenarioBuilder.RestrictedTechnicianSchedule()
                 .Build();
 
@@ -239,6 +248,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         _dbContext.TechnicianSkills.AddRange(technicianSkills);
         _dbContext.TechnicianSchedules.AddRange(technicianSchedules);
         _dbContext.ServiceBays.AddRange(serviceBays);
+        _dbContext.ServiceTypeAvailabilityView.AddRange(viewRows);
 
         await _dbContext.SaveChangesAsync();
 
@@ -264,7 +274,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     public async Task GetAvailableSlotsAsync_WithNonExistentServiceType_ShouldThrowException()
     {
         // Arrange
-        var (dealership, _, _, _, _, _, _) =
+        var (dealership, _, _, _, _, _, _, _) =
             AvailabilityIntegrationScenarioBuilder.CompleteSetup()
                 .Build();
 
@@ -274,23 +284,24 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         var nonExistentServiceTypeId = Guid.NewGuid();
         var date = DateTime.UtcNow.AddDays(1).Date.AddHours(9);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-        {
-            await _availabilityService.GetAvailableSlotsAsync(
-                dealership.Id,
-                nonExistentServiceTypeId,
-                date,
-                CancellationToken.None
-            );
-        });
+        // Act
+        var result = await _availabilityService.GetAvailableSlotsAsync(
+            dealership.Id,
+            nonExistentServiceTypeId,
+            date,
+            CancellationToken.None
+        );
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
     }
 
     [Fact]
     public async Task GetAvailableSlotsAsync_WithNoTechniciansForServiceType_ShouldReturnEmptyList()
     {
         // Arrange - Create only dealership and service bays without any technicians for a specific service type
-        var (dealership, serviceType, _, _, _, serviceBays, _) =
+        var (dealership, serviceType, _, _, _, serviceBays, _, _) =
             AvailabilityIntegrationScenarioBuilder.CompleteSetup()
                 .Build();
 

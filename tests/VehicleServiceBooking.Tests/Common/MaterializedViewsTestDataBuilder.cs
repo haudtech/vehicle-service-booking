@@ -174,9 +174,9 @@ public class MaterializedViewsTestDataBuilder
     /// <summary>
     /// Builds a TechnicianAvailableSlot DTO
     /// </summary>
-    public TechnicianAvailableSlot BuildTechnicianAvailableSlot()
+    public TechnicianAvailableSlotsView BuildTechnicianAvailableSlot()
     {
-        return new TechnicianAvailableSlot
+        return new TechnicianAvailableSlotsView
         {
             TimeSlotId = Guid.NewGuid(),
             SequenceOrder = _sequenceOrder,
@@ -194,16 +194,16 @@ public class MaterializedViewsTestDataBuilder
     /// <summary>
     /// Builds a collection of TechnicianAvailableSlot DTOs (all 18 slots of the day)
     /// </summary>
-    public List<TechnicianAvailableSlot> BuildTechnicianAvailableSlotsForDay()
+    public List<TechnicianAvailableSlotsView> BuildTechnicianAvailableSlotsForDay()
     {
-        var slots = new List<TechnicianAvailableSlot>();
+        var slots = new List<TechnicianAvailableSlotsView>();
         var currentTime = new TimeOnly(8, 0); // 08:00
         
         for (int i = 1; i <= 18; i++)
         {
             var endTime = currentTime.AddMinutes(30);
             
-            slots.Add(new TechnicianAvailableSlot
+            slots.Add(new TechnicianAvailableSlotsView
             {
                 TimeSlotId = Guid.NewGuid(),
                 SequenceOrder = i,
@@ -226,9 +226,9 @@ public class MaterializedViewsTestDataBuilder
     /// <summary>
     /// Builds a ServiceBayAvailableSlot DTO
     /// </summary>
-    public ServiceBayAvailableSlot BuildServiceBayAvailableSlot()
+    public ServiceBayAvailableSlotsView BuildServiceBayAvailableSlot()
     {
-        return new ServiceBayAvailableSlot
+        return new ServiceBayAvailableSlotsView
         {
             TimeSlotId = Guid.NewGuid(),
             SequenceOrder = _sequenceOrder,
@@ -245,16 +245,16 @@ public class MaterializedViewsTestDataBuilder
     /// <summary>
     /// Builds a collection of ServiceBayAvailableSlot DTOs (all 18 slots of the day)
     /// </summary>
-    public List<ServiceBayAvailableSlot> BuildServiceBayAvailableSlotsForDay()
+    public List<ServiceBayAvailableSlotsView> BuildServiceBayAvailableSlotsForDay()
     {
-        var slots = new List<ServiceBayAvailableSlot>();
+        var slots = new List<ServiceBayAvailableSlotsView>();
         var currentTime = new TimeOnly(8, 0); // 08:00
 
         for (int i = 1; i <= 18; i++)
         {
             var endTime = currentTime.AddMinutes(30);
 
-            slots.Add(new ServiceBayAvailableSlot
+            slots.Add(new ServiceBayAvailableSlotsView
             {
                 TimeSlotId = Guid.NewGuid(),
                 SequenceOrder = i,

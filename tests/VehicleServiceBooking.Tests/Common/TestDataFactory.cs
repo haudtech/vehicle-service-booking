@@ -32,8 +32,8 @@ public static class TestDataFactory
         technicianId ??= Guid.NewGuid();
         serviceBayId ??= Guid.NewGuid();
         appointmentDate ??= DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-        startTimeSlotId ??= Guid.Parse("00000001-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
-        endTimeSlotId ??= Guid.Parse("00000001-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
+        startTimeSlotId ??= Guid.Parse("00000000-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
+        endTimeSlotId ??= Guid.Parse("00000000-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
         var dealership = DealershipBuilder.ValidDealership()
             .WithId(dealershipId.Value)
@@ -183,8 +183,8 @@ public static class TestDataFactory
                     DealershipId = dealershipId.Value,
                     ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000101"), // Pending
                     SequenceOrder = 1,
-                    EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),  // Slot 1
-                    EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")     // Slot 2
+                    EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),  // Slot 1
+                    EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")     // Slot 2
                 }
             }
         };
@@ -244,8 +244,8 @@ public static class TestDataFactory
             ServiceTypeId = serviceTypeId,
             TechnicianId = technicianId,
             ServiceBayId = serviceBayId,
-            EstimatedStartTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000001-0000-0000-0000-000000000002")
+            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
         };
 
         var dealership = DealershipBuilder.ValidDealership()

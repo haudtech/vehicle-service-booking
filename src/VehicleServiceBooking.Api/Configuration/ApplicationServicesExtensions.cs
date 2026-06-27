@@ -46,6 +46,20 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
         services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
+
+        // Register generic entity repositories for all domain entities
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IDealershipRepository, DealershipRepository>();
+        services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
+        services.AddScoped<ITechnicianRepository, TechnicianRepository>();
+        services.AddScoped<ITechnicianSkillRepository, TechnicianSkillRepository>();
+        services.AddScoped<ITechnicianScheduleRepository, TechnicianScheduleRepository>();
+        services.AddScoped<IBusinessHoursRepository, BusinessHoursRepository>();
+        services.AddScoped<IAppointmentStatusLookupRepository, AppointmentStatusLookupRepository>();
+        services.AddScoped<IServiceStatusLookupRepository, ServiceStatusLookupRepository>();
+        services.AddScoped<IServiceRepository, ServiceRepository>();
+        services.AddScoped<IVehicleRepository, VehicleRepository>();
+        services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
     }
 
     /// <summary>

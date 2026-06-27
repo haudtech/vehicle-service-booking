@@ -33,7 +33,6 @@ public class AppointmentServiceTests
         _mockLogger = new Mock<ILogger<AppointmentService>>();
 
         _appointmentService = new AppointmentService(
-            _mockDbContext.Object,
             _mockAppointmentRepository.Object,
             _mockAvailabilityService.Object,
             _mockLogger.Object

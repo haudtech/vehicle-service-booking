@@ -9,12 +9,17 @@ namespace VehicleServiceBooking.Application.Models.ViewModels;
 /// Used by: AvailabilityService to determine which technicians can perform services
 /// in which time slots without conflicts.
 /// </summary>
-public class TechnicianAvailableSlot
+public class TechnicianAvailableSlotsView
 {
     /// <summary>
-    /// Reference to the TimeSlot entity
+    /// Reference to the TimeSlot entity (Part of composite key)
     /// </summary>
     public Guid TimeSlotId { get; set; }
+
+    /// <summary>
+    /// The technician ID (Part of composite key)
+    /// </summary>
+    public Guid TechnicianId { get; set; }
 
     /// <summary>
     /// Sequential order of this slot (1-18) within business hours
@@ -30,11 +35,6 @@ public class TechnicianAvailableSlot
     /// End time of the slot (e.g., 08:30)
     /// </summary>
     public TimeOnly SlotEndTime { get; set; }
-
-    /// <summary>
-    /// The technician ID
-    /// </summary>
-    public Guid TechnicianId { get; set; }
 
     /// <summary>
     /// Technician's first name (for display)

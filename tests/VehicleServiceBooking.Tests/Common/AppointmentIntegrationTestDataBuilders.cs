@@ -248,6 +248,24 @@ public class AppointmentIntegrationScenarioBuilder
                     AppointmentDate = DateOnly.FromDateTime(now.AddDays(1).AddHours(i * 2)),
                     StatusId = Guid.Parse("00000000-0000-0000-0000-000000000001") // Booked
                 };
+
+                var service = new Service
+                {
+                    Id = Guid.NewGuid(),
+                    AppointmentId = appointment.Id,
+                    ServiceTypeId = _serviceTypeId,
+                    TechnicianId = _technicianId,
+                    ServiceBayId = _serviceBayId,
+                    DealershipId = _dealershipId,
+                    ServiceStatusId = Guid.Parse("00000000-0000-0000-0000-000000000006"), // Pending
+                    SequenceOrder = 1,
+                    EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                    EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                appointment.Services.Add(service);
                 existingAppointments.Add(appointment);
             }
         }

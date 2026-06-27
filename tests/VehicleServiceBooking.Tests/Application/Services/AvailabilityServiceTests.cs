@@ -21,6 +21,7 @@ public class AvailabilityServiceTests
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<ISchedulingConfiguration> _mockSchedulingConfiguration;
     private readonly Mock<ILogger<AvailabilityService>> _mockLogger;
+    private readonly Mock<IAvailabilityRepository> _mockAvailabilityRepository;
     private readonly AvailabilityService _availabilityService;
 
     public AvailabilityServiceTests()
@@ -28,13 +29,14 @@ public class AvailabilityServiceTests
         _mockDbContext = new Mock<IApplicationDbContext>();
         _mockSchedulingConfiguration = new Mock<ISchedulingConfiguration>();
         _mockLogger = new Mock<ILogger<AvailabilityService>>();
+        _mockAvailabilityRepository = new Mock<IAvailabilityRepository>();
 
         // Default configuration: 30-minute slots
         _mockSchedulingConfiguration.Setup(c => c.SlotLengthMinutes).Returns(30);
 
         _availabilityService = new AvailabilityService(
-            _mockSchedulingConfiguration.Object,
-            _mockDbContext.Object
+            _mockAvailabilityRepository.Object,
+            _mockLogger.Object
         );
     }
 

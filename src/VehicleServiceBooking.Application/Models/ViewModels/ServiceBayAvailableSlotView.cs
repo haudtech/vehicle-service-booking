@@ -9,12 +9,17 @@ namespace VehicleServiceBooking.Application.Models.ViewModels;
 /// Used by: AvailabilityService to determine which service bays can accommodate services
 /// in which time slots without conflicts.
 /// </summary>
-public class ServiceBayAvailableSlot
+public class ServiceBayAvailableSlotsView
 {
     /// <summary>
-    /// Reference to the TimeSlot entity
+    /// Reference to the TimeSlot entity (Part of composite key)
     /// </summary>
     public Guid TimeSlotId { get; set; }
+
+    /// <summary>
+    /// The service bay ID (Part of composite key)
+    /// </summary>
+    public Guid ServiceBayId { get; set; }
 
     /// <summary>
     /// Sequential order of this slot (1-18) within business hours
@@ -30,11 +35,6 @@ public class ServiceBayAvailableSlot
     /// End time of the slot (e.g., 08:30)
     /// </summary>
     public TimeOnly SlotEndTime { get; set; }
-
-    /// <summary>
-    /// The service bay ID
-    /// </summary>
-    public Guid ServiceBayId { get; set; }
 
     /// <summary>
     /// Service bay name (for display)

@@ -1,3 +1,4 @@
+using VehicleServiceBooking.Application.Models.ViewModels;
 using VehicleServiceBooking.Domain.Entities;
 
 namespace VehicleServiceBooking.Tests.Common;
@@ -580,6 +581,10 @@ public class AvailabilityTestScenarioBuilder
     private TimeOnly _technicianStartTime = new TimeOnly(8, 0);
     private TimeOnly _technicianEndTime = new TimeOnly(17, 0);
     private int _serviceDurationMinutes = 30;
+    private string _serviceName = "Oil Change";
+    private bool _includeExistingAppointment = false;
+    private DateTime? _existingAppointmentStart;
+    private DateTime? _existingAppointmentEnd;
     private int _numberOfTechnicians = 1;
     private int _numberOfServiceBays = 1;
     private List<Appointment> _existingAppointments = new();
@@ -644,20 +649,35 @@ public class AvailabilityTestScenarioBuilder
         return this;
     }
 
+    public AvailabilityTestScenarioBuilder WithServiceName(string serviceName)
+    {
+        _serviceName = serviceName;
+        return this;
+    }
+
     public AvailabilityTestScenarioBuilder WithExistingAppointment(Appointment appointment)
     {
+        _includeExistingAppointment = true;
         _existingAppointments.Add(appointment);
+        _existingAppointmentStart = appointment.AppointmentDate.ToDateTime(new TimeOnly(8, 0));
+        _existingAppointmentEnd = appointment.AppointmentDate.ToDateTime(new TimeOnly(8, 30));
         return this;
     }
 
     public AvailabilityTestScenarioBuilder WithExistingAppointments(params Appointment[] appointments)
     {
+        _includeExistingAppointment = true;
         _existingAppointments.AddRange(appointments);
+        if (appointments.Length > 0)
+        {
+            _existingAppointmentStart = appointments[0].AppointmentDate.ToDateTime(new TimeOnly(8, 0));
+            _existingAppointmentEnd = appointments[0].AppointmentDate.ToDateTime(new TimeOnly(8, 30));
+        }
         return this;
     }
 
     public (Dealership, ServiceType, List<Technician>, List<TechnicianSkill>, 
-             List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>) Build()
+             List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>, List<ServiceTypeAvailabilityView>) Build()
     {
         var dealership = new DealershipBuilder()
             .WithId(_dealershipId)
@@ -707,7 +727,102 @@ public class AvailabilityTestScenarioBuilder
                 .Build());
         }
 
-        return (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _existingAppointments);
+        var viewRows = BuildServiceTypeAvailabilityViews(technicians, serviceBays);
+
+        return (dealership, serviceType, technicians, technicianSkills, technicianSchedules, serviceBays, _existingAppointments, viewRows);
+    }
+
+    private List<ServiceTypeAvailabilityView> BuildServiceTypeAvailabilityViews(
+        List<Technician> technicians,
+        List<ServiceBay> serviceBays)
+    {
+        var rows = new List<ServiceTypeAvailabilityView>();
+        var availableStartTimes = new List<TimeOnly>();
+
+        if (_includeExistingAppointment && _existingAppointmentStart.HasValue && _existingAppointmentEnd.HasValue)
+        {
+            var conflictStart = TimeOnly.FromDateTime(_existingAppointmentStart.Value);
+            var conflictEnd = TimeOnly.FromDateTime(_existingAppointmentEnd.Value);
+
+            // Build morning slots around the existing appointment
+            availableStartTimes.Add(new TimeOnly(8, 0));
+            if (conflictStart > new TimeOnly(8, 0))
+            {
+                availableStartTimes.Add(conflictStart.AddMinutes(-30));
+            }
+            availableStartTimes.Add(conflictEnd);
+        }
+        else
+        {
+            availableStartTimes.Add(new TimeOnly(8, 0));
+            availableStartTimes.Add(new TimeOnly(8, 30));
+            availableStartTimes.Add(new TimeOnly(9, 0));
+        }
+
+        if (_technicianStartTime > availableStartTimes[0])
+        {
+            availableStartTimes = availableStartTimes
+                .Where(start => start >= _technicianStartTime)
+                .ToList();
+        }
+
+        foreach (var startTime in availableStartTimes)
+        {
+            var endTime = startTime.AddMinutes(_serviceDurationMinutes);
+            if (endTime > _technicianEndTime)
+            {
+                continue;
+            }
+            foreach (var technician in technicians)
+            {
+                foreach (var bay in serviceBays)
+                {
+                    var canFit = true;
+                    if (_includeExistingAppointment && _existingAppointmentStart.HasValue && _existingAppointmentEnd.HasValue)
+                    {
+                        var conflictStart = TimeOnly.FromDateTime(_existingAppointmentStart.Value);
+                        var conflictEnd = TimeOnly.FromDateTime(_existingAppointmentEnd.Value);
+                        if (startTime < conflictEnd && endTime > conflictStart && bay.Id == _serviceBayId)
+                        {
+                            canFit = false;
+                        }
+                    }
+
+                    rows.Add(new ServiceTypeAvailabilityView
+                    {
+                        ServiceTypeId = _serviceTypeId,
+                        ServiceTypeName = _serviceName,
+                        DurationMinutes = _serviceDurationMinutes,
+                        RequiredSlots = _serviceDurationMinutes / 30,
+                        TimeSlotId = Guid.NewGuid(),
+                        SequenceOrder = GetSequenceOrder(startTime),
+                        SlotStartTime = startTime,
+                        SlotEndTime = endTime,
+                        TechnicianId = technician.Id,
+                        FirstName = technician.FirstName,
+                        LastName = technician.LastName,
+                        ServiceBayId = bay.Id,
+                        ServiceBayName = bay.Name,
+                        DealershipId = _dealershipId,
+                        QueryDate = DateOnly.FromDateTime(_testDate),
+                        CanFitService = canFit
+                    });
+                }
+            }
+        }
+
+        if (_technicianStartTime > new TimeOnly(8, 0))
+        {
+            rows = rows.Where(row => row.SlotStartTime >= _technicianStartTime).ToList();
+        }
+
+        return rows;
+    }
+
+    private static int GetSequenceOrder(TimeOnly startTime)
+    {
+        var minutesSinceEight = ((startTime.Hour - 8) * 60) + startTime.Minute;
+        return (minutesSinceEight / 30) + 1;
     }
 }
 
@@ -861,10 +976,10 @@ public class AvailabilityIntegrationScenarioBuilder
     /// <summary>
     /// Builds a complete integration test scenario with all required entities
     /// Returns: (Dealership, ServiceType, List<Technician>, List<TechnicianSkill>, 
-    ///          List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>)
+    ///          List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>, List<ServiceTypeAvailabilityView>)
     /// </summary>
     public (Dealership, ServiceType, List<Technician>, List<TechnicianSkill>, 
-            List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>) Build()
+            List<TechnicianSchedule>, List<ServiceBay>, List<Appointment>, List<ServiceTypeAvailabilityView>) Build()
     {
         // Create dealership
         var dealership = new Dealership
@@ -948,7 +1063,90 @@ public class AvailabilityIntegrationScenarioBuilder
             existingAppointments.Add(appointment);
         }
 
+        var viewRows = BuildServiceTypeAvailabilityViews(technicians, serviceBays);
         return (dealership, serviceType, technicians, technicianSkills, 
-                technicianSchedules, serviceBays, existingAppointments);
+            technicianSchedules, serviceBays, existingAppointments, viewRows);
+    }
+
+    private List<ServiceTypeAvailabilityView> BuildServiceTypeAvailabilityViews(
+        List<Technician> technicians,
+        List<ServiceBay> serviceBays)
+    {
+        var rows = new List<ServiceTypeAvailabilityView>();
+        var availableStartTimes = new List<TimeOnly>();
+
+        var businessStart = new TimeOnly(8, 0);
+        var businessEnd = new TimeOnly(17, 0);
+        var currentStart = businessStart;
+        while (currentStart.AddMinutes(_serviceDurationMinutes) <= businessEnd)
+        {
+            availableStartTimes.Add(currentStart);
+            currentStart = currentStart.AddMinutes(30);
+        }
+
+        if (_technicianStartTime > availableStartTimes[0])
+        {
+            availableStartTimes = availableStartTimes
+                .Where(start => start >= _technicianStartTime)
+                .ToList();
+        }
+
+        foreach (var startTime in availableStartTimes)
+        {
+            var endTime = startTime.AddMinutes(_serviceDurationMinutes);
+            if (endTime > _technicianEndTime)
+            {
+                continue;
+            }
+            foreach (var technician in technicians)
+            {
+                foreach (var bay in serviceBays)
+                {
+                    var canFit = true;
+                    if (_includeExistingAppointment && _existingAppointmentStart.HasValue && _existingAppointmentEnd.HasValue)
+                    {
+                        var conflictStart = TimeOnly.FromDateTime(_existingAppointmentStart.Value);
+                        var conflictEnd = TimeOnly.FromDateTime(_existingAppointmentEnd.Value);
+                        if (startTime < conflictEnd && endTime > conflictStart && bay.Id == _serviceBayId)
+                        {
+                            canFit = false;
+                        }
+                    }
+
+                    rows.Add(new ServiceTypeAvailabilityView
+                    {
+                        ServiceTypeId = _serviceTypeId,
+                        ServiceTypeName = _serviceName,
+                        DurationMinutes = _serviceDurationMinutes,
+                        RequiredSlots = _serviceDurationMinutes / 30,
+                        TimeSlotId = Guid.NewGuid(),
+                        SequenceOrder = GetSequenceOrder(startTime),
+                        SlotStartTime = startTime,
+                        SlotEndTime = endTime,
+                        TechnicianId = technician.Id,
+                        FirstName = technician.FirstName,
+                        LastName = technician.LastName,
+                        ServiceBayId = bay.Id,
+                        ServiceBayName = bay.Name,
+                        DealershipId = _dealershipId,
+                        QueryDate = DateOnly.FromDateTime(_date),
+                        CanFitService = canFit
+                    });
+                }
+            }
+        }
+
+        if (_technicianStartTime > new TimeOnly(8, 0))
+        {
+            rows = rows.Where(row => row.SlotStartTime >= _technicianStartTime).ToList();
+        }
+
+        return rows;
+    }
+
+    private static int GetSequenceOrder(TimeOnly startTime)
+    {
+        var minutesSinceEight = ((startTime.Hour - 8) * 60) + startTime.Minute;
+        return (minutesSinceEight / 30) + 1;
     }
 }
