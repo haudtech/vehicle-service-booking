@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
+using VehicleServiceBooking.Application.Interfaces.Repositories;
 
 namespace VehicleServiceBooking.Infrastructure.Repositories;
 
@@ -14,7 +15,7 @@ namespace VehicleServiceBooking.Infrastructure.Repositories;
 /// with consistent AsNoTracking() configuration for all derived repositories
 /// </summary>
 /// <typeparam name="TEntity">The entity type managed by this repository</typeparam>
-public abstract class GenericRepository<TEntity> where TEntity : class
+public abstract class GenericRepository<TEntity> : IReadRepository<TEntity>, IWriteRepository<TEntity> where TEntity : class
 {
     /// <summary>
     /// Gets the database context
@@ -69,6 +70,27 @@ public abstract class GenericRepository<TEntity> where TEntity : class
     {
         return await GetQueryable()
             .FirstOrDefaultAsync(e => EF.Property<Guid>(e, "Id") == id, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets entities by their primary keys (Id).
+    /// </summary>
+    /// <param name="ids">The entity primary keys.</param>
+    /// <param name="cancellationToken">Cancellation token for async operations</param>
+    /// <returns>A collection of matching entities</returns>
+    public virtual async Task<IEnumerable<TEntity>> GetByIdsAsync(
+        IEnumerable<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0)
+        {
+            return Array.Empty<TEntity>();
+        }
+
+        return await GetQueryable()
+            .Where(e => idList.Contains(EF.Property<Guid>(e, "Id")))
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

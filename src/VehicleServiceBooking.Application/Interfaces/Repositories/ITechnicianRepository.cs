@@ -5,6 +5,6 @@ namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository interface for Technician entity.
 /// </summary>
-public interface ITechnicianRepository
+public interface ITechnicianRepository : IReadRepository<Technician>, IWriteRepository<Technician>
 {
 }

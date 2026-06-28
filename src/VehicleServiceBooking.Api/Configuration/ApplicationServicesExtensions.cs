@@ -55,11 +55,20 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ITechnicianSkillRepository, TechnicianSkillRepository>();
         services.AddScoped<ITechnicianScheduleRepository, TechnicianScheduleRepository>();
         services.AddScoped<IBusinessHoursRepository, BusinessHoursRepository>();
-        services.AddScoped<IAppointmentStatusLookupRepository, AppointmentStatusLookupRepository>();
-        services.AddScoped<IServiceStatusLookupRepository, ServiceStatusLookupRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
-        services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+
+        RegisterStaticEntityCacheDecorators(services);
+    }
+
+    /// <summary>
+    /// Registers cache decorators for static/seeded entities only.
+    /// </summary>
+    private static void RegisterStaticEntityCacheDecorators(IServiceCollection services)
+    {
+        services.AddScoped<ITimeSlotRepository, CachedTimeSlotRepository>();
+        services.AddScoped<IAppointmentStatusLookupRepository, CachedAppointmentStatusLookupRepository>();
+        services.AddScoped<IServiceStatusLookupRepository, CachedServiceStatusLookupRepository>();
     }
 
     /// <summary>

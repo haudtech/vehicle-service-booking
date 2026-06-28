@@ -20,6 +20,12 @@ public class ServiceType : BaseEntity
     public int DurationMinutes { get; set; }
 
     /// <summary>
+    /// Base price for this service type.
+    /// Stored as a monetary amount in the system default currency.
+    /// </summary>
+    public decimal Price { get; set; }
+
+    /// <summary>
     /// Technicians who can perform this service
     /// </summary>
     public ICollection<TechnicianSkill> TechnicianSkills { get; set; }

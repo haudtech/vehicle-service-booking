@@ -5,6 +5,6 @@ namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository interface for Service entity.
 /// </summary>
-public interface IServiceRepository
+public interface IServiceRepository : IReadRepository<Service>, IWriteRepository<Service>
 {
 }

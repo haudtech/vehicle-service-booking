@@ -9,15 +9,18 @@ namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository interface for Appointment entity persistence operations
 /// </summary>
-public interface IAppointmentRepository
+public interface IAppointmentRepository : IReadRepository<Appointment>, IWriteRepository<Appointment>
 {
     /// <summary>
-    /// Gets an appointment by its unique identifier
+    /// Gets an appointment by ID with Services included.
+    /// Use this when business workflows require service-level details.
     /// </summary>
     /// <param name="id">The appointment ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The appointment or null if not found</returns>
-    Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    /// <returns>The appointment with services included, or null if not found</returns>
+    Task<Appointment?> GetByIdWithServicesAsync(
+        Guid id,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets all appointments for a specific service bay within a time range
@@ -53,35 +56,6 @@ public interface IAppointmentRepository
     Task<IEnumerable<Appointment>> GetByVehicleIdAsync(
         Guid vehicleId,
         CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Adds a new appointment to the repository
-    /// </summary>
-    /// <param name="appointment">The appointment to add</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The added appointment with generated ID</returns>
-    Task<Appointment> AddAsync(Appointment appointment, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Updates an existing appointment
-    /// </summary>
-    /// <param name="appointment">The appointment with updated values</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The updated appointment</returns>
-    Task<Appointment> UpdateAsync(Appointment appointment, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Deletes an appointment by ID
-    /// </summary>
-    /// <param name="id">The appointment ID to delete</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Saves all pending changes to the database
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    Task SaveChangesAsync(CancellationToken cancellationToken);
 
     // ==================== PHASE 4: MULTI-SERVICE SUPPORT METHODS ====================
 

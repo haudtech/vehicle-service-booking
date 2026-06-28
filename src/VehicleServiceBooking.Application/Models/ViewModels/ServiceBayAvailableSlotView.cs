@@ -56,4 +56,10 @@ public class ServiceBayAvailableSlotsView
     /// (No conflicts with existing services, bay is active)
     /// </summary>
     public bool IsAvailable { get; set; }
+
+    /// <summary>
+    /// Indicates whether the view row should be considered active.
+    /// Used by repository-level query filters.
+    /// </summary>
+    public bool IsActive { get; set; }
 }

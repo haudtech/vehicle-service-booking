@@ -118,11 +118,11 @@ public class AvailabilityController : ControllerBase
             var response = options
                 .Select(o => new AvailabilityOptionResponse
                 {
-                    SlotStart = o.TimeSlot.Start,
-                    SlotEnd = o.TimeSlot.End,
+                    SlotStart = o.DateTimeSlot.Start,
+                    SlotEnd = o.DateTimeSlot.End,
                     TechnicianId = o.TechnicianId,
                     ServiceBayId = o.ServiceBayId,
-                    RankScore = 0  // TODO: Implement ranking in Phase 15.24
+                    // RankScore = 0  // TODO: Implement ranking in Phase 15.24
                 })
                 .ToList();
 

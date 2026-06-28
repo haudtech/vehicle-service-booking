@@ -61,4 +61,10 @@ public class TechnicianAvailableSlotsView
     /// (No conflicts with existing services or schedule)
     /// </summary>
     public bool IsAvailable { get; set; }
+
+    /// <summary>
+    /// Indicates whether the view row should be considered active.
+    /// Used by repository-level query filters.
+    /// </summary>
+    public bool IsActive { get; set; }
 }

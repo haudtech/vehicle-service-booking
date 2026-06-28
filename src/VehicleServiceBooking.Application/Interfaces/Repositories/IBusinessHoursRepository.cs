@@ -5,6 +5,6 @@ namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository interface for BusinessHours entity.
 /// </summary>
-public interface IBusinessHoursRepository
+public interface IBusinessHoursRepository : IReadRepository<BusinessHours>, IWriteRepository<BusinessHours>
 {
 }

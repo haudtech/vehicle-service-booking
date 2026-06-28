@@ -38,13 +38,6 @@ public class TimeSlot : BaseEntity
     /// </summary>
     public TimeOnly SlotEndTime { get; set; }
 
-    /// <summary>
-    /// Whether this slot is currently active (for soft-delete).
-    /// Inactive slots can be skipped during availability queries.
-    /// Allows dealerships to close certain slots without deleting the reference data.
-    /// </summary>
-    public bool IsActive { get; set; } = true;
-
     // ============================================
     // Navigation Properties
     // ============================================

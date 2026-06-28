@@ -64,5 +64,4 @@ public interface IAvailabilityRepository
         Guid dealershipId,
         DateOnly queryDate,
         CancellationToken cancellationToken);
-
 }

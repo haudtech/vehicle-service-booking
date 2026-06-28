@@ -1,6 +1,11 @@
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Domain.Entities;
+using VehicleServiceBooking.Domain.Enums;
 
 namespace VehicleServiceBooking.Infrastructure.Repositories;
 
@@ -11,5 +16,11 @@ public class ServiceStatusLookupRepository : GenericRepository<ServiceStatusLook
 {
     public ServiceStatusLookupRepository(IApplicationDbContext dbContext) : base(dbContext)
     {
+    }
+
+    public virtual async Task<ServiceStatusLookup?> GetByStatusAsync(ServiceStatus status, CancellationToken cancellationToken)
+    {
+        return await GetQueryable()
+            .FirstOrDefaultAsync(x => x.Status == status, cancellationToken);
     }
 }

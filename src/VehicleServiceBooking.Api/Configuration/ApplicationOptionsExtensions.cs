@@ -38,6 +38,13 @@ public static class ApplicationOptionsExtensions
 
         services.AddSingleton<ICorsConfiguration>(corsConfig);
 
+        // Register static data cache options
+        services.Configure<StaticDataCacheOptions>(
+            configuration.GetSection(StaticDataCacheOptions.SectionName));
+
+        // Register in-process cache provider
+        services.AddMemoryCache();
+
         return services;
     }
 }

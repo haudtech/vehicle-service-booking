@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Models.ViewModels;
@@ -90,6 +91,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                     .Property("UpdatedAt")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .IsRequired();
+
+                modelBuilder.Entity(entityType.ClrType)
+                    .Property("IsActive")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasQueryFilter(CreateIsActiveFilter(entityType.ClrType));
             }
         }
 
@@ -430,10 +439,18 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ServiceType>()
             .Property(x => x.DurationMinutes)
             .IsRequired();
+        modelBuilder.Entity<ServiceType>()
+            .Property(x => x.Price)
+            .HasColumnType("numeric(10,2)")
+            .HasDefaultValue(0m)
+            .IsRequired();
         // DurationMinutes must be between 30 and 480 minutes (per original entity constraint)
         modelBuilder.Entity<ServiceType>()
             .ToTable(t => t.HasCheckConstraint("CK_ServiceType_DurationMinutes_Range",
                 "\"DurationMinutes\" >= 30 AND \"DurationMinutes\" <= 480"));
+        modelBuilder.Entity<ServiceType>()
+            .ToTable(t => t.HasCheckConstraint("CK_ServiceType_Price_NonNegative",
+                "\"Price\" >= 0"));
 
         // ==================== TECHNICIAN CONFIGURATION ====================
         
@@ -501,10 +518,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(x => x.Name)
             .HasMaxLength(50)
             .IsRequired();
-        modelBuilder.Entity<ServiceBay>()
-            .Property(x => x.IsActive)
-            .HasDefaultValue(true);
-
         // ==================== VEHICLE CONFIGURATION ====================
         
         // Configure Vehicle primary key
@@ -615,11 +628,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired()
             .HasColumnType("time");
 
-        modelBuilder.Entity<TimeSlot>()
-            .Property(x => x.IsActive)
-            .IsRequired()
-            .HasDefaultValue(true);
-
         // TimeSlot relationships to Service (for estimated timing)
         modelBuilder.Entity<TimeSlot>()
             .HasMany(x => x.EstimatedStartServices)
@@ -643,6 +651,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasKey(x => new { x.TimeSlotId, x.TechnicianId })
             .HasName("PK_TechnicianAvailableSlots");
         technicianAvailableSlotsEntity
+            .Property(x => x.IsActive)
+            .HasColumnType("boolean");
+        technicianAvailableSlotsEntity
+            .HasQueryFilter(x => x.IsActive);
+        technicianAvailableSlotsEntity
             .ToView("TechnicianAvailableSlots");
 
         // ServiceBayAvailableSlots View Configuration
@@ -651,6 +664,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasKey(x => new { x.TimeSlotId, x.ServiceBayId })
             .HasName("PK_ServiceBayAvailableSlots");
         serviceBayAvailableSlotsEntity
+            .Property(x => x.IsActive)
+            .HasColumnType("boolean");
+        serviceBayAvailableSlotsEntity
+            .HasQueryFilter(x => x.IsActive);
+        serviceBayAvailableSlotsEntity
             .ToView("ServiceBayAvailableSlots");
 
         // ServiceTypeAvailability View Configuration
@@ -658,6 +676,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         serviceTypeAvailabilityEntity
             .HasKey(x => new { x.ServiceTypeId, x.TimeSlotId, x.TechnicianId, x.ServiceBayId })
             .HasName("PK_ServiceTypeAvailability");
+        serviceTypeAvailabilityEntity
+            .Property(x => x.IsActive)
+            .HasColumnType("boolean");
+        serviceTypeAvailabilityEntity
+            .HasQueryFilter(x => x.IsActive);
         serviceTypeAvailabilityEntity
             .ToView("ServiceTypeAvailability");
 
@@ -690,5 +713,18 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         }
 
         modelBuilder.Entity<TimeSlot>().HasData(timeSlots);
+    }
+
+    private static LambdaExpression CreateIsActiveFilter(Type clrType)
+    {
+        var parameter = Expression.Parameter(clrType, "entity");
+        var propertyAccess = Expression.Call(
+            typeof(EF),
+            nameof(EF.Property),
+            new[] { typeof(bool) },
+            parameter,
+            Expression.Constant("IsActive"));
+        var body = Expression.Equal(propertyAccess, Expression.Constant(true));
+        return Expression.Lambda(body, parameter);
     }
 }

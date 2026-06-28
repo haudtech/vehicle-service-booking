@@ -21,12 +21,6 @@ public class ServiceBayRepository : GenericRepository<ServiceBay>, IServiceBayRe
     {
     }
 
-    public override async Task<ServiceBay?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-    {
-        return await GetQueryable()
-            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-    }
-
     public async Task<IEnumerable<ServiceBay>> GetByDealershipAsync(
         Guid dealershipId,
         CancellationToken cancellationToken)

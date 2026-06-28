@@ -19,6 +19,9 @@ namespace VehicleServiceBooking.Application.Services;
 public class AppointmentService : IAppointmentService
 {
     private readonly IAppointmentRepository _appointmentRepository;
+    private readonly ITimeSlotRepository _timeSlotRepository;
+    private readonly IAppointmentStatusLookupRepository _appointmentStatusLookupRepository;
+    private readonly IServiceStatusLookupRepository _serviceStatusLookupRepository;
     private readonly IAvailabilityService _availabilityService;
     private readonly ILogger<AppointmentService> _logger;
 
@@ -27,10 +30,16 @@ public class AppointmentService : IAppointmentService
     /// </summary>
     public AppointmentService(
         IAppointmentRepository appointmentRepository,
+        ITimeSlotRepository timeSlotRepository,
+        IAppointmentStatusLookupRepository appointmentStatusLookupRepository,
+        IServiceStatusLookupRepository serviceStatusLookupRepository,
         IAvailabilityService availabilityService,
         ILogger<AppointmentService> logger)
     {
         _appointmentRepository = appointmentRepository ?? throw new ArgumentNullException(nameof(appointmentRepository));
+        _timeSlotRepository = timeSlotRepository ?? throw new ArgumentNullException(nameof(timeSlotRepository));
+        _appointmentStatusLookupRepository = appointmentStatusLookupRepository ?? throw new ArgumentNullException(nameof(appointmentStatusLookupRepository));
+        _serviceStatusLookupRepository = serviceStatusLookupRepository ?? throw new ArgumentNullException(nameof(serviceStatusLookupRepository));
         _availabilityService = availabilityService ?? throw new ArgumentNullException(nameof(availabilityService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -98,6 +107,22 @@ public class AppointmentService : IAppointmentService
 
             // BUSINESS LOGIC 5: Create appointment with services (atomic transaction via Repository)
             _logger.LogDebug("Step 4: Creating appointment and service entities");
+            var bookedStatusLookup = await _appointmentStatusLookupRepository
+                .GetByStatusAsync(AppointmentStatus.Booked, cancellationToken)
+                .ConfigureAwait(false);
+            if (bookedStatusLookup == null)
+            {
+                throw new InvalidOperationException("Appointment status lookup for 'Booked' was not found.");
+            }
+
+            var pendingServiceStatusLookup = await _serviceStatusLookupRepository
+                .GetByStatusAsync(ServiceStatus.Pending, cancellationToken)
+                .ConfigureAwait(false);
+            if (pendingServiceStatusLookup == null)
+            {
+                throw new InvalidOperationException("Service status lookup for 'Pending' was not found.");
+            }
+
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
@@ -105,7 +130,7 @@ public class AppointmentService : IAppointmentService
                 CustomerId = request.CustomerId,
                 VehicleId = request.VehicleId,
                 AppointmentDate = request.AppointmentDate,
-                StatusId = Guid.Parse("00000000-0000-0000-0000-000000000001"), // Booked status
+                StatusId = bookedStatusLookup.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -119,7 +144,7 @@ public class AppointmentService : IAppointmentService
                 TechnicianId = request.TechnicianId,
                 ServiceBayId = request.ServiceBayId,
                 DealershipId = request.DealershipId,
-                ServiceStatusId = Guid.Parse("00000000-0000-0000-0001-000000000001"), // Pending status
+                ServiceStatusId = pendingServiceStatusLookup.Id,
                 SequenceOrder = 1,
                 EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,
                 EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,
@@ -140,7 +165,7 @@ public class AppointmentService : IAppointmentService
 
             // BUSINESS LOGIC 7: Load time slot details for response (data query)
             _logger.LogDebug("Step 6: Loading time slot details for response");
-            var startTimeSlot = await _appointmentRepository.GetByIdAsync(createdAppointment.Id, cancellationToken)
+            var startTimeSlot = await _appointmentRepository.GetByIdWithServicesAsync(createdAppointment.Id, cancellationToken)
                 .ConfigureAwait(false);
             
             if (startTimeSlot?.Services.FirstOrDefault() is not Service firstService ||
@@ -152,8 +177,8 @@ public class AppointmentService : IAppointmentService
 
             // Load the actual TimeSlot entities by ID to get time values
             var timeSlotIds = new[] { firstService.EstimatedStartTimeSlotId.Value, firstService.EstimatedEndTimeSlotId.Value };
-            var timeSlots = await _appointmentRepository.GetTimeSlotsBySequenceRangeAsync(
-                0, int.MaxValue, cancellationToken).ConfigureAwait(false);
+            var timeSlots = await _timeSlotRepository.GetByIdsAsync(
+                timeSlotIds, cancellationToken).ConfigureAwait(false);
             
             var startSlot = timeSlots.FirstOrDefault(ts => ts.Id == firstService.EstimatedStartTimeSlotId.Value);
             var endSlot = timeSlots.FirstOrDefault(ts => ts.Id == firstService.EstimatedEndTimeSlotId.Value);
@@ -204,7 +229,7 @@ public class AppointmentService : IAppointmentService
             _logger.LogInformation("Retrieving appointment: appointmentId={AppointmentId}", appointmentId);
 
             // DATA QUERY: Retrieve appointment from Repository
-            var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+            var appointment = await _appointmentRepository.GetByIdWithServicesAsync(appointmentId, cancellationToken);
 
             if (appointment == null)
             {
@@ -233,8 +258,9 @@ public class AppointmentService : IAppointmentService
             }
 
             // Load all timeSlots to find the ones we need
-            var timeSlots = await _appointmentRepository.GetTimeSlotsBySequenceRangeAsync(
-                0, int.MaxValue, cancellationToken);
+            var timeSlots = await _timeSlotRepository.GetByIdsAsync(
+                new[] { startTimeSlotId.Value, endTimeSlotId.Value },
+                cancellationToken);
 
             var startSlot = timeSlots.FirstOrDefault(ts => ts.Id == startTimeSlotId.Value);
             var endSlot = timeSlots.FirstOrDefault(ts => ts.Id == endTimeSlotId.Value);
@@ -280,7 +306,15 @@ public class AppointmentService : IAppointmentService
             request.VehicleId, cancellationToken);
 
         // BUSINESS LOGIC: Check for overlapping appointments on same date
-        var appointmentCancelledStatusId = Guid.Parse("00000000-0000-0000-0000-000000000004");
+        var cancelledStatusLookup = await _appointmentStatusLookupRepository
+            .GetByStatusAsync(AppointmentStatus.Cancelled, cancellationToken)
+            .ConfigureAwait(false);
+        if (cancelledStatusLookup == null)
+        {
+            throw new InvalidOperationException("Appointment status lookup for 'Cancelled' was not found.");
+        }
+
+        var appointmentCancelledStatusId = cancelledStatusLookup.Id;
 
         var conflictingAppointment = vehicleAppointments
             .Where(a => a.AppointmentDate == request.AppointmentDate && a.StatusId != appointmentCancelledStatusId)

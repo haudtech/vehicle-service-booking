@@ -25,11 +25,6 @@ public class ServiceBay : BaseEntity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indicates if the service bay is available for use
-    /// </summary>
-    public bool IsActive { get; set; } = true;
-
-    /// <summary>
     /// Collection of services performed in this service bay
     /// </summary>
     public ICollection<Service> Services { get; set; }

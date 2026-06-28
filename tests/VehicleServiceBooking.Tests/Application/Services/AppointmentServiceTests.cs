@@ -6,6 +6,7 @@ using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;
+using VehicleServiceBooking.Domain.Enums;
 using VehicleServiceBooking.Tests.Common;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -15,6 +16,9 @@ namespace VehicleServiceBooking.Tests.Application.Services;
 public class AppointmentServiceTests
 {
     private readonly Mock<IAppointmentRepository> _mockAppointmentRepository;
+    private readonly Mock<ITimeSlotRepository> _mockTimeSlotRepository;
+    private readonly Mock<IAppointmentStatusLookupRepository> _mockAppointmentStatusLookupRepository;
+    private readonly Mock<IServiceStatusLookupRepository> _mockServiceStatusLookupRepository;
     private readonly Mock<IAvailabilityService> _mockAvailabilityService;
     private readonly Mock<ILogger<AppointmentService>> _mockLogger;
     private readonly AppointmentService _appointmentService;
@@ -22,11 +26,27 @@ public class AppointmentServiceTests
     public AppointmentServiceTests()
     {
         _mockAppointmentRepository = new Mock<IAppointmentRepository>();
+        _mockTimeSlotRepository = new Mock<ITimeSlotRepository>();
+        _mockAppointmentStatusLookupRepository = new Mock<IAppointmentStatusLookupRepository>();
+        _mockServiceStatusLookupRepository = new Mock<IServiceStatusLookupRepository>();
         _mockAvailabilityService = new Mock<IAvailabilityService>();
         _mockLogger = new Mock<ILogger<AppointmentService>>();
 
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByStatusAsync(AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = Guid.NewGuid(), Status = AppointmentStatus.Booked, Name = "Booked" });
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByStatusAsync(AppointmentStatus.Cancelled, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = Guid.NewGuid(), Status = AppointmentStatus.Cancelled, Name = "Cancelled" });
+        _mockServiceStatusLookupRepository
+            .Setup(r => r.GetByStatusAsync(ServiceStatus.Pending, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceStatusLookup { Id = Guid.NewGuid(), Status = ServiceStatus.Pending, Name = "Pending" });
+
         _appointmentService = new AppointmentService(
             _mockAppointmentRepository.Object,
+            _mockTimeSlotRepository.Object,
+            _mockAppointmentStatusLookupRepository.Object,
+            _mockServiceStatusLookupRepository.Object,
             _mockAvailabilityService.Object,
             _mockLogger.Object);
     }
@@ -54,10 +74,10 @@ public class AppointmentServiceTests
                 return a;
             });
         _mockAppointmentRepository
-            .Setup(r => r.GetByIdAsync(createdAppointmentId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByIdWithServicesAsync(createdAppointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildAppointmentFromRequest(request, createdAppointmentId, createdAt));
-        _mockAppointmentRepository
-            .Setup(r => r.GetTimeSlotsBySequenceRangeAsync(0, int.MaxValue, It.IsAny<CancellationToken>()))
+        _mockTimeSlotRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildTimeSlotsForRequest(request));
 
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -118,10 +138,10 @@ public class AppointmentServiceTests
         var request = new CreateAppointmentRequestBuilder().WithAppointmentDate(appointmentDate).Build();
 
         _mockAppointmentRepository
-            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByIdWithServicesAsync(appointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildAppointmentFromRequest(request, appointmentId, DateTime.UtcNow));
-        _mockAppointmentRepository
-            .Setup(r => r.GetTimeSlotsBySequenceRangeAsync(0, int.MaxValue, It.IsAny<CancellationToken>()))
+        _mockTimeSlotRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildTimeSlotsForRequest(request));
 
         var result = await _appointmentService.GetAppointmentByIdAsync(appointmentId);
@@ -136,7 +156,7 @@ public class AppointmentServiceTests
         var invalidId = Guid.NewGuid();
 
         _mockAppointmentRepository
-            .Setup(r => r.GetByIdAsync(invalidId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByIdWithServicesAsync(invalidId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Appointment?)null);
 
         var result = await _appointmentService.GetAppointmentByIdAsync(invalidId);
