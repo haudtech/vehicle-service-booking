@@ -50,16 +50,14 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             .ReturnsAsync((Guid dealershipId, Guid serviceTypeId, DateTime date, CancellationToken cancellationToken) =>
                 new List<AvailabilityOption>
                 {
-                    new AvailabilityOption
-                    {
-                        TimeSlot = new VehicleServiceBooking.Application.Models.TimeSlot
-                        {
-                            Start = date.Date.AddHours(8),
-                            End = date.Date.AddHours(8).AddMinutes(30)
-                        },
-                        TechnicianId = Guid.Empty,
-                        ServiceBayId = Guid.Empty
-                    }
+                    AvailabilityOptionBuilder.CreateValid()
+                        .WithTimeSlot(
+                            AppTimeSlotBuilder.CreateValid()
+                                .WithTimes(new TimeOnly(8, 0), new TimeOnly(8, 30))
+                                .Build())
+                        .WithTechnicianId(Guid.Empty)
+                        .WithServiceBayId(Guid.Empty)
+                        .Build()
                 });
 
         _appointmentService = new AppointmentService(
@@ -89,28 +87,24 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AvailabilityOption>
             {
-                new AvailabilityOption
-                {
-                    TimeSlot = new VehicleServiceBooking.Application.Models.TimeSlot
-                    {
-                        Start = date.Date.AddHours(8),
-                        End = date.Date.AddHours(8).AddMinutes(30)
-                    },
-                    TechnicianId = technicianId,
-                    ServiceBayId = serviceBayId
-                }
+                AvailabilityOptionBuilder.CreateValid()
+                    .WithTimeSlot(
+                        AppTimeSlotBuilder.CreateValid()
+                            .WithTimes(new TimeOnly(8, 0), new TimeOnly(8, 30))
+                            .Build())
+                    .WithTechnicianId(technicianId)
+                    .WithServiceBayId(serviceBayId)
+                    .Build()
             });
     }
 
     private void SeedTechnicianSkills(IEnumerable<Guid> technicianIds, Guid serviceTypeId)
     {
         _dbContext.TechnicianSkills.AddRange(
-            technicianIds.Select(id => new TechnicianSkill
-            {
-                Id = Guid.NewGuid(),
-                TechnicianId = id,
-                ServiceTypeId = serviceTypeId
-            }));
+            technicianIds.Select(id => TechnicianSkillBuilder.ValidSkill()
+                .WithTechnicianId(id)
+                .WithServiceTypeId(serviceTypeId)
+                .Build()));
     }
 
     #region CreateAppointmentAsync Integration Tests
@@ -137,18 +131,16 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         var startTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001");  // Slot 1: 08:00-08:30
         var endTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002");    // Slot 2: 08:30-09:00
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = appointmentDate,
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = startTimeSlotId,
-            EstimatedEndTimeSlotId = endTimeSlotId
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(appointmentDate)
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(serviceBays[0].Id)
+            .WithTimeSlots(startTimeSlotId, endTimeSlotId)
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -188,18 +180,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         await _dbContext.SaveChangesAsync();
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = Guid.NewGuid(), // Non-existent dealership
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(Guid.NewGuid()) // Non-existent dealership
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(serviceBays[0].Id)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Guid.Parse("00000000-0000-0000-0000-000000000002"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -240,18 +232,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         // Request for overlapping slot using TimeSlot IDs
-        var conflictingRequest = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
-        };
+        var conflictingRequest = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(existingAppointments[0].Services.First().ServiceBayId!.Value)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Guid.Parse("00000000-0000-0000-0000-000000000002"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(conflictingRequest.TechnicianId, conflictingRequest.ServiceBayId, conflictingRequest.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -281,18 +273,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         // Request for non-overlapping slot (different time slots)
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = existingAppointments[0].Services.First().ServiceBayId!.Value,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000003"),  // Slot 3: 09:00-09:30
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000004")     // Slot 4: 09:30-10:00
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(existingAppointments[0].Services.First().ServiceBayId!.Value)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000003"),
+                Guid.Parse("00000000-0000-0000-0000-000000000004"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -331,18 +323,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
         // Create second appointment with same technician in different bay (same time) - should succeed
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = appointmentDate,
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = serviceBays[1].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000005"),  // Slot 5: 10:00-10:30
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000006")     // Slot 6: 10:30-11:00
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(appointmentDate)
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(serviceBays[1].Id)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000005"),
+                Guid.Parse("00000000-0000-0000-0000-000000000006"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -384,18 +376,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         var endTime = firstAppointment.Services.Max(s => s.EstimatedEndTime) ?? DateTime.UtcNow.AddHours(1);
 
         // Try to create second appointment in same service bay with overlapping time
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[1].Id, // Different technician
-            ServiceBayId = firstAppointment.Services.First().ServiceBayId!.Value, // Same bay!
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[1].Id)
+            .WithServiceBayId(firstAppointment.Services.First().ServiceBayId!.Value)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Guid.Parse("00000000-0000-0000-0000-000000000002"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -500,18 +492,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = appointmentDate,
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(appointmentDate)
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(serviceBays[0].Id)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Guid.Parse("00000000-0000-0000-0000-000000000002"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -550,18 +542,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
-        var request = new CreateAppointmentRequest
-        {
-            DealershipId = dealership.Id,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            AppointmentDate = appointmentDate,
-            ServiceTypeId = serviceType.Id,
-            TechnicianId = technicians[0].Id,
-            ServiceBayId = serviceBays[0].Id,
-            EstimatedStartTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            EstimatedEndTimeSlotId = Guid.Parse("00000000-0000-0000-0000-000000000002")
-        };
+        var request = new CreateAppointmentRequestBuilder()
+            .WithDealershipId(dealership.Id)
+            .WithCustomerId(customer.Id)
+            .WithVehicleId(vehicle.Id)
+            .WithAppointmentDate(appointmentDate)
+            .WithServiceTypeId(serviceType.Id)
+            .WithTechnicianId(technicians[0].Id)
+            .WithServiceBayId(serviceBays[0].Id)
+            .WithTimeSlots(
+                Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Guid.Parse("00000000-0000-0000-0000-000000000002"))
+            .Build();
 
         SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
@@ -602,18 +594,18 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         for (int i = 0; i < 5; i++)
         {
             var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-            var request = new CreateAppointmentRequest
-            {
-                DealershipId = dealership.Id,
-                CustomerId = customer.Id,
-                VehicleId = vehicle.Id,
-                AppointmentDate = appointmentDate,
-                ServiceTypeId = serviceType.Id,
-                TechnicianId = technicians[0].Id,
-                ServiceBayId = serviceBays[0].Id,
-                EstimatedStartTimeSlotId = Guid.Parse($"00000000-0000-0000-0000-{(i+1):000000000000}"),
-                EstimatedEndTimeSlotId = Guid.Parse($"00000000-0000-0000-0000-{(i+2):000000000000}")
-            };
+            var request = new CreateAppointmentRequestBuilder()
+                .WithDealershipId(dealership.Id)
+                .WithCustomerId(customer.Id)
+                .WithVehicleId(vehicle.Id)
+                .WithAppointmentDate(appointmentDate)
+                .WithServiceTypeId(serviceType.Id)
+                .WithTechnicianId(technicians[0].Id)
+                .WithServiceBayId(serviceBays[0].Id)
+                .WithTimeSlots(
+                    Guid.Parse($"00000000-0000-0000-0000-{(i+1):000000000000}"),
+                    Guid.Parse($"00000000-0000-0000-0000-{(i+2):000000000000}"))
+                .Build();
 
             SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 

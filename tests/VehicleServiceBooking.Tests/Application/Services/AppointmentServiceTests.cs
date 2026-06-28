@@ -1,25 +1,19 @@
 using FluentAssertions;
 using Moq;
 using VehicleServiceBooking.Application.DTOs;
-using VehicleServiceBooking.Application.Interfaces;
-using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
+using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;
-using VehicleServiceBooking.Domain.Enums;
-using VehicleServiceBooking.Infrastructure.Persistence;
 using VehicleServiceBooking.Tests.Common;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
 using Xunit;
 
 namespace VehicleServiceBooking.Tests.Application.Services;
 
 public class AppointmentServiceTests
 {
-    private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<IAppointmentRepository> _mockAppointmentRepository;
     private readonly Mock<IAvailabilityService> _mockAvailabilityService;
     private readonly Mock<ILogger<AppointmentService>> _mockLogger;
@@ -27,7 +21,6 @@ public class AppointmentServiceTests
 
     public AppointmentServiceTests()
     {
-        _mockDbContext = new Mock<IApplicationDbContext>();
         _mockAppointmentRepository = new Mock<IAppointmentRepository>();
         _mockAvailabilityService = new Mock<IAvailabilityService>();
         _mockLogger = new Mock<ILogger<AppointmentService>>();
@@ -35,378 +28,189 @@ public class AppointmentServiceTests
         _appointmentService = new AppointmentService(
             _mockAppointmentRepository.Object,
             _mockAvailabilityService.Object,
-            _mockLogger.Object
-        );
+            _mockLogger.Object);
     }
-
-    #region CreateAppointmentAsync Tests
 
     [Fact]
     public async Task CreateAppointmentAsync_WithValidRequest_ShouldCreateAppointment()
     {
-        // Arrange
-        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
+        var request = new CreateAppointmentRequestBuilder().Build();
+        var createdAppointmentId = Guid.NewGuid();
+        var createdAt = DateTime.UtcNow;
 
-        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
-        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
-        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
-        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
-        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
-        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        SetupMockDbSet<Appointment>(null, new List<Appointment>());
-
-        _mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        // Setup repository to return the appointment when AddAsync is called
+        SetupAvailability(request, true);
         _mockAppointmentRepository
-            .Setup(r => r.AddAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Appointment app, CancellationToken ct) => app);
+            .Setup(r => r.TechnicianHasSkillAsync(request.TechnicianId, request.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _mockAppointmentRepository
+            .Setup(r => r.GetByVehicleIdAsync(request.VehicleId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Appointment>());
+        _mockAppointmentRepository
+            .Setup(r => r.CreateAppointmentWithServicesAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment a, CancellationToken _) =>
+            {
+                a.Id = createdAppointmentId;
+                a.CreatedAt = createdAt;
+                return a;
+            });
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(createdAppointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildAppointmentFromRequest(request, createdAppointmentId, createdAt));
+        _mockAppointmentRepository
+            .Setup(r => r.GetTimeSlotsBySequenceRangeAsync(0, int.MaxValue, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildTimeSlotsForRequest(request));
 
-        // Act
-        var result = await _appointmentService.CreateAppointmentAsync(scenario.Request);
+        var result = await _appointmentService.CreateAppointmentAsync(request);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.AppointmentId.Should().NotBeEmpty();
-        result.SlotStart.Should().Be(scenario.SlotStart);
-        result.SlotEnd.Should().Be(scenario.SlotEnd);
+        result.AppointmentId.Should().Be(createdAppointmentId);
+        result.SlotStart.Should().Be(request.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
+        result.SlotEnd.Should().Be(request.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
+        result.CreatedAt.Should().Be(createdAt);
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithNonExistentCustomer_ShouldThrowException()
+    public async Task CreateAppointmentAsync_WithNoAvailability_ShouldThrowException()
     {
-        // Arrange
-        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
+        var request = new CreateAppointmentRequestBuilder().Build();
 
-        // Setup mocks - empty lists to simulate non-existent entities
-        SetupMockDbSet<Dealership>(null, new List<Dealership>());
-        SetupMockDbSet<Customer>(null, new List<Customer>());
-        SetupMockDbSet<Vehicle>(null, new List<Vehicle>());
-        SetupMockDbSet<ServiceType>(null, new List<ServiceType>());
-        SetupMockDbSet<Technician>(null, new List<Technician>());
-        SetupMockDbSet<ServiceBay>(null, new List<ServiceBay>());
-        SetupMockDbSet<Appointment>(null, new List<Appointment>());
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                request.DealershipId,
+                request.ServiceTypeId,
+                request.AppointmentDate.ToDateTime(TimeOnly.MinValue),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AvailabilityOption>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
-        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CreateAppointmentAsync(request));
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithNonExistentVehicle_ShouldThrowException()
+    public async Task CreateAppointmentAsync_WithUnavailableTechnicianBayCombination_ShouldThrowException()
     {
-        // Arrange
-        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
+        var request = new CreateAppointmentRequestBuilder().Build();
 
-        // Setup mocks
-        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
-        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
-        SetupMockDbSet<Vehicle>(null, new List<Vehicle>()); // Empty - no vehicles
-        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
-        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
-        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
-        
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        
-        SetupMockDbSet<Appointment>(null, new List<Appointment>());
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                request.DealershipId,
+                request.ServiceTypeId,
+                request.AppointmentDate.ToDateTime(TimeOnly.MinValue),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AvailabilityOption>
+            {
+                AvailabilityOptionBuilder.CreateValid()
+                    .WithTimeSlot(
+                        AppTimeSlotBuilder.CreateValid()
+                            .WithTimes(new TimeOnly(8, 0), new TimeOnly(9, 0))
+                            .Build())
+                    .WithTechnicianId(Guid.NewGuid())
+                    .WithServiceBayId(Guid.NewGuid())
+                    .Build()
+            });
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
-        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CreateAppointmentAsync(request));
     }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WithConflictingSlot_ShouldThrowException()
-    {
-        // Arrange
-        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
-        var conflictScenario = TestDataFactory.CreateConflictDetectionScenario();
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
-
-        // Use the conflicting appointment from the scenario
-        var existingAppointment = conflictScenario.ConflictingAppointment;
-
-        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
-        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
-        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
-        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
-        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
-        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(scenario.Request)
-        );
-    }
-
-    [Fact]
-    public async Task CreateAppointmentAsync_WithNonConflictingExistingAppointment_ShouldSucceed()
-    {
-        // Arrange
-        var scenario = TestDataFactory.CreateAppointmentWithAllEntities();
-        var conflictScenario = TestDataFactory.CreateConflictDetectionScenario();
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
-
-        // Use the non-conflicting appointment from the scenario
-        var existingAppointment = conflictScenario.NonConflictingAppointment;
-
-        SetupMockDbSet(scenario.Dealership, new List<Dealership> { scenario.Dealership });
-        SetupMockDbSet(scenario.Customer, new List<Customer> { scenario.Customer });
-        SetupMockDbSet(scenario.Vehicle, new List<Vehicle> { scenario.Vehicle });
-        SetupMockDbSet(scenario.ServiceType, new List<ServiceType> { scenario.ServiceType });
-        SetupMockDbSet(scenario.Technician, new List<Technician> { scenario.Technician });
-        SetupMockDbSet(scenario.ServiceBay, new List<ServiceBay> { scenario.ServiceBay });
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        SetupMockDbSet(existingAppointment, new List<Appointment> { existingAppointment });
-
-        _mockDbContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        // Act
-        var result = await _appointmentService.CreateAppointmentAsync(scenario.Request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AppointmentId.Should().NotBeEmpty();
-        result.SlotStart.Should().Be(scenario.SlotStart);
-        result.SlotEnd.Should().Be(scenario.SlotEnd);
-    }
-
-    #endregion
-
-    #region GetAppointmentByIdAsync Tests
 
     [Fact]
     public async Task GetAppointmentByIdAsync_WithValidId_ShouldReturnAppointment()
     {
-        // Arrange
         var appointmentId = Guid.NewGuid();
-        var startTime = DateTime.UtcNow.AddHours(1);
-        var endTime = startTime.AddHours(1);
-        
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
-        var appointment = TestDataFactory.CreateAppointmentWithService(startTime, endTime, appointmentId: appointmentId);
+        var appointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var request = new CreateAppointmentRequestBuilder().WithAppointmentDate(appointmentDate).Build();
 
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        SetupMockDbSet(appointment, new List<Appointment> { appointment });
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildAppointmentFromRequest(request, appointmentId, DateTime.UtcNow));
+        _mockAppointmentRepository
+            .Setup(r => r.GetTimeSlotsBySequenceRangeAsync(0, int.MaxValue, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildTimeSlotsForRequest(request));
 
-        // Act
         var result = await _appointmentService.GetAppointmentByIdAsync(appointmentId);
 
-        // Assert
         result.Should().NotBeNull();
-        result.AppointmentId.Should().Be(appointmentId);
-        result.SlotStart.Should().Be(startTime);
-        result.SlotEnd.Should().Be(endTime);
+        result!.AppointmentId.Should().Be(appointmentId);
     }
 
     [Fact]
-    public async Task GetAppointmentByIdAsync_WithInvalidId_ShouldThrowException()
+    public async Task GetAppointmentByIdAsync_WithInvalidId_ShouldReturnNull()
     {
-        // Arrange
         var invalidId = Guid.NewGuid();
-        SetupMockDbSet<Appointment>(null, new List<Appointment>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.GetAppointmentByIdAsync(invalidId)
-        );
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(invalidId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment?)null);
+
+        var result = await _appointmentService.GetAppointmentByIdAsync(invalidId);
+
+        result.Should().BeNull();
     }
 
-    [Fact]
-    public async Task GetAppointmentByIdAsync_WithMultipleAppointments_ShouldReturnCorrectOne()
+    private void SetupAvailability(CreateAppointmentRequest request, bool hasMatchingSlot)
     {
-        // Arrange
-        var targetId = Guid.NewGuid();
-        var startTime1 = DateTime.UtcNow.AddHours(1);
-        var startTime2 = DateTime.UtcNow.AddHours(3);
-        
-        var bookedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Booked);
-        var completedStatus = TestDataFactory.CreateAppointmentStatus(AppointmentStatus.Completed);
-        
-        var appointment1 = TestDataFactory.CreateAppointmentWithService(startTime1, startTime1.AddHours(1), appointmentId: targetId);
-        var appointment2 = TestDataFactory.CreateAppointmentWithService(startTime2, startTime2.AddHours(1));
+        var options = new List<AvailabilityOption>();
 
-        SetupMockDbSet(bookedStatus, new List<AppointmentStatusLookup> { bookedStatus });
-        SetupMockDbSet(completedStatus, new List<AppointmentStatusLookup> { completedStatus });
-        SetupMockDbSet(null, new List<Appointment> { appointment1, appointment2 });
+        if (hasMatchingSlot)
+        {
+            options.Add(
+                AvailabilityOptionBuilder.CreateValid()
+                    .WithTimeSlot(
+                        AppTimeSlotBuilder.CreateValid()
+                            .WithTimes(new TimeOnly(8, 0), new TimeOnly(9, 0))
+                            .Build())
+                    .WithTechnicianId(request.TechnicianId)
+                    .WithServiceBayId(request.ServiceBayId)
+                    .Build());
+        }
 
-        // Act
-        var result = await _appointmentService.GetAppointmentByIdAsync(targetId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AppointmentId.Should().Be(targetId);
-        result.SlotStart.Should().Be(startTime1);
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                request.DealershipId,
+                request.ServiceTypeId,
+                request.AppointmentDate.ToDateTime(TimeOnly.MinValue),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(options);
     }
 
-    #endregion
-
-    #region Helper Methods
-
-    private void SetupMockDbSet<T>(T? singleEntity, IList<T> entityList) where T : class
+    private static Appointment BuildAppointmentFromRequest(
+        CreateAppointmentRequest request,
+        Guid appointmentId,
+        DateTime createdAt)
     {
-        var queryableList = entityList.AsQueryable();
-        var mockDbSet = new Mock<DbSet<T>>();
+        var service = ServiceEntityBuilder.CreateValid()
+            .WithAppointmentId(appointmentId)
+            .WithServiceTypeId(request.ServiceTypeId)
+            .WithTechnicianId(request.TechnicianId)
+            .WithServiceBayId(request.ServiceBayId)
+            .WithDealershipId(request.DealershipId)
+            .WithSequenceOrder(1)
+            .WithEstimatedSlotIds(request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId)
+            .Build();
 
-        mockDbSet.As<IAsyncEnumerable<T>>()
-            .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-            .Returns(new TestAsyncEnumerator<T>(queryableList.GetEnumerator()));
-
-        mockDbSet.As<IQueryable<T>>()
-            .Setup(m => m.Provider)
-            .Returns(new TestAsyncQueryProvider<T>(queryableList.Provider));
-
-        mockDbSet.As<IQueryable<T>>()
-            .Setup(m => m.Expression)
-            .Returns(queryableList.Expression);
-
-        mockDbSet.As<IQueryable<T>>()
-            .Setup(m => m.ElementType)
-            .Returns(queryableList.ElementType);
-
-        mockDbSet.As<IQueryable<T>>()
-            .Setup(m => m.GetEnumerator())
-            .Returns(queryableList.GetEnumerator());
-
-        if (singleEntity != null)
-        {
-            mockDbSet.Setup(m => m.Add(It.IsAny<T>()));
-        }
-
-        // Setup the DbContext property based on type
-        if (typeof(T) == typeof(Dealership))
-        {
-            _mockDbContext.Setup(m => m.Dealerships).Returns((DbSet<Dealership>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(Customer))
-        {
-            _mockDbContext.Setup(m => m.Customers).Returns((DbSet<Customer>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(Vehicle))
-        {
-            _mockDbContext.Setup(m => m.Vehicles).Returns((DbSet<Vehicle>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(ServiceType))
-        {
-            _mockDbContext.Setup(m => m.ServiceTypes).Returns((DbSet<ServiceType>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(Technician))
-        {
-            _mockDbContext.Setup(m => m.Technicians).Returns((DbSet<Technician>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(ServiceBay))
-        {
-            _mockDbContext.Setup(m => m.ServiceBays).Returns((DbSet<ServiceBay>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(AppointmentStatusLookup))
-        {
-            _mockDbContext.Setup(m => m.AppointmentStatusLookups).Returns((DbSet<AppointmentStatusLookup>)(object)mockDbSet.Object);
-        }
-        else if (typeof(T) == typeof(Appointment))
-        {
-            _mockDbContext.Setup(m => m.Appointments).Returns((DbSet<Appointment>)(object)mockDbSet.Object);
-        }
+        return AppointmentEntityBuilder.CreateValid()
+            .WithId(appointmentId)
+            .WithDealershipId(request.DealershipId)
+            .WithCustomerId(request.CustomerId)
+            .WithVehicleId(request.VehicleId)
+            .WithAppointmentDate(request.AppointmentDate)
+            .WithStatusId(Guid.Parse("00000000-0000-0000-0000-000000000001"))
+            .WithTimestamps(createdAt, createdAt)
+            .WithServices(new[] { service })
+            .Build();
     }
 
-    #endregion
-}
-
-#region Test Helpers for Async LINQ
-
-public class TestAsyncEnumerator<T> : IAsyncEnumerator<T>
-{
-    private readonly IEnumerator<T> _inner;
-
-    public TestAsyncEnumerator(IEnumerator<T> inner)
+    private static IEnumerable<VehicleServiceBooking.Domain.Entities.TimeSlot> BuildTimeSlotsForRequest(CreateAppointmentRequest request)
     {
-        _inner = inner;
-    }
-
-    public T Current => _inner.Current;
-
-    public ValueTask DisposeAsync()
-    {
-        _inner.Dispose();
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask<bool> MoveNextAsync()
-    {
-        return ValueTask.FromResult(_inner.MoveNext());
+        return new List<VehicleServiceBooking.Domain.Entities.TimeSlot>
+        {
+            DomainTimeSlotBuilder.CreateValid()
+                .WithId(request.EstimatedStartTimeSlotId)
+                .WithSequenceOrder(1)
+                .WithSlotTimes(new TimeOnly(8, 0), new TimeOnly(8, 30))
+                .Build(),
+            DomainTimeSlotBuilder.CreateValid()
+                .WithId(request.EstimatedEndTimeSlotId)
+                .WithSequenceOrder(2)
+                .WithSlotTimes(new TimeOnly(8, 30), new TimeOnly(9, 0))
+                .Build()
+        };
     }
 }
-
-public class TestAsyncQueryProvider<T> : IQueryProvider
-{
-    private readonly IQueryProvider _inner;
-
-    public TestAsyncQueryProvider(IQueryProvider inner)
-    {
-        _inner = inner;
-    }
-
-    public IQueryable CreateQuery(Expression expression)
-    {
-        return new TestAsyncQuery<T>(expression);
-    }
-
-    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-    {
-        return new TestAsyncQuery<TElement>(expression);
-    }
-
-    public object Execute(Expression expression)
-    {
-        return _inner.Execute(expression);
-    }
-
-    public TResult Execute<TResult>(Expression expression)
-    {
-        return _inner.Execute<TResult>(expression);
-    }
-}
-
-public class TestAsyncQuery<T> : IAsyncEnumerable<T>, IQueryable<T>
-{
-    private readonly IQueryable<T> _inner;
-
-    public TestAsyncQuery(IQueryable<T> inner)
-    {
-        _inner = inner;
-    }
-
-    public TestAsyncQuery(Expression expression)
-    {
-        _inner = Enumerable.Empty<T>().AsQueryable();
-    }
-
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-    {
-        return new TestAsyncEnumerator<T>(_inner.GetEnumerator());
-    }
-
-    Expression IQueryable.Expression => _inner.Expression;
-    public Type ElementType => typeof(T);
-    public IQueryProvider Provider => new TestAsyncQueryProvider<T>(_inner.Provider);
-
-    public IEnumerator<T> GetEnumerator()
-    {
-        return _inner.GetEnumerator();
-    }
-
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-}
-
-#endregion

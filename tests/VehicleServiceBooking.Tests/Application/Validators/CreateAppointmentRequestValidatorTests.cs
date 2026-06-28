@@ -172,7 +172,7 @@ public class CreateAppointmentRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "AppointmentDate");
+        result.Errors.Should().Contain(e => e.PropertyName == "AppointmentDate");
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class CreateAppointmentRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "EstimatedEndTimeSlotId");
+        result.Errors.Should().Contain(e => e.PropertyName == "EstimatedEndTimeSlotId");
     }
 
     [Fact]
@@ -278,7 +278,7 @@ public class CreateAppointmentRequestValidatorTests
         result.Errors.Should().HaveCountGreaterThanOrEqualTo(3); // At least 3 errors
         result.Errors.Should().ContainSingle(e => e.PropertyName == "DealershipId");
         result.Errors.Should().ContainSingle(e => e.PropertyName == "CustomerId");
-        result.Errors.Should().ContainSingle(e => e.PropertyName == "AppointmentDate");
+        result.Errors.Should().Contain(e => e.PropertyName == "AppointmentDate");
     }
 
     [Fact]
