@@ -17,6 +17,7 @@ obj/
 
 # Logs
 *.log
+src/VehicleServiceBooking.Api/logs/
 
 # OS
 .DS_Store
@@ -27,5 +28,10 @@ TestResults/
 # Coverage
 coverage/
 
+# API test evidence artifacts
+docs/evidence/
+
 # Secrets
 appsettings.Local.json
+.env
+.env.local

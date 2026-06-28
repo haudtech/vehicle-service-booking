@@ -1,3 +1,5 @@
+using System;
+
 namespace VehicleServiceBooking.Application.Models;
 
 public class TimeSlot
