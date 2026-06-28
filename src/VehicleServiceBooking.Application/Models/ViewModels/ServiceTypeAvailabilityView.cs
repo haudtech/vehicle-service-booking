@@ -92,4 +92,10 @@ public class ServiceTypeAvailabilityView
     /// (Checks that N consecutive slots are available for duration)
     /// </summary>
     public bool CanFitService { get; set; }
+
+    /// <summary>
+    /// Indicates whether the view row should be considered active.
+    /// Used by repository-level query filters.
+    /// </summary>
+    public bool IsActive { get; set; }
 }

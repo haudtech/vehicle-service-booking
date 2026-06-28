@@ -22,6 +22,12 @@ public abstract class BaseEntity
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
+    /// Indicates whether the entity is active.
+    /// False means the entity is soft-deleted/inactive.
+    /// </summary>
+    public bool IsActive { get; set; }
+
+    /// <summary>
     /// Protected constructor that initializes audit fields with current UTC time
     /// </summary>
     protected BaseEntity()
@@ -30,5 +36,6 @@ public abstract class BaseEntity
         var now = DateTime.UtcNow;
         CreatedAt = now;
         UpdatedAt = now;
+        IsActive = true;
     }
 }

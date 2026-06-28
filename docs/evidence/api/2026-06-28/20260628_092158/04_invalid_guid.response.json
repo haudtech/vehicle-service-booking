@@ -1,1 +1,0 @@
-{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"DealershipId":["The value 'invalid' is not valid for DealershipId."],"ServiceTypeId":["The value 'invalid' is not valid for ServiceTypeId."]},"traceId":"00-b64ca660b44e56a8d481ecbc6422cb6d-83a5107a39da04f2-01"}

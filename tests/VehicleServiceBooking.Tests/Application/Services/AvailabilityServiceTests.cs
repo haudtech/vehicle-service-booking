@@ -57,8 +57,8 @@ public class AvailabilityServiceTests
         result.Should().ContainSingle();
         result[0].TechnicianId.Should().Be(technicianId);
         result[0].ServiceBayId.Should().Be(serviceBayId);
-        result[0].TimeSlot.Start.Should().Be(date.AddHours(9));
-        result[0].TimeSlot.End.Should().Be(date.AddHours(10));
+        result[0].DateTimeSlot.Start.Should().Be(date.AddHours(9));
+        result[0].DateTimeSlot.End.Should().Be(date.AddHours(10));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class AvailabilityServiceTests
             CancellationToken.None);
 
         result.Should().NotBeEmpty();
-        result.Should().AllSatisfy(slot => slot.TimeSlot.Start.Should().NotBe(date.AddHours(9)));
+        result.Should().AllSatisfy(slot => slot.DateTimeSlot.Start.Should().NotBe(date.AddHours(9)));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class AvailabilityServiceTests
 
         result.Should().AllSatisfy(slot =>
         {
-            var duration = slot.TimeSlot.End - slot.TimeSlot.Start;
+            var duration = slot.DateTimeSlot.End - slot.DateTimeSlot.Start;
             duration.Should().Be(TimeSpan.FromMinutes(90));
         });
     }
@@ -228,8 +228,8 @@ public class AvailabilityServiceTests
 
         result.Should().AllSatisfy(slot =>
         {
-            slot.TimeSlot.Start.TimeOfDay.Should().BeGreaterThanOrEqualTo(new TimeSpan(10, 0, 0));
-            slot.TimeSlot.End.TimeOfDay.Should().BeLessThanOrEqualTo(new TimeSpan(14, 0, 0));
+            slot.DateTimeSlot.Start.TimeOfDay.Should().BeGreaterThanOrEqualTo(new TimeSpan(10, 0, 0));
+            slot.DateTimeSlot.End.TimeOfDay.Should().BeLessThanOrEqualTo(new TimeSpan(14, 0, 0));
         });
     }
 

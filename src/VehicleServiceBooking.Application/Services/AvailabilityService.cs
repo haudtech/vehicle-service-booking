@@ -92,7 +92,7 @@ public class AvailabilityService : IAvailabilityService
                 .Select(x => new AvailabilityOption
                 {
                     // Map view's time slot information to TimeSlot DTO
-                    TimeSlot = new TimeSlot
+                    DateTimeSlot = new DateTimeSlot
                     {
                         Start = date.Date + x.SlotStartTime.ToTimeSpan(),
                         End = date.Date + x.SlotEndTime.ToTimeSpan()

@@ -38,6 +38,9 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         _dbContext = new ApplicationDbContext(options);
         _appointmentRepository = new AppointmentRepository(_dbContext);
+        var timeSlotRepository = new TimeSlotRepository(_dbContext);
+        var appointmentStatusLookupRepository = new AppointmentStatusLookupRepository(_dbContext);
+        var serviceStatusLookupRepository = new ServiceStatusLookupRepository(_dbContext);
         _mockAvailabilityService = new Mock<IAvailabilityService>();
         _mockLogger = new Mock<ILogger<AppointmentService>>();
 
@@ -62,6 +65,9 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         _appointmentService = new AppointmentService(
             _appointmentRepository,
+            timeSlotRepository,
+            appointmentStatusLookupRepository,
+            serviceStatusLookupRepository,
             _mockAvailabilityService.Object,
             _mockLogger.Object
         );

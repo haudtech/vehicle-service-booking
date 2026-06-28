@@ -94,5 +94,5 @@ public class AvailabilityOptionResponse
     /// Note: All options are equally valid; rank is for UX purposes only.
     /// Value range: 0-100 where 100 is perfect match
     /// </remarks>
-    public int RankScore { get; set; }
+    // public int RankScore { get; set; }
 }

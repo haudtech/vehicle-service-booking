@@ -1,6 +1,6 @@
 using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Domain.Entities;
-using AppTimeSlot = VehicleServiceBooking.Application.Models.TimeSlot;
+using AppTimeSlot = VehicleServiceBooking.Application.Models.DateTimeSlot;
 
 namespace VehicleServiceBooking.Tests.Common;
 
@@ -114,7 +114,7 @@ public class AvailabilityOptionBuilder
     {
         return new AvailabilityOption
         {
-            TimeSlot = _timeSlot,
+            DateTimeSlot = _timeSlot,
             TechnicianId = _technicianId,
             ServiceBayId = _serviceBayId
         };

@@ -19,16 +19,7 @@ public class TimeSlotRepository : GenericRepository<TimeSlot>, ITimeSlotReposito
     {
     }
 
-    public async Task<IEnumerable<TimeSlot>> GetByIdsAsync(
-        IEnumerable<Guid> ids,
-        CancellationToken cancellationToken)
-    {
-        return await GetQueryable()
-            .Where(ts => ids.Contains(ts.Id))
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<TimeSlot>> GetBySequenceRangeAsync(
+    public virtual async Task<IReadOnlyList<TimeSlot>> GetBySequenceRangeAsync(
         int startSequence,
         int endSequence,
         CancellationToken cancellationToken)

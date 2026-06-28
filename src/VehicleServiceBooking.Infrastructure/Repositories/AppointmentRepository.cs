@@ -21,7 +21,9 @@ public class AppointmentRepository : GenericRepository<Appointment>, IAppointmen
     {
     }
 
-    public override async Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Appointment?> GetByIdWithServicesAsync(
+        Guid id,
+        CancellationToken cancellationToken)
     {
         return await GetQueryable()
             .Include(a => a.Services)

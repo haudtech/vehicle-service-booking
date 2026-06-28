@@ -84,7 +84,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         result.Should().NotBeEmpty();
         result.Should().AllSatisfy(slot =>
         {
-            slot.TimeSlot.Should().NotBeNull();
+            slot.DateTimeSlot.Should().NotBeNull();
             slot.TechnicianId.Should().Be(technicians[0].Id);
             slot.ServiceBayId.Should().Be(serviceBays[0].Id);
         });
@@ -122,8 +122,8 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         result.Should().NotBeNull();
         // Should not have a slot at 9:00-9:30 (conflicting with existing appointment)
         result.Should().NotContain(slot =>
-            slot.TimeSlot.Start == date.Date.AddHours(9) &&
-            slot.TimeSlot.End == date.Date.AddHours(9).AddMinutes(30)
+            slot.DateTimeSlot.Start == date.Date.AddHours(9) &&
+            slot.DateTimeSlot.End == date.Date.AddHours(9).AddMinutes(30)
         );
     }
 
@@ -228,7 +228,7 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         result.Should().NotBeNull();
         result.Should().AllSatisfy(slot =>
         {
-            var duration = slot.TimeSlot.End - slot.TimeSlot.Start;
+            var duration = slot.DateTimeSlot.End - slot.DateTimeSlot.Start;
             duration.Should().Be(TimeSpan.FromMinutes(90));
         });
     }
@@ -265,8 +265,8 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
         // All slots should respect technician's working hours (10 AM - 2 PM)
         result.Should().AllSatisfy(slot =>
         {
-            slot.TimeSlot.Start.TimeOfDay.Should().BeGreaterThanOrEqualTo(new TimeSpan(10, 0, 0));
-            slot.TimeSlot.End.TimeOfDay.Should().BeLessThanOrEqualTo(new TimeSpan(14, 0, 0));
+            slot.DateTimeSlot.Start.TimeOfDay.Should().BeGreaterThanOrEqualTo(new TimeSpan(10, 0, 0));
+            slot.DateTimeSlot.End.TimeOfDay.Should().BeLessThanOrEqualTo(new TimeSpan(14, 0, 0));
         });
     }
 
