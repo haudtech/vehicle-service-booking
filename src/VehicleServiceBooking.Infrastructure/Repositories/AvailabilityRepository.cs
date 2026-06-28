@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Models.ViewModels;
-using VehicleServiceBooking.Domain.Entities;
 
 namespace VehicleServiceBooking.Infrastructure.Repositories;
 
@@ -30,19 +30,36 @@ public class AvailabilityRepository : IAvailabilityRepository
     /// Business Logic: NONE - Pure data query from materialized view
     /// Performance: Single database query (< 50ms)
     /// </summary>
-    public async Task<IEnumerable<ServiceTypeAvailabilityView>> GetServiceTypeAvailabilityAsync(
+    public async Task<IEnumerable<AvailabilityProjection>> GetServiceTypeAvailabilityAsync(
         Guid dealershipId,
         Guid[] serviceTypeIds,
         DateOnly queryDate,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.ServiceTypeAvailabilityView
+        if (serviceTypeIds.Length == 0)
+        {
+            return Array.Empty<AvailabilityProjection>();
+        }
+
+        var baseQuery = _dbContext.ServiceTypeAvailabilityView
             .AsNoTracking()
             .Where(x =>
                 x.DealershipId == dealershipId &&
                 x.QueryDate == queryDate &&
-                serviceTypeIds.Contains(x.ServiceTypeId) &&
-                x.CanFitService)
+                x.CanFitService);
+
+        baseQuery = baseQuery.Where(x => serviceTypeIds.Contains(x.ServiceTypeId));
+
+        return await baseQuery
+            .Select(x => new AvailabilityProjection
+            {
+                TimeSlotId = x.TimeSlotId,
+                SlotStartTime = x.SlotStartTime,
+                SlotEndTime = x.SlotEndTime,
+                TechnicianId = x.TechnicianId,
+                ServiceBayId = x.ServiceBayId
+            })
+            .Distinct()
             .ToListAsync(cancellationToken);
     }
 

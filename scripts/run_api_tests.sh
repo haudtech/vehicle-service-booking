@@ -41,6 +41,7 @@ DB_PASSWORD="${DB_PASSWORD:-123456xX}"
 
 TESTS_PASSED=0
 TESTS_FAILED=0
+TARGET_DATE=""
 
 print_header() {
     echo -e "\n${BLUE}============================================================${NC}"
@@ -79,6 +80,30 @@ http_post_json() {
     curl -sS -o "$body_file" -w "%{http_code}" -X POST "$url" -H 'Content-Type: application/json' -d "$payload"
 }
 
+resolve_target_date() {
+    if [[ -n "${TARGET_DATE:-}" ]]; then
+        return
+    fi
+
+    local offset candidate_date code body
+    local tmp_body="${EVIDENCE_DIR}/_target_date_probe.json"
+
+    for offset in {1..30}; do
+        candidate_date=$(date -v+"${offset}"d +%F)
+        code=$(curl -sS -o "$tmp_body" -w "%{http_code}" "$API_URL/availability?dealershipId=$DEALERSHIP_ID&serviceTypeId=$SERVICE_TYPE_ID&date=$candidate_date") || true
+        body=$(cat "$tmp_body" 2>/dev/null || true)
+
+        if [[ "$code" == "200" ]] && grep -q 'slotStart' <<< "$body"; then
+            TARGET_DATE="$candidate_date"
+            info "Using target date with availability: $TARGET_DATE"
+            return
+        fi
+    done
+
+    TARGET_DATE=$(date -v+1d +%F)
+    info "No availability found in next 30 days; falling back to $TARGET_DATE"
+}
+
 check_api_reachable() {
     print_test "API Reachability"
     local code
@@ -96,13 +121,13 @@ check_api_reachable() {
 
 test_happy_get_availability() {
     print_test "Happy Case 1 - GET /availability"
-    local target_date code req_url
+    local code req_url
     local req_file="${EVIDENCE_DIR}/01_get_availability.request.txt"
     local status_file="${EVIDENCE_DIR}/01_get_availability.status.txt"
     local body_file="${EVIDENCE_DIR}/01_get_availability.response.json"
 
-    target_date=$(date -v+1d +%F)
-    req_url="$API_URL/availability?dealershipId=$DEALERSHIP_ID&serviceTypeId=$SERVICE_TYPE_ID&date=$target_date"
+    resolve_target_date
+    req_url="$API_URL/availability?dealershipId=$DEALERSHIP_ID&serviceTypeId=$SERVICE_TYPE_ID&date=$TARGET_DATE"
     printf '%s\n' "$req_url" > "$req_file"
     code=$(http_get "$req_url" "$body_file")
     printf '%s\n' "$code" > "$status_file"
@@ -123,7 +148,7 @@ test_happy_get_availability() {
 
 test_happy_post_appointment() {
     print_test "Happy Case 2 - POST /appointments"
-    local target_date payload code
+    local payload code
     local selected_service_type_id="$SERVICE_TYPE_ID"
     local selected_technician_id="$TECHNICIAN_ID"
     local selected_service_bay_id="$SERVICE_BAY_ID"
@@ -133,7 +158,7 @@ test_happy_post_appointment() {
     local req_file="${EVIDENCE_DIR}/02_post_appointment.request.json"
     local status_file="${EVIDENCE_DIR}/02_post_appointment.status.txt"
 
-    target_date=$(date -v+1d +%F)
+    resolve_target_date
 
     # Try to pick a currently available slot combo dynamically for reliable reruns.
     if command -v psql >/dev/null 2>&1; then
@@ -149,7 +174,7 @@ FROM \"ServiceTypeAvailability\" sta
 JOIN \"TimeSlots\" ts_end ON ts_end.\"SequenceOrder\" = sta.\"SequenceOrder\" + sta.\"RequiredSlots\" - 1
 WHERE sta.\"DealershipId\" = '$DEALERSHIP_ID'
   AND sta.\"ServiceTypeId\" = '$SERVICE_TYPE_ID'
-  AND sta.\"QueryDate\" = '$target_date'::date
+    AND sta.\"QueryDate\" = '$TARGET_DATE'::date
 LIMIT 1;")
 
         if [[ -n "$slot_row" ]]; then
@@ -167,7 +192,7 @@ LIMIT 1;")
     "dealershipId": "$DEALERSHIP_ID",
     "customerId": "$CUSTOMER_ID",
     "vehicleId": "$VEHICLE_ID",
-    "appointmentDate": "$target_date",
+    "appointmentDate": "$TARGET_DATE",
     "serviceTypeId": "$selected_service_type_id",
     "technicianId": "$selected_technician_id",
     "serviceBayId": "$selected_service_bay_id",

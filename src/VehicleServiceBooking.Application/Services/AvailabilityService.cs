@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
-using VehicleServiceBooking.Application.Models.ViewModels;
 
 namespace VehicleServiceBooking.Application.Services;
 
@@ -87,10 +86,9 @@ public class AvailabilityService : IAvailabilityService
                 "ServiceTypeAvailability view returned {ResultCount} records",
                 viewResults.Count());
 
-            // BUSINESS LOGIC: Map view results to AvailabilityOption DTOs
-            // Distinct() removes duplicate slot/tech combinations from the view
+            // BUSINESS LOGIC: Map projected rows to AvailabilityOption DTOs.
+            // Deduplication is pushed down into repository SQL (Distinct on projection).
             var results = viewResults
-                .Distinct(new ServiceTypeAvailabilityViewComparer())  // Remove duplicates
                 .Select(x => new AvailabilityOption
                 {
                     // Map view's time slot information to TimeSlot DTO
@@ -117,28 +115,6 @@ public class AvailabilityService : IAvailabilityService
                 "Error querying availability for ServiceType={ServiceTypeId}, Dealership={DealershipId}",
                 serviceTypeId, dealershipId);
             throw;
-        }
-    }
-
-    /// <summary>
-    /// Comparer for removing duplicate ServiceTypeAvailabilityView records
-    /// Considers records identical if they have the same TimeSlotId and TechnicianId
-    /// </summary>
-    private class ServiceTypeAvailabilityViewComparer : IEqualityComparer<ServiceTypeAvailabilityView>
-    {
-        public bool Equals(ServiceTypeAvailabilityView? x, ServiceTypeAvailabilityView? y)
-        {
-            if (x == null || y == null)
-                return x == y;
-
-            return x.TimeSlotId == y.TimeSlotId &&
-                   x.TechnicianId == y.TechnicianId &&
-                   x.ServiceBayId == y.ServiceBayId;
-        }
-
-        public int GetHashCode(ServiceTypeAvailabilityView obj)
-        {
-            return HashCode.Combine(obj.TimeSlotId, obj.TechnicianId, obj.ServiceBayId);
         }
     }
 }

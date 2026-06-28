@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Models.ViewModels;
 using VehicleServiceBooking.Domain.Entities;
 
@@ -25,8 +26,8 @@ public interface IAvailabilityRepository
     /// <param name="serviceTypeIds">Array of service type IDs to query (supports multi-service)</param>
     /// <param name="queryDate">The date to query availability for (business logic filters to this date)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Collection of ServiceTypeAvailabilityView records with availability options</returns>
-    Task<IEnumerable<ServiceTypeAvailabilityView>> GetServiceTypeAvailabilityAsync(
+    /// <returns>Collection of projected availability rows with only required fields</returns>
+    Task<IEnumerable<AvailabilityProjection>> GetServiceTypeAvailabilityAsync(
         Guid dealershipId,
         Guid[] serviceTypeIds,
         DateOnly queryDate,
