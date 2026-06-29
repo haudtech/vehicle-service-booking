@@ -805,7 +805,8 @@ public class AvailabilityTestScenarioBuilder
                         ServiceBayName = bay.Name,
                         DealershipId = _dealershipId,
                         QueryDate = DateOnly.FromDateTime(_testDate),
-                        CanFitService = canFit
+                        CanFitService = canFit,
+                        IsActive = true
                     });
                 }
             }
@@ -1130,7 +1131,8 @@ public class AvailabilityIntegrationScenarioBuilder
                         ServiceBayName = bay.Name,
                         DealershipId = _dealershipId,
                         QueryDate = DateOnly.FromDateTime(_date),
-                        CanFitService = canFit
+                        CanFitService = canFit,
+                        IsActive = true
                     });
                 }
             }

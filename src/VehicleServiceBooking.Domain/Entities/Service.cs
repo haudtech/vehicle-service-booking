@@ -56,6 +56,22 @@ public class Service : BaseEntity
     public Guid? EstimatedEndTimeSlotId { get; set; }
 
     /// <summary>
+    /// Persisted booking date snapshot used for database-level overlap constraints.
+    /// Mirrors Appointment.AppointmentDate at write time.
+    /// </summary>
+    public DateOnly BookingDate { get; set; }
+
+    /// <summary>
+    /// Persisted start slot sequence used for database-level overlap constraints.
+    /// </summary>
+    public int EstimatedStartSlotSequence { get; set; }
+
+    /// <summary>
+    /// Persisted exclusive end slot sequence used for overlap-safe range comparison.
+    /// </summary>
+    public int EstimatedEndSlotSequenceExclusive { get; set; }
+
+    /// <summary>
     /// Sequential order of services within the appointment (1-based)
     /// </summary>
     public int SequenceOrder { get; set; }

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.DTOs;
+using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Domain.Entities;
@@ -73,7 +74,7 @@ public class AppointmentService : IAppointmentService
 
             if (availabilityOptions == null || !availabilityOptions.Any())
             {
-                throw new InvalidOperationException(
+                throw new BookingConflictException(
                     "No available slots matching the specified criteria");
             }
 
@@ -84,7 +85,7 @@ public class AppointmentService : IAppointmentService
 
             if (!requestedSlotAvailable)
             {
-                throw new InvalidOperationException(
+                throw new BookingConflictException(
                     $"The selected technician and service bay combination is not in the available slots");
             }
 
@@ -123,6 +124,23 @@ public class AppointmentService : IAppointmentService
                 throw new InvalidOperationException("Service status lookup for 'Pending' was not found.");
             }
 
+            var selectedTimeSlots = await _timeSlotRepository.GetByIdsAsync(
+                new[] { request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId },
+                cancellationToken).ConfigureAwait(false);
+
+            var selectedStartSlot = selectedTimeSlots.FirstOrDefault(ts => ts.Id == request.EstimatedStartTimeSlotId);
+            var selectedEndSlot = selectedTimeSlots.FirstOrDefault(ts => ts.Id == request.EstimatedEndTimeSlotId);
+
+            if (selectedStartSlot == null || selectedEndSlot == null)
+            {
+                throw new InvalidOperationException("Selected time slots were not found.");
+            }
+
+            if (selectedEndSlot.SequenceOrder < selectedStartSlot.SequenceOrder)
+            {
+                throw new InvalidOperationException("Estimated end time slot must be after or equal to estimated start time slot.");
+            }
+
             var appointment = new Appointment
             {
                 Id = Guid.NewGuid(),
@@ -148,6 +166,9 @@ public class AppointmentService : IAppointmentService
                 SequenceOrder = 1,
                 EstimatedStartTimeSlotId = request.EstimatedStartTimeSlotId,
                 EstimatedEndTimeSlotId = request.EstimatedEndTimeSlotId,
+                BookingDate = request.AppointmentDate,
+                EstimatedStartSlotSequence = selectedStartSlot.SequenceOrder,
+                EstimatedEndSlotSequenceExclusive = selectedEndSlot.SequenceOrder + 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -198,6 +219,11 @@ public class AppointmentService : IAppointmentService
                 SlotEnd = slotEnd,
                 CreatedAt = createdAppointment.CreatedAt
             };
+        }
+        catch (BookingConflictException ex)
+        {
+            _logger.LogWarning(ex, "Booking conflict in CreateAppointmentAsync: {Message}", ex.Message);
+            throw;
         }
         catch (InvalidOperationException ex)
         {
@@ -332,7 +358,7 @@ public class AppointmentService : IAppointmentService
                 s.EstimatedStartTimeSlotId <= request.EstimatedEndTimeSlotId &&
                 s.EstimatedEndTimeSlotId > request.EstimatedStartTimeSlotId);
 
-            throw new InvalidOperationException(
+            throw new BookingConflictException(
                 $"The selected time slot conflicts with an existing appointment. " +
                 $"Another appointment is booked from slot {conflictingService?.EstimatedStartTimeSlotId} " +
                 $"to slot {conflictingService?.EstimatedEndTimeSlotId}");

@@ -35,6 +35,10 @@ public interface IApplicationDbContext
 
     DbSet<Vehicle> Vehicles { get; }
 
+    DbSet<IdempotencyRequest> IdempotencyRequests { get; }
+
+    DbSet<IdempotencyRequestStatusLookup> IdempotencyRequestStatusLookups { get; }
+
     DbSet<AppointmentStatusLookup> AppointmentStatusLookups { get; }
 
     DbSet<TimeSlot> TimeSlots { get; }

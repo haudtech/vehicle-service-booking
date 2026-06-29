@@ -31,6 +31,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Dealership> Dealerships => Set<Dealership>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<IdempotencyRequest> IdempotencyRequests => Set<IdempotencyRequest>();
+    public DbSet<IdempotencyRequestStatusLookup> IdempotencyRequestStatusLookups => Set<IdempotencyRequestStatusLookup>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
 
     // ==================== VIEW DbSETS (READ-ONLY) ====================
@@ -201,6 +203,95 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // Note: Service-level timing validation handled through Service entity
         // (EstimatedStartTime, EstimatedEndTime, ActualStartTime, ActualEndTime)
 
+        // ==================== IDEMPOTENCY REQUEST CONFIGURATION ====================
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>()
+            .HasKey(x => x.Id)
+            .HasName("PK_IdempotencyRequestStatusLookups");
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>()
+            .Property(x => x.Status)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>()
+            .Property(x => x.Name)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>()
+            .Property(x => x.Description)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>()
+            .HasIndex(x => x.Status)
+            .IsUnique()
+            .HasDatabaseName("IX_IdempotencyRequestStatusLookup_Status_Unique");
+
+        modelBuilder.Entity<IdempotencyRequestStatusLookup>().HasData(
+            new IdempotencyRequestStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0002-000000000001"),
+                Status = IdempotencyRequestStatus.InProgress,
+                Name = "In Progress",
+                Description = "Request processing started and not yet completed"
+            },
+            new IdempotencyRequestStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0002-000000000002"),
+                Status = IdempotencyRequestStatus.Completed,
+                Name = "Completed",
+                Description = "Request completed and response persisted for replay"
+            }
+        );
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .HasKey(x => x.Id)
+            .HasName("PK_IdempotencyRequests");
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.IdempotencyKey)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.RequestPath)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.RequestHash)
+            .HasMaxLength(128)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.StatusId)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .HasOne(x => x.Status)
+            .WithMany(x => x.IdempotencyRequests)
+            .HasForeignKey(x => x.StatusId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_IdempotencyRequest_StatusLookup");
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.ResponseBody)
+            .HasColumnType("text");
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .Property(x => x.ExpiresAt)
+            .IsRequired();
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .HasIndex(x => new { x.IdempotencyKey, x.RequestPath })
+            .IsUnique()
+            .HasDatabaseName("IX_IdempotencyRequest_Key_Path_Unique");
+
+        modelBuilder.Entity<IdempotencyRequest>()
+            .HasIndex(x => x.ExpiresAt)
+            .HasDatabaseName("IX_IdempotencyRequest_ExpiresAt");
+
         // ==================== SERVICE STATUS LOOKUP CONFIGURATION ====================
         
         // Configure ServiceStatusLookup primary key
@@ -279,6 +370,15 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Service>()
             .Property(x => x.EstimatedEndTimeSlotId)
             .IsRequired(false);
+        modelBuilder.Entity<Service>()
+            .Property(x => x.BookingDate)
+            .IsRequired();
+        modelBuilder.Entity<Service>()
+            .Property(x => x.EstimatedStartSlotSequence)
+            .IsRequired();
+        modelBuilder.Entity<Service>()
+            .Property(x => x.EstimatedEndSlotSequenceExclusive)
+            .IsRequired();
 
         // Service -> ServiceType (Many-to-One)
         modelBuilder.Entity<Service>()
@@ -325,6 +425,18 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasIndex(x => new { x.AppointmentId, x.ServiceTypeId, x.SequenceOrder })
             .IsUnique()
             .HasDatabaseName("IX_Service_Unique_AppointmentServiceTypeSequence");
+
+        modelBuilder.Entity<Service>()
+            .HasIndex(x => new { x.DealershipId, x.BookingDate })
+            .HasDatabaseName("IX_Service_Dealership_BookingDate");
+
+        modelBuilder.Entity<Service>()
+            .HasIndex(x => new { x.TechnicianId, x.BookingDate })
+            .HasDatabaseName("IX_Service_Technician_BookingDate");
+
+        modelBuilder.Entity<Service>()
+            .HasIndex(x => new { x.ServiceBayId, x.BookingDate })
+            .HasDatabaseName("IX_Service_ServiceBay_BookingDate");
 
         // ==================== CUSTOMER CONFIGURATION ====================
         

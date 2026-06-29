@@ -49,6 +49,9 @@ Commands:
   update
     Apply all pending migrations to database
 
+  reset
+    Drop and recreate target database, then apply all migrations
+
   list
     List migrations and show applied/pending state
 
@@ -64,6 +67,7 @@ Commands:
 Examples:
   ./scripts/ef_migration_workflow.sh add AddCustomerPreferredLanguage
   ./scripts/ef_migration_workflow.sh update
+  ./scripts/ef_migration_workflow.sh reset
   ./scripts/ef_migration_workflow.sh script 0
   ./scripts/ef_migration_workflow.sh --connection "Host=localhost;Port=5432;Database=vehicle_service_booking;Username=haudo;Password=123456xX;" add AddIndexesForAppointments
 EOF
@@ -206,6 +210,13 @@ ensure_safe_target() {
         fi
       fi
       ;;
+    reset)
+      local scope="local"
+      if is_true "$is_remote"; then
+        scope="remote"
+      fi
+      confirm_or_exit "Command 'reset' will drop and recreate the $scope database on host '$host'${db:+ (database '$db')}."
+      ;;
   esac
 }
 
@@ -222,6 +233,11 @@ print_command_guidance() {
       log_guidance "Use 'update' to apply pending migrations to the target database."
       log_guidance "Before production update: run backups, ensure maintenance window, and confirm target connection string."
       log_guidance "Use '--allow-remote' for non-local hosts and keep interactive confirmations enabled unless CI requires '--yes'."
+      ;;
+    reset)
+      log_guidance "Use 'reset' only when full data loss is acceptable (local/dev or explicit admin action)."
+      log_guidance "The script attempts standard EF drop first, then falls back to psql/template1 when the server lacks a 'postgres' maintenance database."
+      log_guidance "After reset, all migrations are re-applied to recreate schema and seed data."
       ;;
     list)
       log_guidance "Use 'list' to check migration order and applied/pending state; this does not change schema."
@@ -323,6 +339,98 @@ cmd_update() {
   run_dotnet_ef database update
 }
 
+terminate_active_connections() {
+  local host="$1"
+  local port="$2"
+  local user="$3"
+  local pass="$4"
+  local db="$5"
+
+  PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d template1 -v ON_ERROR_STOP=1 <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '$db'
+  AND pid <> pg_backend_pid();
+SQL
+}
+
+reset_database_via_template1() {
+  local host="$1"
+  local port="$2"
+  local user="$3"
+  local pass="$4"
+  local db="$5"
+
+  log_step "Fallback reset path: drop/recreate database via template1"
+  terminate_active_connections "$host" "$port" "$user" "$pass" "$db"
+  log_cmd "psql -h $host -p $port -U $user -d template1 -c \"DROP DATABASE IF EXISTS \"$db\";\""
+  if ! is_true "$DRY_RUN"; then
+    PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d template1 -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$db\";"
+    PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d template1 -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$db\" OWNER \"$user\";"
+  fi
+}
+
+cmd_reset() {
+  local host db
+  host="$(extract_connection_host "$TARGET_CONNECTION")"
+  db="$(extract_connection_database "$TARGET_CONNECTION")"
+
+  if [[ -z "$host" || -z "$db" ]]; then
+    echo "ERROR: Could not parse Host/Database from connection string for reset command."
+    exit 1
+  fi
+
+  local port user pass
+  port="$(printf '%s' "$TARGET_CONNECTION" | sed -n 's/.*Port=\([^;]*\).*/\1/p')"
+  user="$(printf '%s' "$TARGET_CONNECTION" | sed -n 's/.*Username=\([^;]*\).*/\1/p')"
+  pass="$(printf '%s' "$TARGET_CONNECTION" | sed -n 's/.*Password=\([^;]*\).*/\1/p')"
+
+  if [[ -z "$port" ]]; then
+    port="5432"
+  fi
+
+  if [[ -z "$user" || -z "$pass" ]]; then
+    echo "ERROR: Reset requires Username and Password in connection string."
+    exit 1
+  fi
+
+  log_step "Attempt standard EF database drop"
+  local drop_cmd="dotnet ef database drop --force --project $INFRA_PROJECT --startup-project $API_STARTUP_PROJECT --context $DB_CONTEXT"
+  log_cmd "$drop_cmd"
+
+  if is_true "$DRY_RUN"; then
+    build_solution
+    log_step "Apply migrations to recreated database"
+    run_dotnet_ef database update
+    return
+  fi
+
+  set +e
+  local drop_output drop_exit
+  drop_output=$(dotnet ef database drop --force \
+    --project "$INFRA_PROJECT" \
+    --startup-project "$API_STARTUP_PROJECT" \
+    --context "$DB_CONTEXT" 2>&1)
+  drop_exit=$?
+  set -e
+
+  if [[ $drop_exit -ne 0 ]]; then
+    if grep -qi 'database "postgres" does not exist' <<< "$drop_output"; then
+      log_guidance "Standard EF drop requires a postgres maintenance DB; using template1 fallback."
+      reset_database_via_template1 "$host" "$port" "$user" "$pass" "$db"
+    else
+      echo "$drop_output"
+      echo "ERROR: Failed to drop database."
+      exit $drop_exit
+    fi
+  fi
+
+  build_solution
+
+  log_step "Apply migrations to recreated database"
+  run_dotnet_ef database update
+}
+
 cmd_list() {
   log_step "Show migration history and pending state"
   run_dotnet_ef migrations list
@@ -415,6 +523,9 @@ main() {
       ;;
     update)
       cmd_update
+      ;;
+    reset)
+      cmd_reset
       ;;
     list)
       cmd_list

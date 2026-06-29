@@ -32,6 +32,8 @@ public static class LogConfigurationExtensions
         var filePath = serilogSection.GetValue<string>("FilePath") ?? "logs/app-.txt";
         var rollingIntervalValue = serilogSection.GetValue<string>("RollingInterval") ?? "Day";
         var rollingInterval = ParseRollingInterval(rollingIntervalValue);
+        var outputTemplate = serilogSection.GetValue<string>("OutputTemplate")
+            ?? "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
         var loggerConfiguration = new LoggerConfiguration()
             .MinimumLevel.Override("Microsoft", microsoftLogLevel)
@@ -41,12 +43,12 @@ public static class LogConfigurationExtensions
 
         if (enableConsoleSink)
         {
-            loggerConfiguration.WriteTo.Console(theme: AnsiConsoleTheme.Code);
+            loggerConfiguration.WriteTo.Console(outputTemplate: outputTemplate, theme: AnsiConsoleTheme.Code);
         }
 
         if (enableFileSink)
         {
-            loggerConfiguration.WriteTo.File(filePath, rollingInterval: rollingInterval);
+            loggerConfiguration.WriteTo.File(filePath, rollingInterval: rollingInterval, outputTemplate: outputTemplate);
         }
 
         Log.Logger = loggerConfiguration.CreateLogger();

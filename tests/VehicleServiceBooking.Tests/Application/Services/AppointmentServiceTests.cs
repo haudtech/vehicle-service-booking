@@ -3,6 +3,7 @@ using Moq;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
+using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Models;
 using VehicleServiceBooking.Application.Services;
 using VehicleServiceBooking.Domain.Entities;
@@ -57,6 +58,7 @@ public class AppointmentServiceTests
         var request = new CreateAppointmentRequestBuilder().Build();
         var createdAppointmentId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
+        Appointment? persistedAppointment = null;
 
         SetupAvailability(request, true);
         _mockAppointmentRepository
@@ -69,6 +71,7 @@ public class AppointmentServiceTests
             .Setup(r => r.CreateAppointmentWithServicesAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Appointment a, CancellationToken _) =>
             {
+                persistedAppointment = a;
                 a.Id = createdAppointmentId;
                 a.CreatedAt = createdAt;
                 return a;
@@ -86,10 +89,16 @@ public class AppointmentServiceTests
         result.SlotStart.Should().Be(request.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
         result.SlotEnd.Should().Be(request.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
         result.CreatedAt.Should().Be(createdAt);
+
+        persistedAppointment.Should().NotBeNull();
+        var persistedService = persistedAppointment!.Services.Should().ContainSingle().Subject;
+        persistedService.BookingDate.Should().Be(request.AppointmentDate);
+        persistedService.EstimatedStartSlotSequence.Should().Be(1);
+        persistedService.EstimatedEndSlotSequenceExclusive.Should().Be(3);
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithNoAvailability_ShouldThrowException()
+    public async Task CreateAppointmentAsync_WithNoAvailability_ShouldThrowBookingConflictException()
     {
         var request = new CreateAppointmentRequestBuilder().Build();
 
@@ -101,11 +110,11 @@ public class AppointmentServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<AvailabilityOption>());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CreateAppointmentAsync(request));
+        await Assert.ThrowsAsync<BookingConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithUnavailableTechnicianBayCombination_ShouldThrowException()
+    public async Task CreateAppointmentAsync_WithUnavailableTechnicianBayCombination_ShouldThrowBookingConflictException()
     {
         var request = new CreateAppointmentRequestBuilder().Build();
 
@@ -127,7 +136,7 @@ public class AppointmentServiceTests
                     .Build()
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CreateAppointmentAsync(request));
+        await Assert.ThrowsAsync<BookingConflictException>(() => _appointmentService.CreateAppointmentAsync(request));
     }
 
     [Fact]

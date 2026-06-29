@@ -1,11 +1,14 @@
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using VehicleServiceBooking.Api.Services;
 using VehicleServiceBooking.Application.DTOs;
+using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Services;
 
@@ -28,17 +31,28 @@ namespace VehicleServiceBooking.Api.Controllers;
 [Tags("Appointments")]
 public class AppointmentsController : ControllerBase
 {
+    private static readonly JsonSerializerOptions ReplayJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly IValidator<CreateAppointmentRequest> _createValidator;
     private readonly IAppointmentService _appointmentService;
+    private readonly IIdempotencyService _idempotencyService;
+    private readonly IIdempotencyRequestCoordinator _idempotencyRequestCoordinator;
     private readonly ILogger<AppointmentsController> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AppointmentsController"/> class.
+    /// </summary>
     public AppointmentsController(
         IValidator<CreateAppointmentRequest> createValidator,
         IAppointmentService appointmentService,
+        IIdempotencyService idempotencyService,
+        IIdempotencyRequestCoordinator idempotencyRequestCoordinator,
         ILogger<AppointmentsController> logger)
     {
         _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
         _appointmentService = appointmentService ?? throw new ArgumentNullException(nameof(appointmentService));
+        _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
+        _idempotencyRequestCoordinator = idempotencyRequestCoordinator ?? throw new ArgumentNullException(nameof(idempotencyRequestCoordinator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -53,8 +67,10 @@ public class AppointmentsController : ControllerBase
     /// - Checks that the selected time slot is available for the specified service bay
     /// - Ensures no conflicting appointments exist for the same service bay
     /// - Verifies all referenced entities (customer, vehicle, service type, technician, service bay) exist
+    /// - When idempotency is enabled, clients should send the `Idempotency-Key` header with a unique value
     /// 
     /// ## Request Requirements:
+    /// - Idempotency-Key: Optional unless idempotency is configured to require it; send a unique value for each logical create attempt
     /// - DealershipId: Must be a valid GUID
     /// - CustomerId: Must be a valid GUID and the customer must exist
     /// - VehicleId: Must be a valid GUID and the vehicle must exist
@@ -94,6 +110,7 @@ public class AppointmentsController : ControllerBase
     /// - **500 Internal Server Error**: Unexpected server error
     /// </remarks>
     /// <param name="request">The appointment booking request containing all necessary details</param>
+    /// <param name="idempotencyKey">Optional idempotency key supplied by the client in the <c>Idempotency-Key</c> header</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>Created appointment with ID and timestamp</returns>
     /// <response code="201">Appointment created successfully</response>
@@ -107,12 +124,26 @@ public class AppointmentsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<CreateAppointmentResponse>> CreateAppointment(
         [FromBody] CreateAppointmentRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null,
         CancellationToken cancellationToken = default)
     {
+        Guid? idempotencyRecordId = null;
+
         try
         {
             // Validate request
             await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+            var idempotencyHandling = await _idempotencyRequestCoordinator
+                .ValidateAndBeginCreateAppointmentAsync(Request, request, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (idempotencyHandling.EarlyResponse != null)
+            {
+                return idempotencyHandling.EarlyResponse;
+            }
+
+            idempotencyRecordId = idempotencyHandling.RecordId;
 
             _logger.LogInformation(
                 "Creating appointment: customerId={CustomerId}, vehicleId={VehicleId}, " +
@@ -128,6 +159,14 @@ public class AppointmentsController : ControllerBase
                 "Appointment created successfully: appointmentId={AppointmentId}",
                 response.AppointmentId);
 
+            if (idempotencyRecordId.HasValue)
+            {
+                var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
+                await _idempotencyService
+                    .CompleteRequestAsync(idempotencyRecordId.Value, StatusCodes.Status201Created, body, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             return CreatedAtAction(
                 nameof(GetAppointmentById),
                 new { id = response.AppointmentId },
@@ -138,31 +177,59 @@ public class AppointmentsController : ControllerBase
             _logger.LogWarning(ex, "Validation error in CreateAppointment");
             throw;  // Let middleware handle it
         }
+        catch (BookingConflictException ex)
+        {
+            _logger.LogWarning(ex, "Booking conflict in CreateAppointment: {Message}", ex.Message);
+
+            var response = new ErrorResponse
+            {
+                Message = "The selected slot is no longer available. Please check availability again.",
+                ErrorCode = "BOOKING_CONFLICT",
+                Timestamp = DateTime.UtcNow
+            };
+
+            if (idempotencyRecordId.HasValue)
+            {
+                var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
+                await _idempotencyService
+                    .CompleteRequestAsync(idempotencyRecordId.Value, StatusCodes.Status409Conflict, body, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return Conflict(response);
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation in CreateAppointment: {Message}", ex.Message);
 
-            // Check if it's a concurrency error (slot no longer available)
-            if (ex.Message.Contains("no longer available", StringComparison.OrdinalIgnoreCase))
-            {
-                return Conflict(new ErrorResponse
-                {
-                    Message = "Selected slot is no longer available",
-                    ErrorCode = "SLOT_NO_LONGER_AVAILABLE",
-                    Timestamp = DateTime.UtcNow
-                });
-            }
-
-            return BadRequest(new ErrorResponse
+            var response = new ErrorResponse
             {
                 Message = ex.Message,
                 ErrorCode = "INVALID_OPERATION",
                 Timestamp = DateTime.UtcNow
-            });
+            };
+
+            if (idempotencyRecordId.HasValue)
+            {
+                var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
+                await _idempotencyService
+                    .CompleteRequestAsync(idempotencyRecordId.Value, StatusCodes.Status400BadRequest, body, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return BadRequest(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error in CreateAppointment");
+
+            if (idempotencyRecordId.HasValue)
+            {
+                await _idempotencyService
+                    .ReleaseRequestAsync(idempotencyRecordId.Value, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             throw;  // Let middleware handle it
         }
     }

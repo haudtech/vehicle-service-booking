@@ -273,52 +273,52 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6800),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8640),
                             Description = "Appointment is scheduled",
                             IsActive = true,
                             Name = "Booked",
                             Status = 1,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6800)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8640)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6810),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650),
                             Description = "Service is currently being performed",
                             IsActive = true,
                             Name = "In Progress",
                             Status = 2,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6810)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000003"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650),
                             Description = "Service has been completed",
                             IsActive = true,
                             Name = "Completed",
                             Status = 3,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000004"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650),
                             Description = "Appointment has been cancelled",
                             IsActive = true,
                             Name = "Cancelled",
                             Status = 4,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8650)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000005"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8660),
                             Description = "Some services completed, others rescheduled",
                             IsActive = true,
                             Name = "Partially Completed",
                             Status = 5,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 861, DateTimeKind.Utc).AddTicks(6820)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 31, DateTimeKind.Utc).AddTicks(8660)
                         });
                 });
 
@@ -447,6 +447,135 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                     b.ToTable("Dealerships");
                 });
 
+            modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.IdempotencyRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("RequestPath")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ResponseStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StatusId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id")
+                        .HasName("PK_IdempotencyRequests");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("IX_IdempotencyRequest_ExpiresAt");
+
+                    b.HasIndex("StatusId");
+
+                    b.HasIndex("IdempotencyKey", "RequestPath")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IdempotencyRequest_Key_Path_Unique");
+
+                    b.ToTable("IdempotencyRequests");
+                });
+
+            modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.IdempotencyRequestStatusLookup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id")
+                        .HasName("PK_IdempotencyRequestStatusLookups");
+
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IdempotencyRequestStatusLookup_Status_Unique");
+
+                    b.ToTable("IdempotencyRequestStatusLookups");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0002-000000000001"),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(3180),
+                            Description = "Request processing started and not yet completed",
+                            IsActive = true,
+                            Name = "In Progress",
+                            Status = 1,
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(3180)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0002-000000000002"),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(3190),
+                            Description = "Request completed and response persisted for replay",
+                            IsActive = true,
+                            Name = "Completed",
+                            Status = 2,
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(3190)
+                        });
+                });
+
             modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.Service", b =>
                 {
                     b.Property<Guid>("Id")
@@ -462,6 +591,9 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                     b.Property<Guid>("AppointmentId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly>("BookingDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -470,8 +602,14 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                     b.Property<Guid>("DealershipId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("EstimatedEndSlotSequenceExclusive")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("EstimatedEndTimeSlotId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("EstimatedStartSlotSequence")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("EstimatedStartTimeSlotId")
                         .HasColumnType("uuid");
@@ -509,19 +647,22 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("PK_Services");
 
-                    b.HasIndex("DealershipId");
-
                     b.HasIndex("EstimatedEndTimeSlotId");
 
                     b.HasIndex("EstimatedStartTimeSlotId");
-
-                    b.HasIndex("ServiceBayId");
 
                     b.HasIndex("ServiceStatusId");
 
                     b.HasIndex("ServiceTypeId");
 
-                    b.HasIndex("TechnicianId");
+                    b.HasIndex("DealershipId", "BookingDate")
+                        .HasDatabaseName("IX_Service_Dealership_BookingDate");
+
+                    b.HasIndex("ServiceBayId", "BookingDate")
+                        .HasDatabaseName("IX_Service_ServiceBay_BookingDate");
+
+                    b.HasIndex("TechnicianId", "BookingDate")
+                        .HasDatabaseName("IX_Service_Technician_BookingDate");
 
                     b.HasIndex("AppointmentId", "ServiceTypeId", "SequenceOrder")
                         .IsUnique()
@@ -614,52 +755,52 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0001-000000000001"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1140),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4940),
                             Description = "Service scheduled but not started",
                             IsActive = true,
                             Name = "Pending",
                             Status = 0,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1140)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4940)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0001-000000000002"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1140),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4950),
                             Description = "Service is currently being performed",
                             IsActive = true,
                             Name = "In Progress",
                             Status = 1,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1140)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4950)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0001-000000000003"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4960),
                             Description = "Service has been completed successfully",
                             IsActive = true,
                             Name = "Completed",
                             Status = 2,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4960)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0001-000000000004"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4960),
                             Description = "Service was cancelled or declined",
                             IsActive = true,
                             Name = "Skipped",
                             Status = 3,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4960)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0001-000000000005"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4970),
                             Description = "Service moved to a different appointment",
                             IsActive = true,
                             Name = "Rescheduled",
                             Status = 4,
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 862, DateTimeKind.Utc).AddTicks(1150)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 32, DateTimeKind.Utc).AddTicks(4970)
                         });
                 });
 
@@ -873,182 +1014,182 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5850),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2310),
                             IsActive = true,
                             SequenceOrder = 1,
                             SlotEndTime = new TimeOnly(8, 30, 0),
                             SlotStartTime = new TimeOnly(8, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5850)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2310)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5860),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2320),
                             IsActive = true,
                             SequenceOrder = 2,
                             SlotEndTime = new TimeOnly(9, 0, 0),
                             SlotStartTime = new TimeOnly(8, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5860)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2320)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000003"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5870),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2320),
                             IsActive = true,
                             SequenceOrder = 3,
                             SlotEndTime = new TimeOnly(9, 30, 0),
                             SlotStartTime = new TimeOnly(9, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5870)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2320)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000004"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5880),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2330),
                             IsActive = true,
                             SequenceOrder = 4,
                             SlotEndTime = new TimeOnly(10, 0, 0),
                             SlotStartTime = new TimeOnly(9, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5880)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2330)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000005"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5880),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2340),
                             IsActive = true,
                             SequenceOrder = 5,
                             SlotEndTime = new TimeOnly(10, 30, 0),
                             SlotStartTime = new TimeOnly(10, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5880)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2340)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000006"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5890),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2340),
                             IsActive = true,
                             SequenceOrder = 6,
                             SlotEndTime = new TimeOnly(11, 0, 0),
                             SlotStartTime = new TimeOnly(10, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5890)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2340)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000007"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5900),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2350),
                             IsActive = true,
                             SequenceOrder = 7,
                             SlotEndTime = new TimeOnly(11, 30, 0),
                             SlotStartTime = new TimeOnly(11, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5900)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2350)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000008"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5900),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2360),
                             IsActive = true,
                             SequenceOrder = 8,
                             SlotEndTime = new TimeOnly(12, 0, 0),
                             SlotStartTime = new TimeOnly(11, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5900)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2360)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000009"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5910),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2360),
                             IsActive = true,
                             SequenceOrder = 9,
                             SlotEndTime = new TimeOnly(12, 30, 0),
                             SlotStartTime = new TimeOnly(12, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5910)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2360)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000010"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5920),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2370),
                             IsActive = true,
                             SequenceOrder = 10,
                             SlotEndTime = new TimeOnly(13, 0, 0),
                             SlotStartTime = new TimeOnly(12, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5920)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2370)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000011"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5920),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2380),
                             IsActive = true,
                             SequenceOrder = 11,
                             SlotEndTime = new TimeOnly(13, 30, 0),
                             SlotStartTime = new TimeOnly(13, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5920)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2380)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000012"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5930),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2380),
                             IsActive = true,
                             SequenceOrder = 12,
                             SlotEndTime = new TimeOnly(14, 0, 0),
                             SlotStartTime = new TimeOnly(13, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5930)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2380)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000013"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5990),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2390),
                             IsActive = true,
                             SequenceOrder = 13,
                             SlotEndTime = new TimeOnly(14, 30, 0),
                             SlotStartTime = new TimeOnly(14, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(5990)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2390)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000014"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6000),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2390),
                             IsActive = true,
                             SequenceOrder = 14,
                             SlotEndTime = new TimeOnly(15, 0, 0),
                             SlotStartTime = new TimeOnly(14, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6000)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2390)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000015"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6000),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2420),
                             IsActive = true,
                             SequenceOrder = 15,
                             SlotEndTime = new TimeOnly(15, 30, 0),
                             SlotStartTime = new TimeOnly(15, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6000)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2420)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000016"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6010),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2430),
                             IsActive = true,
                             SequenceOrder = 16,
                             SlotEndTime = new TimeOnly(16, 0, 0),
                             SlotStartTime = new TimeOnly(15, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6010)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2430)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000017"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6010),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2430),
                             IsActive = true,
                             SequenceOrder = 17,
                             SlotEndTime = new TimeOnly(16, 30, 0),
                             SlotStartTime = new TimeOnly(16, 0, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6010)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2430)
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000018"),
-                            CreatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6020),
+                            CreatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2440),
                             IsActive = true,
                             SequenceOrder = 18,
                             SlotEndTime = new TimeOnly(17, 0, 0),
                             SlotStartTime = new TimeOnly(16, 30, 0),
-                            UpdatedAt = new DateTime(2026, 6, 28, 7, 51, 2, 865, DateTimeKind.Utc).AddTicks(6020)
+                            UpdatedAt = new DateTime(2026, 6, 28, 16, 59, 5, 36, DateTimeKind.Utc).AddTicks(2440)
                         });
                 });
 
@@ -1156,6 +1297,18 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                         .HasConstraintName("FK_BusinessHours_Dealership");
 
                     b.Navigation("Dealership");
+                });
+
+            modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.IdempotencyRequest", b =>
+                {
+                    b.HasOne("VehicleServiceBooking.Domain.Entities.IdempotencyRequestStatusLookup", "Status")
+                        .WithMany("IdempotencyRequests")
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_IdempotencyRequest_StatusLookup");
+
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.Service", b =>
@@ -1326,6 +1479,11 @@ namespace VehicleServiceBooking.Infrastructure.Migrations
                     b.Navigation("Services");
 
                     b.Navigation("Technicians");
+                });
+
+            modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.IdempotencyRequestStatusLookup", b =>
+                {
+                    b.Navigation("IdempotencyRequests");
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Domain.Entities.ServiceBay", b =>

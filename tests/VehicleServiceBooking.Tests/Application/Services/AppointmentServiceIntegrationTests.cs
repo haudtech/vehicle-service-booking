@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces;
+using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Application.Models;
@@ -254,7 +255,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         SetupAvailabilityServiceForRequest(conflictingRequest.TechnicianId, conflictingRequest.ServiceBayId, conflictingRequest.AppointmentDate.ToDateTime(TimeOnly.MinValue));
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<BookingConflictException>(
             () => _appointmentService.CreateAppointmentAsync(conflictingRequest)
         );
     }
@@ -433,7 +434,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         // Assert
         result.Should().NotBeNull();
-        result.AppointmentId.Should().Be(targetAppointment.Id);
+        result!.AppointmentId.Should().Be(targetAppointment.Id);
         result.SlotStart.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
         result.SlotEnd.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
     }
@@ -473,7 +474,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         // Assert
         result.Should().NotBeNull();
-        result.AppointmentId.Should().Be(targetAppointment.Id);
+        result!.AppointmentId.Should().Be(targetAppointment.Id);
         result.SlotStart.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(8, 0)));
         result.SlotEnd.Should().Be(targetAppointment.AppointmentDate.ToDateTime(new TimeOnly(9, 0)));
     }
@@ -519,7 +520,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
 
         // Assert
         retrievedResponse.Should().NotBeNull();
-        retrievedResponse.AppointmentId.Should().Be(createdResponse.AppointmentId);
+        retrievedResponse!.AppointmentId.Should().Be(createdResponse.AppointmentId);
         retrievedResponse.SlotStart.Should().Be(createdResponse.SlotStart);
         retrievedResponse.SlotEnd.Should().Be(createdResponse.SlotEnd);
     }
