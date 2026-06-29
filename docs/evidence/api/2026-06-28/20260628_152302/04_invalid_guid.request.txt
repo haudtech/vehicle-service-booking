@@ -1,1 +1,0 @@
-http://localhost:5291/api/v1/availability?dealershipId=invalid&serviceTypeId=invalid&date=2026-01-01

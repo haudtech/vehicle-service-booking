@@ -7,7 +7,13 @@
 -- Safe to run multiple times: deterministic IDs + cleanup of only this script's records.
 --
 -- Usage example:
---   PGPASSWORD='123456xX' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
+--   conn=$(grep '^CONNECTIONSTRINGS__DEFAULTCONNECTION=' .env | head -1 | cut -d= -f2-)
+--   host=$(echo "$conn" | sed -n 's/.*Host=\([^;]*\).*/\1/p')
+--   port=$(echo "$conn" | sed -n 's/.*Port=\([^;]*\).*/\1/p')
+--   db=$(echo "$conn" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+--   user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
+--   pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
+--   PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/populate_debug_test_data.sql
 
 BEGIN;
 
@@ -216,7 +222,7 @@ SELECT
     'FAILURE CASE: creates overlap conflict for vehicle 020...0001'
 FROM seed_day;
 
-INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "SequenceOrder", "Notes") VALUES
+INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "BookingDate", "EstimatedStartSlotSequence", "EstimatedEndSlotSequenceExclusive", "SequenceOrder", "Notes") VALUES
     (
         '11111111-1111-1111-1111-100000000001',
         '11111111-1111-1111-1111-090000000001',
@@ -227,6 +233,9 @@ INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", 
         '00000000-0000-0000-0001-000000000001',
         '00000000-0000-0000-0000-000000000004',
         '00000000-0000-0000-0000-000000000006',
+        (SELECT "AppointmentDate" FROM "Appointments" WHERE "Id" = '11111111-1111-1111-1111-090000000001'),
+        4,
+        7,
         1,
         'Occupies Bay-A1 and Tom across slots 4-6'
     );
@@ -246,7 +255,7 @@ SELECT
     'EDGE CASE: cancelled overlapping appointment should not block'
 FROM seed_day;
 
-INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "SequenceOrder", "Notes") VALUES
+INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "BookingDate", "EstimatedStartSlotSequence", "EstimatedEndSlotSequenceExclusive", "SequenceOrder", "Notes") VALUES
     (
         '11111111-1111-1111-1111-100000000002',
         '11111111-1111-1111-1111-090000000002',
@@ -257,6 +266,9 @@ INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", 
         '00000000-0000-0000-0001-000000000001',
         '00000000-0000-0000-0000-000000000004',
         '00000000-0000-0000-0000-000000000006',
+        (SELECT "AppointmentDate" FROM "Appointments" WHERE "Id" = '11111111-1111-1111-1111-090000000002'),
+        4,
+        7,
         1,
         'Cancelled overlap for validation checks'
     );
@@ -276,7 +288,7 @@ SELECT
     'HAPPY CASE: valid booking in future date'
 FROM seed_day;
 
-INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "SequenceOrder", "Notes") VALUES
+INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "BookingDate", "EstimatedStartSlotSequence", "EstimatedEndSlotSequenceExclusive", "SequenceOrder", "Notes") VALUES
     (
         '11111111-1111-1111-1111-100000000003',
         '11111111-1111-1111-1111-090000000003',
@@ -287,6 +299,9 @@ INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", 
         '00000000-0000-0000-0001-000000000001',
         '00000000-0000-0000-0000-000000000007',
         '00000000-0000-0000-0000-000000000009',
+        (SELECT "AppointmentDate" FROM "Appointments" WHERE "Id" = '11111111-1111-1111-1111-090000000003'),
+        7,
+        10,
         1,
         'Valid future booking for happy-path tests'
     );
@@ -306,7 +321,7 @@ SELECT
     'EDGE CASE: other dealership should not affect main dealership availability'
 FROM seed_day;
 
-INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "SequenceOrder", "Notes") VALUES
+INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "BookingDate", "EstimatedStartSlotSequence", "EstimatedEndSlotSequenceExclusive", "SequenceOrder", "Notes") VALUES
     (
         '11111111-1111-1111-1111-100000000004',
         '11111111-1111-1111-1111-090000000004',
@@ -317,6 +332,9 @@ INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", 
         '00000000-0000-0000-0001-000000000001',
         '00000000-0000-0000-0000-000000000004',
         '00000000-0000-0000-0000-000000000006',
+        (SELECT "AppointmentDate" FROM "Appointments" WHERE "Id" = '11111111-1111-1111-1111-090000000004'),
+        4,
+        7,
         1,
         'Other dealership occupancy for isolation assertions'
     );
@@ -336,7 +354,7 @@ SELECT
     'EDGE CASE: long duration service occupies noon window'
 FROM seed_day;
 
-INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "SequenceOrder", "Notes") VALUES
+INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", "ServiceBayId", "DealershipId", "ServiceStatusId", "EstimatedStartTimeSlotId", "EstimatedEndTimeSlotId", "BookingDate", "EstimatedStartSlotSequence", "EstimatedEndSlotSequenceExclusive", "SequenceOrder", "Notes") VALUES
     (
         '11111111-1111-1111-1111-100000000005',
         '11111111-1111-1111-1111-090000000005',
@@ -347,6 +365,9 @@ INSERT INTO "Services" ("Id", "AppointmentId", "ServiceTypeId", "TechnicianId", 
         '00000000-0000-0000-0001-000000000001',
         '00000000-0000-0000-0000-000000000008',
         '00000000-0000-0000-0000-000000000016',
+        (SELECT "AppointmentDate" FROM "Appointments" WHERE "Id" = '11111111-1111-1111-1111-090000000005'),
+        8,
+        17,
         1,
         'Long duration service to test slot span logic'
     );

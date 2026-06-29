@@ -4,8 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
+using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Domain.Entities;
 
 namespace VehicleServiceBooking.Infrastructure.Repositories;
@@ -16,6 +18,9 @@ namespace VehicleServiceBooking.Infrastructure.Repositories;
 /// </summary>
 public class AppointmentRepository : GenericRepository<Appointment>, IAppointmentRepository
 {
+    private const string TechnicianOverlapConstraintName = "EXC_Service_Tech_Date_SeqRange_NoOverlap";
+    private const string ServiceBayOverlapConstraintName = "EXC_Service_Bay_Date_SeqRange_NoOverlap";
+
     public AppointmentRepository(IApplicationDbContext dbContext)
         : base(dbContext)
     {
@@ -125,14 +130,23 @@ public class AppointmentRepository : GenericRepository<Appointment>, IAppointmen
         Appointment appointment,
         CancellationToken cancellationToken)
     {
-        // Add the appointment entity
-        // EF Core will cascade add all services in the Services collection
-        DbContext.Appointments.Add(appointment);
-        
-        // Save everything atomically
-        await SaveChangesAsync(cancellationToken);
-        
-        return appointment;
+        try
+        {
+            // Add the appointment entity
+            // EF Core will cascade add all services in the Services collection
+            DbContext.Appointments.Add(appointment);
+
+            // Save everything atomically
+            await SaveChangesAsync(cancellationToken);
+
+            return appointment;
+        }
+        catch (DbUpdateException ex) when (IsBookingConflictViolation(ex))
+        {
+            throw new BookingConflictException(
+                "The selected slot is no longer available. Please check availability again.",
+                ex);
+        }
     }
 
     /// <summary>
@@ -151,5 +165,22 @@ public class AppointmentRepository : GenericRepository<Appointment>, IAppointmen
                 t.SequenceOrder <= endSequenceOrder)
             .OrderBy(t => t.SequenceOrder)
             .ToListAsync(cancellationToken);
+    }
+
+    private static bool IsBookingConflictViolation(DbUpdateException ex)
+    {
+        if (ex.InnerException is PostgresException pgEx)
+        {
+            var isConflictSqlState = pgEx.SqlState == PostgresErrorCodes.ExclusionViolation ||
+                                     pgEx.SqlState == PostgresErrorCodes.UniqueViolation;
+            var isKnownConstraint = string.Equals(pgEx.ConstraintName, TechnicianOverlapConstraintName, StringComparison.Ordinal) ||
+                                    string.Equals(pgEx.ConstraintName, ServiceBayOverlapConstraintName, StringComparison.Ordinal);
+
+            return isConflictSqlState && isKnownConstraint;
+        }
+
+        var rawMessage = ex.ToString();
+        return rawMessage.Contains(TechnicianOverlapConstraintName, StringComparison.Ordinal) ||
+               rawMessage.Contains(ServiceBayOverlapConstraintName, StringComparison.Ordinal);
     }
 }

@@ -96,7 +96,18 @@ var app = builder.Build();
 // Configure middleware pipeline
 app.UseApplicationMiddleware();
 
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        if (httpContext.Items.TryGetValue("CorrelationId", out var correlationId) && correlationId != null)
+        {
+            diagnosticContext.Set("CorrelationId", correlationId);
+        }
+
+        diagnosticContext.Set("TraceIdentifier", httpContext.TraceIdentifier);
+    };
+});
 
 // Get CORS configuration and apply CORS middleware
 var corsConfig = builder.Services.BuildServiceProvider()

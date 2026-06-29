@@ -18,13 +18,18 @@ The script seeds enough realistic data for:
 ## Run
 
 ```bash
-export DB_PASSWORD='<your-db-password>'
+conn=$(grep '^CONNECTIONSTRINGS__DEFAULTCONNECTION=' .env | head -1 | cut -d= -f2-)
+host=$(echo "$conn" | sed -n 's/.*Host=\([^;]*\).*/\1/p')
+port=$(echo "$conn" | sed -n 's/.*Port=\([^;]*\).*/\1/p')
+db=$(echo "$conn" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
+pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
 
-PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U haudo -d vehicle_service_booking \
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" \
   -f docs/sql/populate_debug_test_data.sql
 
 # remove only rows created by debug seed script
-PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U haudo -d vehicle_service_booking \
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" \
   -f docs/sql/cleanup_debug_test_data.sql
 ```
 
@@ -32,13 +37,18 @@ PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U haudo -d vehicle_service_
 
 ```bash
 # one-time in shell
-export DB_PASSWORD='<your-db-password>'
+conn=$(grep '^CONNECTIONSTRINGS__DEFAULTCONNECTION=' .env | head -1 | cut -d= -f2-)
+host=$(echo "$conn" | sed -n 's/.*Host=\([^;]*\).*/\1/p')
+port=$(echo "$conn" | sed -n 's/.*Port=\([^;]*\).*/\1/p')
+db=$(echo "$conn" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
+pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
 
 # 1) reset previous debug dataset
-PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/cleanup_debug_test_data.sql
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/cleanup_debug_test_data.sql
 
 # 2) seed fresh dataset
-PGPASSWORD="$DB_PASSWORD" psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/populate_debug_test_data.sql
 
 # 3) run tests / API checks
 dotnet test tests/VehicleServiceBooking.Tests/VehicleServiceBooking.Tests.csproj --no-build
@@ -52,7 +62,7 @@ dotnet test tests/VehicleServiceBooking.Tests/VehicleServiceBooking.Tests.csproj
 
 ## Notes
 
-- Appointment and service lookup rows are expected from EF migration seeds.
+- Appointment/service lookup rows and Service invariant columns are expected from EF migration seeds.
 - The script includes best-effort `REFRESH MATERIALIZED VIEW` calls. If objects are regular views or absent, the script continues.
 - A small block intentionally attempts invalid inserts and catches exceptions to verify DB constraints without persisting bad rows.
 - If output stops at `(END)`, `psql` is using a pager; press `q` to return to shell.

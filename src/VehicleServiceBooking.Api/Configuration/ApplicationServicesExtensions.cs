@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using VehicleServiceBooking.Api.Services;
 using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
@@ -44,6 +45,7 @@ public static class ApplicationServicesExtensions
     private static void RegisterRepositories(IServiceCollection services)
     {
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
         services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
         services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
 
@@ -79,5 +81,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IIdempotencyService, IdempotencyService>();
+        services.AddScoped<IIdempotencyRequestCoordinator, IdempotencyRequestCoordinator>();
     }
 }

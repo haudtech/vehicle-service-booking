@@ -42,6 +42,10 @@ public static class ApplicationOptionsExtensions
         services.Configure<StaticDataCacheOptions>(
             configuration.GetSection(StaticDataCacheOptions.SectionName));
 
+        // Register idempotency options
+        services.Configure<IdempotencyOptions>(
+            configuration.GetSection(IdempotencyOptions.SectionName));
+
         // Register in-process cache provider
         services.AddMemoryCache();
 

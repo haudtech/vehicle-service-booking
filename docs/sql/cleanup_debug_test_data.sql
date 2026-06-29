@@ -5,7 +5,13 @@
 --   Remove only deterministic rows created by the debug seed script.
 --
 -- Usage:
---   PGPASSWORD='123456xX' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/cleanup_debug_test_data.sql
+--   conn=$(grep '^CONNECTIONSTRINGS__DEFAULTCONNECTION=' .env | head -1 | cut -d= -f2-)
+--   host=$(echo "$conn" | sed -n 's/.*Host=\([^;]*\).*/\1/p')
+--   port=$(echo "$conn" | sed -n 's/.*Port=\([^;]*\).*/\1/p')
+--   db=$(echo "$conn" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+--   user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
+--   pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
+--   PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/cleanup_debug_test_data.sql
 
 BEGIN;
 

@@ -31,7 +31,7 @@ public static class SwaggerExtensions
                 Contact = new OpenApiContact
                 {
                     Name = "Vehicle Service Booking Support",
-                    Email = "support@vehicleservicebooking.com"
+                    Email = "haud.tech@gmail.com"
                 },
                 License = new OpenApiLicense
                 {
@@ -43,7 +43,7 @@ public static class SwaggerExtensions
             AddXmlDocumentation(options);
 
             // Add security definition for JWT (future implementation)
-            AddJwtSecurityDefinition(options);
+            // AddJwtSecurityDefinition(options);
 
             // Configure endpoint grouping
             ConfigureEndpointGrouping(options);

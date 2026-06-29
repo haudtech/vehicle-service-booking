@@ -19,6 +19,9 @@ public static class MiddlewareExtensions
     public static WebApplication UseApplicationMiddleware(
         this WebApplication app)
     {
+        // Correlation ID should be available for all downstream logs and handlers.
+        app.UseMiddleware<CorrelationIdMiddleware>();
+
         // Exception handling - should be first in pipeline
         app.UseMiddleware<ValidationExceptionMiddleware>();
 

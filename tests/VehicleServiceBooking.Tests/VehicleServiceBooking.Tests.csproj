@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\VehicleServiceBooking.Api\VehicleServiceBooking.Api.csproj" />
     <ProjectReference Include="..\..\src\VehicleServiceBooking.Application\VehicleServiceBooking.Application.csproj" />
     <ProjectReference Include="..\..\src\VehicleServiceBooking.Domain\VehicleServiceBooking.Domain.csproj" />
     <ProjectReference Include="..\..\src\VehicleServiceBooking.Infrastructure\VehicleServiceBooking.Infrastructure.csproj" />
