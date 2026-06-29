@@ -4,7 +4,7 @@
 This document defines API test cases for the current implementation using real PostgreSQL data.
 
 Base URL used in this guide:
-- `http://localhost:5291/api/v1`
+- `http://localhost:5280/api/v1`
 
 Captured real request/response evidence:
 - [docs/evidence/api/2026-06-29/20260629_094443](docs/evidence/api/2026-06-29/20260629_094443)
@@ -35,16 +35,16 @@ Use PostgreSQL with database `vehicle_service_booking`.
 Run cleanup and seed scripts before executing happy-path tests.
 
 ```bash
-PGPASSWORD='123456xX' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/cleanup_debug_test_data.sql
-PGPASSWORD='123456xX' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
+PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/cleanup_debug_test_data.sql
+PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
 ```
 
 ### 3. Start API
 
 ```bash
 cd src/VehicleServiceBooking.Api
-ASPNETCORE_URLS='http://localhost:5291' \
-ConnectionStrings__DefaultConnection='Host=localhost;Port=5432;Database=vehicle_service_booking;Username=haudo;Password=123456xX;' \
+ASPNETCORE_URLS='http://localhost:5280' \
+ConnectionStrings__DefaultConnection='Host=localhost;Port=5432;Database=vehicle_service_booking;Username=haudo;Password=<password>;' \
 dotnet run --no-launch-profile
 ```
 
@@ -72,11 +72,11 @@ Use this table to track each execution run from `scripts/run_api_tests.sh`.
 
 | Run ID | Run DateTime | API Base URL | TC-01 | TC-02 | TC-03 | TC-04 | TC-05 | TC-06 | TC-07 | TC-08 | TC-09 | Passed | Failed | Evidence Directory |
 |---|---|---|---|---|---|---|---|---|---|---|---|---:|---:|---|
-| `20260628_152302` | `2026-06-28 15:23:02 +07` | `http://localhost:5291/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | N/A | N/A | N/A | N/A | 6 | 0 | `docs/evidence/api/2026-06-28/20260628_152302` |
-| `20260628_195544` | `2026-06-28 19:55:44 +07` | `http://localhost:5291/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | N/A | N/A | N/A | 7 | 0 | `docs/evidence/api/2026-06-28/20260628_195544` |
-| `20260628_221520` | `2026-06-28 22:15:20 +07` | `http://localhost:5291/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | FAIL (`201` + `201`, mismatched response payload casing/shape) | N/A | N/A | 7 | 1 | `docs/evidence/api/2026-06-28/20260628_221520` |
-| `20260628_221617` | `2026-06-28 22:16:17 +07` | `http://localhost:5291/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | PASS (`201` + `201`, same `appointmentId`) | N/A | N/A | 8 | 0 | `docs/evidence/api/2026-06-28/20260628_221617` |
-| `20260629_094443` | `2026-06-29 09:44:43 +07` | `http://localhost:5291/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | PASS (`201`, missing `Idempotency-Key`) | PASS (`201`, present `Idempotency-Key`) | PASS (`201` + `201`, same `appointmentId`) | 10 | 0 | `docs/evidence/api/2026-06-29/20260629_094443` |
+| `20260628_152302` | `2026-06-28 15:23:02 +07` | `http://localhost:5280/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | N/A | N/A | N/A | N/A | 6 | 0 | `docs/evidence/api/2026-06-28/20260628_152302` |
+| `20260628_195544` | `2026-06-28 19:55:44 +07` | `http://localhost:5280/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | N/A | N/A | N/A | 7 | 0 | `docs/evidence/api/2026-06-28/20260628_195544` |
+| `20260628_221520` | `2026-06-28 22:15:20 +07` | `http://localhost:5280/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | FAIL (`201` + `201`, mismatched response payload casing/shape) | N/A | N/A | 7 | 1 | `docs/evidence/api/2026-06-28/20260628_221520` |
+| `20260628_221617` | `2026-06-28 22:16:17 +07` | `http://localhost:5280/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | PASS (`201` + `201`, same `appointmentId`) | N/A | N/A | 8 | 0 | `docs/evidence/api/2026-06-28/20260628_221617` |
+| `20260629_094443` | `2026-06-29 09:44:43 +07` | `http://localhost:5280/api/v1` | PASS (`200`) | PASS (`201`) | PASS (`200`) | PASS (`400`) | PASS (`400`) | PASS (`201` + `409 BOOKING_CONFLICT`) | PASS (`201`, missing `Idempotency-Key`) | PASS (`201`, present `Idempotency-Key`) | PASS (`201` + `201`, same `appointmentId`) | 10 | 0 | `docs/evidence/api/2026-06-29/20260629_094443` |
 
 ## Test Case 1 - Get Availability
 
@@ -89,7 +89,7 @@ Endpoint:
 Request:
 ```bash
 target_date=$(date -v+1d +%F)
-curl -sS -i "http://localhost:5291/api/v1/availability?dealershipId=11111111-1111-1111-1111-000000000001&serviceTypeId=11111111-1111-1111-1111-030000000001&date=$target_date"
+curl -sS -i "http://localhost:5280/api/v1/availability?dealershipId=11111111-1111-1111-1111-000000000001&serviceTypeId=11111111-1111-1111-1111-030000000001&date=$target_date"
 ```
 
 Expected:
@@ -115,7 +115,7 @@ Request:
 ```bash
 target_date=$(date -v+1d +%F)
 
-curl -sS -i -X POST "http://localhost:5291/api/v1/appointments" \
+curl -sS -i -X POST "http://localhost:5280/api/v1/appointments" \
   -H 'Content-Type: application/json' \
   -d "{
     \"dealershipId\": \"11111111-1111-1111-1111-000000000001\",
@@ -154,7 +154,7 @@ Endpoint:
 Request:
 ```bash
 appointment_id='<paste-appointment-id-from-test-2>'
-curl -sS -i "http://localhost:5291/api/v1/appointments/$appointment_id"
+curl -sS -i "http://localhost:5280/api/v1/appointments/$appointment_id"
 ```
 
 Expected:
@@ -173,7 +173,7 @@ Description:
 
 Request:
 ```bash
-curl -sS -i "http://localhost:5291/api/v1/availability?dealershipId=invalid&serviceTypeId=invalid&date=2026-01-01"
+curl -sS -i "http://localhost:5280/api/v1/availability?dealershipId=invalid&serviceTypeId=invalid&date=2026-01-01"
 ```
 
 Expected:
@@ -189,7 +189,7 @@ Description:
 
 Request:
 ```bash
-curl -sS -i "http://localhost:5291/api/v1/availability?dealershipId=11111111-1111-1111-1111-000000000001&serviceTypeId=11111111-1111-1111-1111-030000000001&date=2020-01-01"
+curl -sS -i "http://localhost:5280/api/v1/availability?dealershipId=11111111-1111-1111-1111-000000000001&serviceTypeId=11111111-1111-1111-1111-030000000001&date=2020-01-01"
 ```
 
 Expected:
@@ -208,7 +208,7 @@ Endpoint:
 
 Request:
 ```bash
-DB="host=localhost port=5432 dbname=vehicle_service_booking user=haudo password=123456xX"
+DB="host=localhost port=5432 dbname=vehicle_service_booking user=haudo password=<password>"
 
 row=$(psql "$DB" -At -F '|' -c "WITH candidate AS (
   SELECT sva.\"DealershipId\", sva.\"ServiceTypeId\", sva.\"TechnicianId\", sva.\"ServiceBayId\", sva.\"TimeSlotId\" AS start_slot_id,
@@ -243,8 +243,8 @@ cat > /tmp/booking_req.json <<JSON
 }
 JSON
 
-(curl -s -o /tmp/resp_a.json -w "%{http_code}" -H "Content-Type: application/json" -d @/tmp/booking_req.json http://localhost:5291/api/v1/appointments > /tmp/code_a.txt) &
-(curl -s -o /tmp/resp_b.json -w "%{http_code}" -H "Content-Type: application/json" -d @/tmp/booking_req.json http://localhost:5291/api/v1/appointments > /tmp/code_b.txt) &
+(curl -s -o /tmp/resp_a.json -w "%{http_code}" -H "Content-Type: application/json" -d @/tmp/booking_req.json http://localhost:5280/api/v1/appointments > /tmp/code_a.txt) &
+(curl -s -o /tmp/resp_b.json -w "%{http_code}" -H "Content-Type: application/json" -d @/tmp/booking_req.json http://localhost:5280/api/v1/appointments > /tmp/code_b.txt) &
 wait
 
 echo "A=$(cat /tmp/code_a.txt)"
@@ -275,7 +275,7 @@ Endpoint:
 Request:
 ```bash
 # Same payload as the happy path, but without the Idempotency-Key header.
-curl -sS -i -X POST "http://localhost:5291/api/v1/appointments" \
+curl -sS -i -X POST "http://localhost:5280/api/v1/appointments" \
   -H 'Content-Type: application/json' \
   -d '{ ... create appointment payload ... }'
 ```
@@ -303,7 +303,7 @@ Endpoint:
 Request:
 ```bash
 # Same payload as the happy path, with a unique Idempotency-Key header.
-curl -sS -i -X POST "http://localhost:5291/api/v1/appointments" \
+curl -sS -i -X POST "http://localhost:5280/api/v1/appointments" \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: create-appointment-test-key' \
   -d '{ ... create appointment payload ... }'
@@ -331,7 +331,7 @@ Endpoint:
 
 Request:
 ```bash
-DB="host=localhost port=5432 dbname=vehicle_service_booking user=haudo password=123456xX"
+DB="host=localhost port=5432 dbname=vehicle_service_booking user=haudo password=<password>"
 
 row=$(psql "$DB" -At -F '|' -c "WITH candidate AS (
   SELECT sva.\"DealershipId\", sva.\"ServiceTypeId\", sva.\"TechnicianId\", sva.\"ServiceBayId\", sva.\"TimeSlotId\" AS start_slot_id,
@@ -367,8 +367,8 @@ cat > /tmp/idem_req.json <<JSON
 }
 JSON
 
-(curl -s -o /tmp/idem_resp_a.json -w "%{http_code}" -H "Content-Type: application/json" -H "Idempotency-Key: $idempotency_key" -d @/tmp/idem_req.json http://localhost:5291/api/v1/appointments > /tmp/idem_code_a.txt) &
-(curl -s -o /tmp/idem_resp_b.json -w "%{http_code}" -H "Content-Type: application/json" -H "Idempotency-Key: $idempotency_key" -d @/tmp/idem_req.json http://localhost:5291/api/v1/appointments > /tmp/idem_code_b.txt) &
+(curl -s -o /tmp/idem_resp_a.json -w "%{http_code}" -H "Content-Type: application/json" -H "Idempotency-Key: $idempotency_key" -d @/tmp/idem_req.json http://localhost:5280/api/v1/appointments > /tmp/idem_code_a.txt) &
+(curl -s -o /tmp/idem_resp_b.json -w "%{http_code}" -H "Content-Type: application/json" -H "Idempotency-Key: $idempotency_key" -d @/tmp/idem_req.json http://localhost:5280/api/v1/appointments > /tmp/idem_code_b.txt) &
 wait
 
 echo "A=$(cat /tmp/idem_code_a.txt)"
@@ -417,7 +417,7 @@ Evidence from latest successful run:
 
 API port already in use:
 ```bash
-lsof -iTCP:5291 -sTCP:LISTEN -n -P
+lsof -iTCP:5280 -sTCP:LISTEN -n -P
 ```
 
 If needed, stop the process and restart API:

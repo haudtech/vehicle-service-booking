@@ -48,7 +48,6 @@
 ```
 
 ---
----
 
 ## �📊 DATA FLOW DIAGRAM (Slot-Based Service Scheduling + Idempotency)
 
@@ -2023,3 +2022,114 @@ Conflict Prevention (HARD):
 ```
 
 **Future Enhancement:** Integrate with centralized log aggregation (ELK Stack, Datadog, Cloud Logging) for cross-service tracing and persistent storage beyond daily rolling files.
+
+---
+
+## NEXT PLAN
+
+### **TASK 1: Authentication & Authorization**
+
+#### Task 1.1: JWT Authentication Setup
+```
+Files to Create:
+  - JwtOptions.cs - JWT configuration class
+  - IJwtTokenProvider.cs - Token generation interface
+  - JwtTokenProvider.cs - Token generation implementation
+  - AuthenticationMiddleware.cs - Extract token from headers
+  - AuthenticationService.cs - Login/token validation
+
+Scope:
+  - Configure JWT issuer, audience, secret key
+  - Create access tokens (short-lived, 15-30 min)
+  - Create refresh tokens (long-lived, 7 days)
+  - Token validation and expiration checks
+  - Secure secret key management
+```
+
+#### Task 1.2: Authentication Controllers
+```
+Files to Create:
+  - AuthController.cs with endpoints:
+    • POST /api/v1/auth/login - Issue tokens
+    • POST /api/v1/auth/refresh - Refresh access token
+    • POST /api/v1/auth/logout - Revoke tokens (optional)
+
+Models to Create:
+  - LoginRequest (email, password)
+  - TokenResponse (accessToken, refreshToken, expiresIn)
+  - RefreshTokenRequest
+  - RefreshTokenResponse
+
+Scope:
+  - User authentication via email/password
+  - Password hashing and validation
+  - Rate limiting on login attempts
+  - Error responses with proper HTTP status codes
+```
+
+#### Task 1.3: Authorization Policies
+```
+Files to Create:
+  - AuthorizationPolicies.cs - Define authorization rules
+  - ClaimsTransformer.cs - Extract user claims
+
+Scope:
+  - Define role-based access control (RBAC)
+    • Admin: Full access
+    • Manager: Dealership management
+    • Technician: View own schedule
+    • Customer: View own appointments
+  - Define claim-based policies
+  - Set up [Authorize] attributes on endpoints
+```
+
+---
+
+### **TASK 2: User Management & Identity**
+
+#### Task 2.1: User Entity & Repository
+```
+Files to Create:
+  - User.cs - User entity (if not in Domain)
+  - IUserRepository.cs - User data access interface
+  - UserRepository.cs - User data access implementation
+
+Entity Properties:
+  - Id, Email, PasswordHash, FirstName, LastName
+  - Role, Status (Active/Inactive)
+  - CreatedAt, LastLoginAt
+  - RefreshTokens (collection for token management)
+
+Scope:
+  - User creation with hashed passwords
+  - User lookup by email
+  - Password validation
+  - Token revocation tracking
+```
+
+#### Task 2.2: User Service
+```
+Files to Create:
+  - IUserService.cs - User business logic interface
+  - UserService.cs - User business logic
+
+Methods:
+  - RegisterUserAsync() - Create new user
+  - ValidateUserAsync() - Check credentials
+  - UpdateUserAsync() - Modify user details
+  - DeactivateUserAsync() - Soft delete users
+
+Scope:
+  - Password hashing with BCrypt/PBKDF2
+  - Email uniqueness validation
+  - User role assignment
+  - Audit logging of user actions
+```
+
+### **TASK 3: API Request Enhancement**
+
+#### Task 3.1: Multiple Service Types Search per request
+
+#### Task 3.2: Multiple Service Types per An appointment request
+
+---

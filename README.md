@@ -4,18 +4,22 @@
 
 1. [Project Introduction](#-project-introduction)
 2. [Architecture Overview](#-architecture-overview)
-3. [Technology Stack](#-technology-stack)
-4. [Prerequisites](#-prerequisites)
-5. [Database Configuration](#-database-configuration)
-6. [Logging Configuration](#-logging-configuration)
-7. [How to Build](#-how-to-build)
-8. [How to Run](#-how-to-run)
-9. [Entity Framework Migrations](#-entity-framework-migrations)
-10. [How to Test](#-how-to-test)
-11. [Trace & Troubleshooting](#-trace--troubleshooting)
-12. [API Endpoints](#-api-endpoints)
-13. [Project Structure](#-project-structure)
-14. [AI Collaboration Narrative](#-ai-collaboration-narrative)
+3. [Data Flow: Creating an Appointment](#data-flow-creating-an-appointment)
+4. [UX Driven-Design](#ux-driven-design)
+5. [Technology Stack](#-technology-stack)
+6. [Prerequisites](#-prerequisites)
+7. [Database Configuration](#-database-configuration)
+8. [Entity Framework Migrations](#-entity-framework-migrations)
+9. [Logging Configuration](#-logging-configuration)
+10. [How to Build](#-how-to-build)
+11. [How to Run](#-how-to-run)
+12. [How to Test](#-how-to-test)
+13. [Trace & Troubleshooting](#-trace--troubleshooting)
+14. [API Endpoints](#-api-endpoints)
+15. [Project Structure](#-project-structure)
+16. [AI Collaboration Narrative](#-ai-collaboration-narrative)
+17. [Additional Documentation](#-additional-documentation)
+18. [Support](#-support)
 
 ---
 
@@ -95,7 +99,34 @@ The system implements **Clean Architecture** with strict separation of concerns:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow: Creating an Appointment
+## Data Flow: Creating an Appointment
+
+## UX Driven-Design
+
+```
+User
+ │
+ ▼
+Select Service Type + Date
+ │
+ ▼
+GET /availability
+ │
+ ▼
+Available Slots Returned
+ │
+ ▼
+Select Slot
+ │
+ ▼
+POST /appointments
+ │
+ ▼
+Appointment Created
+
+```
+
+### Appointment Creation Request
 
 ```
 1. Client sends POST /appointments request
@@ -122,19 +153,6 @@ The system implements **Clean Architecture** with strict separation of concerns:
 7. Serilog logs structured fields with correlation ID
 ```
 
-### Technology Justification
-
-| Technology | Version | Layer | Why |
-|---|---|---|---|
-| **ASP.NET Core** | 8.0 | Presentation | Native async/await, high performance, LTS until 2026 |
-| **C#** | 11 | All Layers | Type-safe, LINQ for queries, records for DTOs, pattern matching |
-| **PostgreSQL** | 13+ | Database | Exclusion constraints for concurrency, SQL views, window functions, DateOnly support |
-| **Entity Framework Core** | 8.0 | Infrastructure | Type-safe queries, migrations, query translation to SQL, interceptors |
-| **FluentValidation** | 11.9.1 | Application | Declarative rules, testable validators, field-level error messages |
-| **Serilog** | 8.0.1 | Infrastructure | Structured logging, context enrichment, multiple sinks |
-| **OpenTelemetry** | 1.9.0 | Infrastructure | Standard tracing format, auto-instrumentation, vendor-neutral |
-| **xUnit + FluentAssertions** | Latest | Testing | Clean test syntax, comprehensive assertions, excellent async support |
-
 ---
 
 ## 🛠️ Technology Stack
@@ -153,6 +171,19 @@ The system implements **Clean Architecture** with strict separation of concerns:
 | **xUnit** | 2.9.3 | Unit testing framework |
 | **Moq** | 4.20.70 | Mocking library |
 | **FluentAssertions** | 6.12.0 | Assertion library |
+
+#### Technology Justification
+
+| Technology | Version | Layer | Why |
+|---|---|---|---|
+| **ASP.NET Core** | 8.0 | Presentation | Native async/await, high performance, LTS until 2026 |
+| **C#** | 11 | All Layers | Type-safe, LINQ for queries, records for DTOs, pattern matching |
+| **PostgreSQL** | 13+ | Database | Exclusion constraints for concurrency, SQL views, window functions, DateOnly support |
+| **Entity Framework Core** | 8.0 | Infrastructure | Type-safe queries, migrations, query translation to SQL, interceptors |
+| **FluentValidation** | 11.9.1 | Application | Declarative rules, testable validators, field-level error messages |
+| **Serilog** | 8.0.1 | Infrastructure | Structured logging, context enrichment, multiple sinks |
+| **OpenTelemetry** | 1.9.0 | Infrastructure | Standard tracing format, auto-instrumentation, vendor-neutral |
+| **xUnit + FluentAssertions** | Latest | Testing | Clean test syntax, comprehensive assertions, excellent async support |
 
 ---
 
@@ -236,199 +267,6 @@ psql -h localhost -U postgres -d vehicle_service_booking -c "SELECT 1;"
 #----------
 #        1
 ```
-
----
-
-## 📝 Logging Configuration
-
-### Log Levels
-
-Log levels are configured in `appsettings.json` and `appsettings.Development.json`:
-
-**Production** (`appsettings.json`):
-```json
-{
-  "Observability": {
-    "Serilog": {
-      "MinimumLevel": "Information",
-      "Override": {
-        "Microsoft": "Information",
-        "Microsoft.AspNetCore": "Warning"
-      },
-      "EnableConsole": true,
-      "EnableFile": true,
-      "FilePath": "logs/app-.txt",
-      "RollingInterval": "Day"
-    }
-  }
-}
-```
-
-**Development** (`appsettings.Development.json`):
-```json
-{
-  "Observability": {
-    "Serilog": {
-      "MinimumLevel": "Debug",
-      "Override": {
-        "Microsoft": "Information",
-        "Microsoft.AspNetCore": "Warning"
-      },
-      "EnableConsole": true,
-      "EnableFile": true,
-      "FilePath": "logs/app-.txt",
-      "RollingInterval": "Day"
-    }
-  }
-}
-```
-
-### Log Output Locations
-
-**Console Output:**
-- Real-time colored logs to terminal during development
-- Useful for immediate debugging
-
-**File Logs:**
-- Location: `src/VehicleServiceBooking.Api/logs/app-{YYYYMMDD}.txt`
-- Rolling: New file created daily at midnight
-- Example: `src/VehicleServiceBooking.Api/logs/app-20260629.txt`, `src/VehicleServiceBooking.Api/logs/app-20260630.txt`
-
-### Viewing Logs
-
-```bash
-# View today's logs
-tail -f src/VehicleServiceBooking.Api/logs/app-$(date +%Y%m%d).txt
-
-# View last 100 lines
-tail -100 src/VehicleServiceBooking.Api/logs/app-*.txt
-
-# Search for specific correlation ID
-grep -Ei "CorrelationId|550e8400-e29b-41d4-a716-446655440001" src/VehicleServiceBooking.Api/logs/app-*.txt
-
-# View all errors
-grep "\[ERR\]" src/VehicleServiceBooking.Api/logs/app-*.txt
-```
-
-### Structured Logging Fields
-
-The application logs the following structured fields for every appointment operation:
-
-```
-Business Context:
-  - dealershipId
-  - customerId
-  - vehicleId
-  - serviceTypeId
-
-Resource Allocation:
-  - technicianId
-  - serviceBayId
-  - appointmentId
-
-Time Information:
-  - startTimeSlotId
-  - endTimeSlotId
-  - slotStart
-  - slotEnd
-
-Error Context:
-  - Message (from exceptions)
-  - ex (full exception object)
-
-Correlation:
-  - CorrelationId (for end-to-end tracing)
-```
-
----
-
-## 🏗️ How to Build
-
-### Build the Entire Solution
-
-```bash
-cd /path/to/vehicle-service-booking
-
-# Restore dependencies
-dotnet restore
-
-# Build in Debug mode
-dotnet build
-
-# Build in Release mode (optimized)
-dotnet build --configuration Release
-```
-
-### Build Specific Projects
-
-```bash
-# Build API project only
-dotnet build src/VehicleServiceBooking.Api/
-
-# Build with verbose output
-dotnet build --verbosity detailed
-
-# Build and show warnings
-dotnet build --warnings-as-errors false
-```
-
-### Expected Output
-
-```
-Microsoft (R) Build Engine version ...
-Building for .NET 8.0
-
-Build started ...
-
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-
-Time Elapsed 00:00:15.23
-```
-
----
-
-## 🚀 How to Run
-
-### Start the API Server
-
-```bash
-cd /path/to/vehicle-service-booking
-
-# Run in development mode (with hot reload)
-dotnet run --project src/VehicleServiceBooking.Api
-
-# Run in release mode
-dotnet run --project src/VehicleServiceBooking.Api --configuration Release
-
-# Run on specific port
-dotnet run --project src/VehicleServiceBooking.Api -- --urls "http://localhost:5000"
-```
-
-### Expected Startup Output
-
-```
-info: VehicleServiceBooking.Api.Program[0]
-      Application starting...
-      
-info: Microsoft.Hosting.Lifetime[0]
-      Now listening on: http://localhost:5280
-      
-info: Microsoft.Hosting.Lifetime[0]
-      Application started. Press Ctrl+C to exit.
-```
-
-### Verify API is Running
-
-**Test endpoint health:**
-```bash
-curl -X GET http://localhost:5280/api/v1/health
-```
-
-**Access Swagger documentation:**
-- Open browser: http://localhost:5280/swagger
-- Interactive API documentation and testing
 
 ---
 
@@ -587,6 +425,172 @@ dotnet ef database update PreviousMigrationName \
 | `dotnet ef database update` | Apply all pending migrations |
 | `dotnet ef database update [MigrationName]` | Revert to specific migration |
 | `dotnet ef database drop` | Drop entire database (dangerous!) |
+
+---
+
+## 📝 Logging Configuration
+
+### Log Levels
+
+Log levels are configured in `appsettings.json` and `appsettings.Development.json`:
+
+**Production** (`appsettings.json`):
+```json
+{
+  "Observability": {
+    "Serilog": {
+      "MinimumLevel": "Information",
+      "Override": {
+        "Microsoft": "Information",
+        "Microsoft.AspNetCore": "Warning"
+      },
+      "EnableConsole": true,
+      "EnableFile": true,
+      "FilePath": "logs/app-.txt",
+      "RollingInterval": "Day"
+    }
+  }
+}
+```
+
+**Development** (`appsettings.Development.json`):
+```json
+{
+  "Observability": {
+    "Serilog": {
+      "MinimumLevel": "Debug",
+      "Override": {
+        "Microsoft": "Information",
+        "Microsoft.AspNetCore": "Warning"
+      },
+      "EnableConsole": true,
+      "EnableFile": true,
+      "FilePath": "logs/app-.txt",
+      "RollingInterval": "Day"
+    }
+  }
+}
+```
+
+### Log Output Locations
+
+**Console Output:**
+- Real-time colored logs to terminal during development
+- Useful for immediate debugging
+
+**File Logs:**
+- Location: `src/VehicleServiceBooking.Api/logs/app-{YYYYMMDD}.txt`
+- Rolling: New file created daily at midnight
+- Example: `src/VehicleServiceBooking.Api/logs/app-20260629.txt`, `src/VehicleServiceBooking.Api/logs/app-20260630.txt`
+
+### Viewing Logs
+
+```bash
+# View today's logs
+tail -f src/VehicleServiceBooking.Api/logs/app-$(date +%Y%m%d).txt
+
+# View last 100 lines
+tail -100 src/VehicleServiceBooking.Api/logs/app-*.txt
+
+# Search for specific correlation ID
+grep -Ei "CorrelationId|550e8400-e29b-41d4-a716-446655440001" src/VehicleServiceBooking.Api/logs/app-*.txt
+
+# View all errors
+grep "\[ERR\]" src/VehicleServiceBooking.Api/logs/app-*.txt
+```
+
+---
+
+## 🏗️ How to Build
+
+### Build the Entire Solution
+
+```bash
+cd /path/to/vehicle-service-booking
+
+# Restore dependencies
+dotnet restore
+
+# Build in Debug mode
+dotnet build
+
+# Build in Release mode (optimized)
+dotnet build --configuration Release
+```
+
+### Build Specific Projects
+
+```bash
+# Build API project only
+dotnet build src/VehicleServiceBooking.Api/
+
+# Build with verbose output
+dotnet build --verbosity detailed
+
+# Build and show warnings
+dotnet build --warnings-as-errors false
+```
+
+### Expected Output
+
+```
+Microsoft (R) Build Engine version ...
+Building for .NET 8.0
+
+Build started ...
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:15.23
+```
+
+---
+
+## 🚀 How to Run
+
+### Start the API Server
+
+```bash
+cd /path/to/vehicle-service-booking
+
+# Run in development mode (with hot reload)
+dotnet run --project src/VehicleServiceBooking.Api
+
+# Run in release mode
+dotnet run --project src/VehicleServiceBooking.Api --configuration Release
+
+# Run on specific port
+dotnet run --project src/VehicleServiceBooking.Api -- --urls "http://localhost:5000"
+```
+
+### Expected Startup Output
+
+```
+info: VehicleServiceBooking.Api.Program[0]
+      Application starting...
+      
+info: Microsoft.Hosting.Lifetime[0]
+      Now listening on: http://localhost:5280
+      
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to exit.
+```
+
+### Verify API is Running
+
+**Test endpoint health:**
+```log
+2026-06-29 19:25:57.306 +07:00 [INF] Now listening on: http://localhost:5280 {"EventId": {"Id": 14, "Name": "ListeningOnAddress"}, "SourceContext": "Microsoft.Hosting.Lifetime"}
+2026-06-29 19:25:57.344 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext": "Microsoft.Hosting.Lifetime"}
+2026-06-29 19:25:57.345 +07:00 [INF] Hosting environment: Development {"SourceContext": "Microsoft.Hosting.Lifetime"}
+2026-06-29 19:25:57.345 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Api {"SourceContext": "Microsoft.Hosting.Lifetime"}
+```
+
+**Access Swagger documentation:**
+- Open browser: http://localhost:5280/swagger
+- Interactive API documentation and testing
 
 ---
 
@@ -903,6 +907,7 @@ Response `200 OK` (List<AvailabilityOptionResponse>):
 ```
 
 ---
+
 
 ## 📁 Project Structure
 

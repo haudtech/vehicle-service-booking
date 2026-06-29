@@ -26,7 +26,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 #   API_URL="http://localhost:5280/api/v1" ./scripts/run_api_tests.sh
 #   ./scripts/run_api_tests.sh --port 5280
 #   ./scripts/run_api_tests.sh --url http://localhost:5280
-API_URL="${API_URL:-http://localhost:5291}"
+API_URL="${API_URL:-http://localhost:5280}"
 
 usage() {
     cat <<'EOF'
@@ -105,7 +105,7 @@ DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-vehicle_service_booking}"
 DB_USER="${DB_USER:-haudo}"
-DB_PASSWORD="${DB_PASSWORD:-123456xX}"
+DB_PASSWORD="${DB_PASSWORD:-<password>}"
 
 load_db_config_from_env_file() {
     # Prefer explicit DB_* environment variables. If not provided, parse .env
@@ -319,7 +319,7 @@ check_api_reachable() {
         fail "API not reachable on $API_URL (status $code)"
         echo "Start API with:"
         echo "cd src/VehicleServiceBooking.Api"
-        echo "ASPNETCORE_URLS='http://localhost:5291' ConnectionStrings__DefaultConnection='Host=$DB_HOST;Port=$DB_PORT;Database=$DB_NAME;Username=$DB_USER;Password=<your-password>;' dotnet run --no-launch-profile"
+        echo "ASPNETCORE_URLS='http://localhost:5280' ConnectionStrings__DefaultConnection='Host=$DB_HOST;Port=$DB_PORT;Database=$DB_NAME;Username=$DB_USER;Password=<your-password>;' dotnet run --no-launch-profile"
         exit 1
     fi
 }
