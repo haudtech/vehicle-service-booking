@@ -69,7 +69,7 @@ Examples:
   ./scripts/ef_migration_workflow.sh update
   ./scripts/ef_migration_workflow.sh reset
   ./scripts/ef_migration_workflow.sh script 0
-  ./scripts/ef_migration_workflow.sh --connection "Host=localhost;Port=5432;Database=vehicle_service_booking;Username=haudo;Password=123456xX;" add AddIndexesForAppointments
+  ./scripts/ef_migration_workflow.sh --connection "Host=localhost;Port=5432;Database=vehicle_service_booking;Username=haudo;Password=<password>;" add AddIndexesForAppointments
 EOF
 }
 
