@@ -17,7 +17,7 @@ Please navigate through the specialized views below depending on your review obj
     *   *Focus:* Clean Architecture layer segregation, Dependency Injection topology, and decoupling of core enterprise business rules from frameworks.
 2.  **[Data & Database View (The Core Engine)](./DATA_DATABASE_VIEW.md)**
     *   *Focus:* Slot-based scheduling mathematics, 16-table normalized ERD, and database-level **PostgreSQL Exclusion Constraints (GIST)** against concurrent double-bookings.
-3.  **[Observability & Monitoring View (Day-2 Operations)](./OBSERVABILITY_VIEW.md)**
+3.  **[Observability & Monitoring View](./OBSERVABILITY_VIEW.md)**
     *   *Focus:* Structured logging via Serilog, production monitoring with **OpenTelemetry**, and End-to-End distributed tracing using `CorrelationId`.
 4.  **[GenAI Collaboration & Engineering Process](./GENAI_ENGINEERING_PROCESS.md)**
     *   *Focus:* **4-Gate Quality Assurance Pipeline**, prompt-isolation strategies for local LLMs, and the Team Leader's design decision ownership matrix.
