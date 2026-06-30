@@ -29,7 +29,18 @@ Please navigate through the specialized views below depending on your review obj
 This diagram illustrates how the Unified Vehicle Scheduler API fits into the broader Keyloop dealership ecosystem.
 
 ```
-┌─────────────────┐             HTTPS / JSON            ┌───────────────────────────────┐│  Mobile/Web     │ ──────────────────────────────────> │   Unified Vehicle Scheduler   ││  Client (Apps)  │ <────────────────────────────────── │         (.NET 8 API)          │└─────────────────┘         (Booking & Queries)         └───────────────┬───────────────┘││ Reads / Writes▼┌───────────────────────────────┐│      PostgreSQL Engine        ││  (Data Store & Constraints)   │└───────────────────────────────┘
+┌─────────────────┐             HTTPS / JSON            ┌───────────────────────────────┐
+│  Mobile/Web     │ ──────────────────────────────────> │   Unified Vehicle Scheduler   │
+│  Client (Apps)  │ <────────────────────────────────── │         (.NET 8 API)          │
+└─────────────────┘         (Booking & Queries)         └───────────────┬───────────────┘
+                                                                        │
+                                                                        │ Reads / Writes
+                                                                        ▼
+                                                        ┌───────────────────────────────┐
+                                                        │      PostgreSQL Engine        │
+                                                        │  (Data Store & Constraints)   │
+                                                        └───────────────────────────────┘
+
 ```
 
 ### System Context Responsibilities
@@ -44,7 +55,30 @@ This diagram illustrates how the Unified Vehicle Scheduler API fits into the bro
 Deep-diving inside the API container reveals how the software components communicate asynchronously and isolate side-effects.
 
 ```
-┌────────────────────────────────────────────────────────┐│                 VS Code / .NET 8 API                   ││                                                        ││   ┌─────────────────┐            ┌─────────────────┐   │HTTP Requests  │   │  Presentation   │            │   Application   │   │─────────────────>│   │     Layer       │───────────>│     Layer       │   ││   │ (Controllers)   │            │(Commands/Queries)│   ││   └─────────────────┘            └────────┬────────┘   ││                                           │            ││                                           │ Uses       ││                                           ▼            ││   ┌─────────────────┐            ┌─────────────────┐   ││   │  Infrastructure │            │     Domain      │   ││   │     Layer       │───────────>│     Layer       │   ││   │(EF Core/Serilog)│  Implements│(Business Entities│  ││   └────────┬────────┘            └─────────────────┘   │└────────────┼───────────────────────────────────────────┘││ SQL/GIST Queries▼┌───────────────────────────────┐│    PostgreSQL Database        │└───────────────────────────────┘
+                  ┌────────────────────────────────────────────────────────┐
+                  │                 VS Code / .NET 8 API                   │
+                  │                                                        │
+                  │   ┌─────────────────┐            ┌─────────────────┐   │
+   HTTP Requests  │   │  Presentation   │            │   Application   │   │
+─────────────────>│   │     Layer       │───────────>│     Layer       │   │
+                  │   │ (Controllers)   │            │(Commands/Queries)│   │
+                  │   └─────────────────┘            └────────┬────────┘   │
+                  │                                           │            │
+                  │                                           │ Uses       │
+                  │                                           ▼            │
+                  │   ┌─────────────────┐            ┌─────────────────┐   │
+                  │   │  Infrastructure │            │     Domain      │   │
+                  │   │     Layer       │───────────>│     Layer       │   │
+                  │   │(EF Core/Serilog)│  Implements│(Business Entities│  │
+                  │   └────────┬────────┘            └─────────────────┘   │
+                  └────────────┼───────────────────────────────────────────┘
+                               │
+                               │ SQL / GIST Queries
+                               ▼
+               ┌───────────────────────────────┐
+               │    PostgreSQL Database        │
+               └───────────────────────────────┘
+
 ```
 
 ### Container Data Flows
