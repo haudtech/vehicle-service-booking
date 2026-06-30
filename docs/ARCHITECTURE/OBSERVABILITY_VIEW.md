@@ -14,7 +14,30 @@ The application implements semantic, structured logging using **Serilog**. Inste
 ### Telemetry Pipeline & Request Flow
 
 ```
-[ HTTP Request Arrives ]│▼┌────────────────────────────────────────┐│  Middleware Pipeline Enrichment        ││  • Extract/Generate Correlation ID     │ ──► Pushed to Serilog LogContext│  • Track HTTP Method, Path, Query      │└────────────────────────────────────────┘│▼┌────────────────────────────────────────┐│  Service Execution Context Logging     ││  • Injects: CustomerId, VehicleId,     ││             TechnicianId, ServiceBayId │└────────────────────────────────────────┘│▼┌────────────────────────────────────────┐│  Log Sinks (Parallel Routing)          ││  • Console Sink (Ansi Development)     ││  • File Sink (Daily Rolling Sync)      │ ──► Pathed to: logs/app-YYYYMMDD.txt└────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│                               [ HTTP Request Arrives ]                                │
+└───────────────────────────────────────┬───────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│  Middleware Pipeline Enrichment                                                       │
+│  • Extract/Generate Correlation ID     ──► Pushed to Serilog LogContext               │
+│  • Track HTTP Method, Path, Query                                                     │
+└───────────────────────────────────────┬───────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│  Service Execution Context Logging                                                    │
+│  • Injects: CustomerId, VehicleId, TechnicianId, ServiceBayId                         │
+└───────────────────────────────────────┬───────────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│  Log Sinks (Parallel Routing)                                                        │
+│  • Console Sink (Ansi Development)                                                    │
+│  • File Sink (Daily Rolling Sync)      ──► Pathed to: logs/app-YYYYMMDD.txt           │
+└───────────────────────────────────────────────────────────────────────────────────────┘
+
 ```
 
 ### Production Logging Invariants (`appsettings.json`)
