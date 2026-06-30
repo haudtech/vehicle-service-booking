@@ -35,3 +35,6 @@ docs/evidence/
 appsettings.Local.json
 .env
 .env.local
+
+# API key files
+api-key/
