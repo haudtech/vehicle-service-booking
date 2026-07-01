@@ -9,11 +9,11 @@
 
 | Requirement ID & Description | Core Implementation Component | Verification Test Suite | Status |
 | :--- | :--- | :--- | :---: |
-| **REQ-01: Slot-Based Grid**<br>Operating hours 08:00 - 17:00 split into 18 static 30-min intervals. | `TimeSlots` static seed configuration in Database layer. | `TimeSlotGridTests.cs` (Validates sequences 1 to 18 boundaries). | **PASSED** |
-| **REQ-02: Multi-Service Booking**<br>Support multiple services per single appointment container. | Junction table `AppointmentServices` holding custom resource records. | `AppointmentCommandTests.cs` (Validates consecutive slot calculations). | **PASSED** |
-| **REQ-03: Resource Isolation**<br>Ensure both a Service Bay AND a Certified Tech are assigned. | `Service` allocation model matching `TechnicianId` and `ServiceBayId`. | `ResourceAllocationTests.cs` (Validates matching resource availability). | **PASSED** |
-| **REQ-04: Concurrency Guard**<br>Prevent double-bookings of any tech or bay at the same time. | PostgreSQL GIST Exclusion Constraints applied via Db Migration. | `ConcurrentE2EStressTests.cs` (Simulates parallel race conditions). | **PASSED** |
-| **REQ-05: Request Retry Security**<br>Prevent duplicate records during network dropouts. | `IdempotencyRequestCoordinator` API gateway middleware block. | `IdempotencyPipelineTests.cs` (Validates identical key reply status). | **PASSED** |
+| **REQ-01: Slot-Based Grid**<br>Operating hours 08:00 - 17:00 split into 18 static 30-min intervals. | `TimeSlots` static seed configuration in Database layer. | `AvailabilityServiceTests.cs` (`GetAvailableSlotsAsync_WithValidInputs_ShouldReturnAvailableSlots`) | **PASSED** |
+| **REQ-02: Multi-Service Booking**<br>Support multiple services per single appointment container. | Junction table `AppointmentServices` holding custom resource records. | `AppointmentServiceIntegrationTests.cs` (`CreateAppointmentAsync_WithAllValidEntities_ShouldCreateAppointment`) | **PASSED** |
+| **REQ-03: Resource Isolation**<br>Ensure both a Service Bay AND a Certified Tech are assigned. | `Service` allocation model matching `TechnicianId` and `ServiceBayId`. | `AvailabilityServiceTests.cs` (`GetAvailableSlotsAsync_WithValidInputs_ShouldReturnAvailableSlots`) | **PASSED** |
+| **REQ-04: Concurrency Guard**<br>Prevent double-bookings of any tech or bay at the same time. | PostgreSQL GIST Exclusion Constraints applied via Db Migration. | `AppointmentServiceTests.cs` / `AppointmentServiceIntegrationTests.cs` (`CreateAppointmentAsync_WithNoAvailability_ShouldThrowBookingConflictException` / `CreateAppointmentAsync_WithConflictingTimeSlot_ShouldThrowException`) | **PASSED** |
+| **REQ-05: Request Retry Security**<br>Prevent duplicate records during network dropouts. | `IdempotencyRequestCoordinator` API gateway middleware block. | `AppointmentsControllerTests.cs` (`CreateAppointment_WhenIdempotencyEnabledAndHeaderPresent_CreatesAppointmentAndTracksResult`) | **PASSED** |
 
 ---
 
