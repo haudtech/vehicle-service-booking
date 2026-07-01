@@ -36,7 +36,7 @@ Here is exactly how this formula translates into real-world business scenarios:
     Calculation: 45 / 30 = 1.5 -> Rounded up to 2 consecutive slots.
 
 
-### Inside the `ServiceTypeAvailabilityView` (SQL Logic)
+### Inside the `ServiceTypeAvailability` SQL view
 To determine if a block fits, a lateral series is generated across candidate start positions (`tas.SequenceOrder` to `tas.SequenceOrder + RequiredSlots - 1`) and grouped, ensuring non-fitting windows are dropped at the database level.
 
 ---
@@ -53,6 +53,8 @@ If two identical booking commands bypass Layer 1, the database acts as the singl
 
 Applied via Migration `AddServiceBookingConflictInvariant`, these rules prevent any active row overlap on the same date and slot boundaries for Technicians and Service Bays.
 
+These constraints are enforced over the persisted `Services` columns: `BookingDate`, `EstimatedStartSlotSequence`, and `EstimatedEndSlotSequenceExclusive`, using `int4range(EstimatedStartSlotSequence, EstimatedEndSlotSequenceExclusive, '[)')` to express the booked slot interval.
+
 ### Exception Mapping Execution Flow
 When a violation occurs during `_dbContext.SaveChangesAsync()`, the repository catches the standard state and bubbles it safely up as a `BookingConflictException`.
 
@@ -63,10 +65,10 @@ When a violation occurs during `_dbContext.SaveChangesAsync()`, the repository c
 By migrating from heavy C# loop checking to direct index-backed SQL database views, read transactions bypass memory allocations, drastically reducing latency.
 
 ### Core Performance Index Topology
-1.  **Composite Unique Index:** `IX_Services_AppId_TypeId_Seq`
-2.  **Technician Query Performance Index:** `IX_Services_Tech_Date`
-3.  **Service Bay Query Performance Index:** `IX_Services_Bay_Date`
-4.  **Idempotency Isolation Key:** `IX_Idempotency_Key_Path`
+1.  **Composite Unique Index:** `IX_Service_Unique_AppointmentServiceTypeSequence`
+2.  **Technician Query Performance Index:** `IX_Service_Technician_BookingDate`
+3.  **Service Bay Query Performance Index:** `IX_Service_ServiceBay_BookingDate`
+4.  **Idempotency Isolation Key:** `IX_IdempotencyRequest_Key_Path_Unique`
 
 ---
 
