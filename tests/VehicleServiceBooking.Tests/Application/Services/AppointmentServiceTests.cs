@@ -194,6 +194,9 @@ public class AppointmentServiceTests
             .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(appointment);
         _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = appointment.StatusId, Status = AppointmentStatus.Booked, Name = "Booked" });
+        _mockAppointmentStatusLookupRepository
             .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cancelledStatus.Id);
         _mockAppointmentRepository
@@ -231,6 +234,9 @@ public class AppointmentServiceTests
             .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(appointment);
         _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = appointment.StatusId, Status = AppointmentStatus.InProgress, Name = "In Progress" });
+        _mockAppointmentStatusLookupRepository
             .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Completed, It.IsAny<CancellationToken>()))
             .ReturnsAsync(completedStatus.Id);
         _mockAppointmentRepository
@@ -245,6 +251,48 @@ public class AppointmentServiceTests
         appointment.StatusId.Should().Be(completedStatus.Id);
         appointment.IsActive.Should().BeTrue();
         appointment.UpdatedAt.Should().NotBe(default);
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_WhenCurrentStatusIsNotCancellable_ShouldThrowInvalidOperationException()
+    {
+        var appointmentId = Guid.NewGuid();
+        var appointment = new Appointment
+        {
+            Id = appointmentId,
+            StatusId = Guid.NewGuid(),
+            IsActive = true
+        };
+
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = appointment.StatusId, Status = AppointmentStatus.Completed, Name = "Completed" });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CancelAppointmentAsync(appointmentId));
+    }
+
+    [Fact]
+    public async Task CompleteAppointmentAsync_WhenCurrentStatusIsNotCompletable_ShouldThrowInvalidOperationException()
+    {
+        var appointmentId = Guid.NewGuid();
+        var appointment = new Appointment
+        {
+            Id = appointmentId,
+            StatusId = Guid.NewGuid(),
+            IsActive = true
+        };
+
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppointmentStatusLookup { Id = appointment.StatusId, Status = AppointmentStatus.Booked, Name = "Booked" });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _appointmentService.CompleteAppointmentAsync(appointmentId));
     }
 
     private void SetupAvailability(CreateAppointmentRequest request, bool hasMatchingSlot)

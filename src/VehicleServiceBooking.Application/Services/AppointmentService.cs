@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Exceptions;
+using VehicleServiceBooking.Application.Helpers;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Domain.Entities;
@@ -335,6 +336,18 @@ public class AppointmentService : IAppointmentService
             return null;
         }
 
+        var currentStatus = await _appointmentStatusLookupRepository
+            .GetByIdAsync(appointment.StatusId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (currentStatus == null || !AppointmentStatusTransitionHelper.CanTransitionTo(currentStatus.Status, AppointmentStatus.Cancelled))
+        {
+            throw new InvalidOperationException(
+                AppointmentStatusTransitionHelper.GetInvalidTransitionMessage(
+                    currentStatus?.Status ?? AppointmentStatus.Booked,
+                    AppointmentStatus.Cancelled));
+        }
+
         var cancelledStatusId = await _appointmentStatusLookupRepository
             .GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, cancellationToken)
             .ConfigureAwait(false);
@@ -375,6 +388,18 @@ public class AppointmentService : IAppointmentService
         {
             _logger.LogWarning("Appointment not found for completion: appointmentId={AppointmentId}", appointmentId);
             return null;
+        }
+
+        var currentStatus = await _appointmentStatusLookupRepository
+            .GetByIdAsync(appointment.StatusId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (currentStatus == null || !AppointmentStatusTransitionHelper.CanTransitionTo(currentStatus.Status, AppointmentStatus.Completed))
+        {
+            throw new InvalidOperationException(
+                AppointmentStatusTransitionHelper.GetInvalidTransitionMessage(
+                    currentStatus?.Status ?? AppointmentStatus.Booked,
+                    AppointmentStatus.Completed));
         }
 
         var completedStatusId = await _appointmentStatusLookupRepository
