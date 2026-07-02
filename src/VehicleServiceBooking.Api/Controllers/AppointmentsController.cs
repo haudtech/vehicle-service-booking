@@ -317,4 +317,92 @@ public class AppointmentsController : ControllerBase
             throw;  // Let middleware handle it
         }
     }
+
+    /// <summary>
+    /// Cancels an existing appointment by its unique identifier.
+    /// </summary>
+    [HttpPatch("appointments/{id}/cancel")]
+    [ProducesResponseType(typeof(AppointmentStatusUpdateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AppointmentStatusUpdateResponse>> CancelAppointment(
+        [FromRoute] Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (id == Guid.Empty)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Message = "Appointment ID cannot be empty",
+                    ErrorCode = "INVALID_APPOINTMENT_ID",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            var result = await _appointmentService.CancelAppointmentAsync(id, cancellationToken);
+            if (result == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Message = $"Appointment with ID {id} not found",
+                    ErrorCode = "APPOINTMENT_NOT_FOUND",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in CancelAppointment: appointmentId={AppointmentId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Completes an existing appointment by its unique identifier.
+    /// </summary>
+    [HttpPatch("appointments/{id}/complete")]
+    [ProducesResponseType(typeof(AppointmentStatusUpdateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AppointmentStatusUpdateResponse>> CompleteAppointment(
+        [FromRoute] Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (id == Guid.Empty)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Message = "Appointment ID cannot be empty",
+                    ErrorCode = "INVALID_APPOINTMENT_ID",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            var result = await _appointmentService.CompleteAppointmentAsync(id, cancellationToken);
+            if (result == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Message = $"Appointment with ID {id} not found",
+                    ErrorCode = "APPOINTMENT_NOT_FOUND",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in CompleteAppointment: appointmentId={AppointmentId}", id);
+            throw;
+        }
+    }
 }

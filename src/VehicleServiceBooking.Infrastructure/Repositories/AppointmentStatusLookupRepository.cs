@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,5 +23,13 @@ public class AppointmentStatusLookupRepository : GenericRepository<AppointmentSt
     {
         return await GetQueryable()
             .FirstOrDefaultAsync(x => x.Status == status, cancellationToken);
+    }
+
+    public virtual async Task<Guid?> GetStatusIdByStatusAsync(AppointmentStatus status, CancellationToken cancellationToken)
+    {
+        return await GetQueryable()
+            .Where(x => x.Status == status)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

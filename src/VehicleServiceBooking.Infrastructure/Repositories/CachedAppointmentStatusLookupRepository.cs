@@ -40,30 +40,16 @@ public class CachedAppointmentStatusLookupRepository : AppointmentStatusLookupRe
 
     private async Task<IReadOnlyList<AppointmentStatusLookup>> GetAllCachedAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled || !_options.CacheAppointmentStatuses)
-        {
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<AppointmentStatusLookup> ?? fallback.ToList();
-        }
-
-        try
-        {
-            return await _memoryCache.GetOrCreateAsync(
-                       StaticCacheKeys.AppointmentStatusesAll,
-                       async entry =>
-                       {
-                           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.AppointmentStatusesTtlMinutes);
-                           var fromInner = await base.GetAllAsync(cancellationToken: cancellationToken);
-                           return fromInner as IReadOnlyList<AppointmentStatusLookup> ?? fromInner.ToList();
-                       })
-                   ?? Array.Empty<AppointmentStatusLookup>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "AppointmentStatus cache read failed; falling back to database.");
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<AppointmentStatusLookup> ?? fallback.ToList();
-        }
+        return await CachedQueryHelper.GetAllCachedAsync(
+            _memoryCache,
+            _options,
+            _logger,
+            StaticCacheKeys.AppointmentStatusesAll,
+            _options.CacheAppointmentStatuses,
+            _options.AppointmentStatusesTtlMinutes,
+            ct => base.GetAllAsync(cancellationToken: ct),
+            "AppointmentStatus cache read failed; falling back to database.",
+            cancellationToken);
     }
 
     public override async Task<IEnumerable<AppointmentStatusLookup>> GetAllAsync(
@@ -84,5 +70,11 @@ public class CachedAppointmentStatusLookupRepository : AppointmentStatusLookupRe
     {
         var all = await GetAllCachedAsync(cancellationToken);
         return all.FirstOrDefault(x => x.Status == status);
+    }
+
+    public override async Task<Guid?> GetStatusIdByStatusAsync(AppointmentStatus status, CancellationToken cancellationToken)
+    {
+        var all = await GetAllCachedAsync(cancellationToken);
+        return all.FirstOrDefault(x => x.Status == status)?.Id;
     }
 }

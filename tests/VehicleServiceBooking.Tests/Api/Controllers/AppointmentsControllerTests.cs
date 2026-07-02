@@ -11,6 +11,7 @@ using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Services;
+using VehicleServiceBooking.Domain.Enums;
 using VehicleServiceBooking.Tests.Common;
 using Xunit;
 
@@ -139,6 +140,38 @@ public class AppointmentsControllerTests
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelAppointment_WhenAppointmentExists_ReturnsOkWithMessage()
+    {
+        var appointmentId = Guid.NewGuid();
+        var response = new AppointmentStatusUpdateResponse
+        {
+            AppointmentId = appointmentId,
+            Message = "Appointment cancelled successfully."
+        };
+
+        var validator = new Mock<IValidator<CreateAppointmentRequest>>();
+        var appointmentService = new Mock<IAppointmentService>();
+        appointmentService
+            .Setup(s => s.CancelAppointmentAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var idempotencyService = new Mock<IIdempotencyService>();
+        var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        var logger = new Mock<ILogger<AppointmentsController>>();
+        var controller = new AppointmentsController(
+            validator.Object,
+            appointmentService.Object,
+            idempotencyService.Object,
+            idempotencyCoordinator.Object,
+            logger.Object);
+
+        var actionResult = await controller.CancelAppointment(appointmentId, CancellationToken.None);
+
+        var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(response);
     }
 
     [Fact]

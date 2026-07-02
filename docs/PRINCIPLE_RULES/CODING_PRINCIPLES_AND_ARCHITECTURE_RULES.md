@@ -367,7 +367,122 @@ public async Task<Entity> CreateAsync(Entity entity, CancellationToken ct)
 
 ---
 
-## ✅ PRINCIPLE 3: Multi-Layer Validation Strategy
+## ⚡ PRINCIPLE 3: Cache Repository Pattern for Static/Reference Data
+
+### Rule Set: Cache-Backed Repository Usage (MUST BE FOLLOWED)
+
+**Core Rule:**
+```
+For static, reference, or frequently-read lookup data, implement a cache-backed repository wrapper that:
+1. Inherits from the base repository implementation,
+2. Uses IMemoryCache for read-only access,
+3. Falls back to the underlying repository when cache is disabled or unavailable,
+4. Preserves the repository abstraction used by the application layer.
+```
+
+### Rule 3.1: When to Use a Cached Repository
+
+**✅ Use a cached repository for:**
+- Appointment status lookups
+- Service status lookups
+- Time-slot definitions
+- Any static reference data that changes infrequently
+- Lookup tables used in repeated read-only operations
+
+**❌ Do not use a cached repository for:**
+- Frequently changing transactional data
+- User-specific or tenant-specific mutable records
+- Data that must always reflect the latest DB state immediately
+- Large data sets that are not read frequently enough to justify cache overhead
+
+### Rule 3.2: Required Structure
+
+Every cache repository for a static entity MUST follow this pattern:
+
+```csharp
+public class CachedSomethingRepository : SomethingRepository
+{
+    private readonly IMemoryCache _memoryCache;
+    private readonly StaticDataCacheOptions _options;
+    private readonly ILogger<CachedSomethingRepository> _logger;
+
+    public CachedSomethingRepository(
+        IApplicationDbContext dbContext,
+        IMemoryCache memoryCache,
+        IOptions<StaticDataCacheOptions> options,
+        ILogger<CachedSomethingRepository> logger)
+        : base(dbContext)
+    {
+        _memoryCache = memoryCache;
+        _options = options.Value;
+        _logger = logger;
+    }
+
+    private async Task<IReadOnlyList<Something>> GetAllCachedAsync(CancellationToken cancellationToken)
+    {
+        return await CachedQueryHelper.GetAllCachedAsync(
+            _memoryCache,
+            _options,
+            _logger,
+            StaticCacheKeys.SomeThingAll,
+            _options.CacheSomething,
+            _options.SomethingTtlMinutes,
+            ct => base.GetAllAsync(cancellationToken: ct),
+            "Something cache read failed; falling back to database.",
+            cancellationToken);
+    }
+
+    public override async Task<IEnumerable<Something>> GetAllAsync(
+        Expression<Func<Something, bool>>? predicate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var all = await GetAllCachedAsync(cancellationToken);
+        if (predicate == null)
+        {
+            return all;
+        }
+
+        var compiled = predicate.Compile();
+        return all.Where(compiled).ToList();
+    }
+
+    public override async Task<Something?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var all = await GetAllCachedAsync(cancellationToken);
+        return all.FirstOrDefault(x => x.Id == id);
+    }
+}
+```
+
+### Rule 3.3: Design Requirements
+
+**Implementation requirements:**
+- ✅ The cached repository MUST inherit from the non-cached repository implementation.
+- ✅ The cached repository MUST preserve the interface contract expected by the application layer.
+- ✅ Read operations SHOULD be served from memory cache whenever enabled.
+- ✅ Cache failures MUST fall back to the underlying repository without breaking the application.
+- ✅ Cache keys MUST be centralized in the infrastructure caching layer.
+- ✅ Cache TTL values MUST be configurable through options.
+- ✅ Shared cache-loading logic SHOULD be centralized in a reusable helper.
+
+### Rule 3.4: Registration Rules
+
+**DI registration requirements:**
+- ✅ Replace the base repository implementation with the cached implementation in dependency injection for static lookup repositories.
+- ✅ The application layer MUST continue to depend only on the repository interface, not the concrete cache implementation.
+
+```csharp
+// ✅ Correct
+services.AddScoped<IAppointmentStatusLookupRepository, CachedAppointmentStatusLookupRepository>();
+```
+
+### Rule 3.5: Architectural Intent
+
+Cached repositories are an infrastructure concern, not an application-layer concern. They exist to optimize read access to stable reference data while preserving the same repository abstraction and keeping service-layer behavior unchanged.
+
+---
+
+## ✅ PRINCIPLE 4: Multi-Layer Validation Strategy
 
 ### Rule Set: Input & Data Validation (MUST BE FOLLOWED)
 

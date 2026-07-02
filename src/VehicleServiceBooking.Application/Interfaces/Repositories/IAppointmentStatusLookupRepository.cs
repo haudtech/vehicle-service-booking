@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using VehicleServiceBooking.Domain.Entities;
@@ -11,4 +12,6 @@ namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 public interface IAppointmentStatusLookupRepository : IReadRepository<AppointmentStatusLookup>
 {
     Task<AppointmentStatusLookup?> GetByStatusAsync(AppointmentStatus status, CancellationToken cancellationToken);
+
+    Task<Guid?> GetStatusIdByStatusAsync(AppointmentStatus status, CancellationToken cancellationToken);
 }

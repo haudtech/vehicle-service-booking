@@ -108,10 +108,10 @@ public class AppointmentService : IAppointmentService
 
             // BUSINESS LOGIC 5: Create appointment with services (atomic transaction via Repository)
             _logger.LogDebug("Step 4: Creating appointment and service entities");
-            var bookedStatusLookup = await _appointmentStatusLookupRepository
-                .GetByStatusAsync(AppointmentStatus.Booked, cancellationToken)
+            var bookedStatusId = await _appointmentStatusLookupRepository
+                .GetStatusIdByStatusAsync(AppointmentStatus.Booked, cancellationToken)
                 .ConfigureAwait(false);
-            if (bookedStatusLookup == null)
+            if (!bookedStatusId.HasValue)
             {
                 throw new InvalidOperationException("Appointment status lookup for 'Booked' was not found.");
             }
@@ -148,7 +148,7 @@ public class AppointmentService : IAppointmentService
                 CustomerId = request.CustomerId,
                 VehicleId = request.VehicleId,
                 AppointmentDate = request.AppointmentDate,
-                StatusId = bookedStatusLookup.Id,
+                StatusId = bookedStatusId.Value,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -315,6 +315,89 @@ public class AppointmentService : IAppointmentService
     }
 
     /// <summary>
+    /// Cancels an appointment by updating its status and soft-deactivating it.
+    /// </summary>
+    public async Task<AppointmentStatusUpdateResponse?> CancelAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (appointmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Appointment ID cannot be empty", nameof(appointmentId));
+        }
+
+        _logger.LogInformation("Cancelling appointment: appointmentId={AppointmentId}", appointmentId);
+
+        var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+        if (appointment == null)
+        {
+            _logger.LogWarning("Appointment not found for cancellation: appointmentId={AppointmentId}", appointmentId);
+            return null;
+        }
+
+        var cancelledStatusId = await _appointmentStatusLookupRepository
+            .GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, cancellationToken)
+            .ConfigureAwait(false);
+        if (!cancelledStatusId.HasValue)
+        {
+            throw new InvalidOperationException("Appointment status lookup for 'Cancelled' was not found.");
+        }
+
+        appointment.StatusId = cancelledStatusId.Value;
+        appointment.IsActive = false;
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        await _appointmentRepository.UpdateAsync(appointment, cancellationToken);
+
+        return new AppointmentStatusUpdateResponse
+        {
+            AppointmentId = appointment.Id,
+            Message = "Appointment cancelled successfully."
+        };
+    }
+
+    /// <summary>
+    /// Completes an appointment by updating its status only.
+    /// </summary>
+    public async Task<AppointmentStatusUpdateResponse?> CompleteAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (appointmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Appointment ID cannot be empty", nameof(appointmentId));
+        }
+
+        _logger.LogInformation("Completing appointment: appointmentId={AppointmentId}", appointmentId);
+
+        var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+        if (appointment == null)
+        {
+            _logger.LogWarning("Appointment not found for completion: appointmentId={AppointmentId}", appointmentId);
+            return null;
+        }
+
+        var completedStatusId = await _appointmentStatusLookupRepository
+            .GetStatusIdByStatusAsync(AppointmentStatus.Completed, cancellationToken)
+            .ConfigureAwait(false);
+        if (!completedStatusId.HasValue)
+        {
+            throw new InvalidOperationException("Appointment status lookup for 'Completed' was not found.");
+        }
+
+        appointment.StatusId = completedStatusId.Value;
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        await _appointmentRepository.UpdateAsync(appointment, cancellationToken);
+
+        return new AppointmentStatusUpdateResponse
+        {
+            AppointmentId = appointment.Id,
+            Message = "Appointment completed successfully."
+        };
+    }
+
+    /// <summary>
     /// Checks for conflicting appointments on the same vehicle at overlapping times.
     /// Pure business logic validation - no direct data access, uses Repository methods where needed.
     /// </summary>
@@ -332,18 +415,16 @@ public class AppointmentService : IAppointmentService
             request.VehicleId, cancellationToken);
 
         // BUSINESS LOGIC: Check for overlapping appointments on same date
-        var cancelledStatusLookup = await _appointmentStatusLookupRepository
-            .GetByStatusAsync(AppointmentStatus.Cancelled, cancellationToken)
+        var appointmentCancelledStatusId = await _appointmentStatusLookupRepository
+            .GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, cancellationToken)
             .ConfigureAwait(false);
-        if (cancelledStatusLookup == null)
+        if (!appointmentCancelledStatusId.HasValue)
         {
             throw new InvalidOperationException("Appointment status lookup for 'Cancelled' was not found.");
         }
 
-        var appointmentCancelledStatusId = cancelledStatusLookup.Id;
-
         var conflictingAppointment = vehicleAppointments
-            .Where(a => a.AppointmentDate == request.AppointmentDate && a.StatusId != appointmentCancelledStatusId)
+            .Where(a => a.AppointmentDate == request.AppointmentDate && a.StatusId != appointmentCancelledStatusId.Value)
             .FirstOrDefault(a => a.Services.Any(s =>
                 s.EstimatedStartTimeSlotId.HasValue &&
                 s.EstimatedEndTimeSlotId.HasValue &&
