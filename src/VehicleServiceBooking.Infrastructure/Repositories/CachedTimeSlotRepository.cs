@@ -52,30 +52,16 @@ public class CachedTimeSlotRepository : TimeSlotRepository
 
     private async Task<IReadOnlyList<TimeSlot>> GetAllCachedAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled || !_options.CacheTimeSlots)
-        {
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<TimeSlot> ?? fallback.ToList();
-        }
-
-        try
-        {
-            return await _memoryCache.GetOrCreateAsync(
-                       StaticCacheKeys.TimeSlotsAll,
-                       async entry =>
-                       {
-                           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.TimeSlotsTtlMinutes);
-                           var fromInner = await base.GetAllAsync(cancellationToken: cancellationToken);
-                           return fromInner as IReadOnlyList<TimeSlot> ?? fromInner.ToList();
-                       })
-                   ?? Array.Empty<TimeSlot>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "TimeSlot cache read failed; falling back to database.");
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<TimeSlot> ?? fallback.ToList();
-        }
+        return await CachedQueryHelper.GetAllCachedAsync(
+            _memoryCache,
+            _options,
+            _logger,
+            StaticCacheKeys.TimeSlotsAll,
+            _options.CacheTimeSlots,
+            _options.TimeSlotsTtlMinutes,
+            ct => base.GetAllAsync(cancellationToken: ct),
+            "TimeSlot cache read failed; falling back to database.",
+            cancellationToken);
     }
 
     public override async Task<IEnumerable<TimeSlot>> GetAllAsync(

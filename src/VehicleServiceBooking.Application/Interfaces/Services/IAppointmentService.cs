@@ -30,4 +30,24 @@ public interface IAppointmentService
     Task<CreateAppointmentResponse?> GetAppointmentByIdAsync(
         Guid appointmentId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cancels an appointment if it exists.
+    /// </summary>
+    /// <param name="appointmentId">Appointment ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A response describing the update result</returns>
+    Task<AppointmentStatusUpdateResponse?> CancelAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Completes an appointment if it exists.
+    /// </summary>
+    /// <param name="appointmentId">Appointment ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A response describing the update result</returns>
+    Task<AppointmentStatusUpdateResponse?> CompleteAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken cancellationToken = default);
 }

@@ -34,11 +34,11 @@ public class AppointmentServiceTests
         _mockLogger = new Mock<ILogger<AppointmentService>>();
 
         _mockAppointmentStatusLookupRepository
-            .Setup(r => r.GetByStatusAsync(AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AppointmentStatusLookup { Id = Guid.NewGuid(), Status = AppointmentStatus.Booked, Name = "Booked" });
+            .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid());
         _mockAppointmentStatusLookupRepository
-            .Setup(r => r.GetByStatusAsync(AppointmentStatus.Cancelled, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AppointmentStatusLookup { Id = Guid.NewGuid(), Status = AppointmentStatus.Cancelled, Name = "Cancelled" });
+            .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid());
         _mockServiceStatusLookupRepository
             .Setup(r => r.GetByStatusAsync(ServiceStatus.Pending, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceStatusLookup { Id = Guid.NewGuid(), Status = ServiceStatus.Pending, Name = "Pending" });
@@ -171,6 +171,80 @@ public class AppointmentServiceTests
         var result = await _appointmentService.GetAppointmentByIdAsync(invalidId);
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_WhenAppointmentExists_ShouldUpdateStatusAndDeactivate()
+    {
+        var appointmentId = Guid.NewGuid();
+        var appointment = new Appointment
+        {
+            Id = appointmentId,
+            StatusId = Guid.NewGuid(),
+            IsActive = true
+        };
+        var cancelledStatus = new AppointmentStatusLookup
+        {
+            Id = Guid.NewGuid(),
+            Status = AppointmentStatus.Cancelled,
+            Name = "Cancelled"
+        };
+
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Cancelled, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cancelledStatus.Id);
+        _mockAppointmentRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment updatedAppointment, CancellationToken _) => updatedAppointment);
+
+        var result = await _appointmentService.CancelAppointmentAsync(appointmentId);
+
+        result.Should().NotBeNull();
+        result!.AppointmentId.Should().Be(appointmentId);
+        result.Message.Should().Contain("cancelled");
+        appointment.StatusId.Should().Be(cancelledStatus.Id);
+        appointment.IsActive.Should().BeFalse();
+        appointment.UpdatedAt.Should().NotBe(default);
+    }
+
+    [Fact]
+    public async Task CompleteAppointmentAsync_WhenAppointmentExists_ShouldUpdateStatusOnly()
+    {
+        var appointmentId = Guid.NewGuid();
+        var appointment = new Appointment
+        {
+            Id = appointmentId,
+            StatusId = Guid.NewGuid(),
+            IsActive = true
+        };
+        var completedStatus = new AppointmentStatusLookup
+        {
+            Id = Guid.NewGuid(),
+            Status = AppointmentStatus.Completed,
+            Name = "Completed"
+        };
+
+        _mockAppointmentRepository
+            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
+        _mockAppointmentStatusLookupRepository
+            .Setup(r => r.GetStatusIdByStatusAsync(AppointmentStatus.Completed, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(completedStatus.Id);
+        _mockAppointmentRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment updatedAppointment, CancellationToken _) => updatedAppointment);
+
+        var result = await _appointmentService.CompleteAppointmentAsync(appointmentId);
+
+        result.Should().NotBeNull();
+        result!.AppointmentId.Should().Be(appointmentId);
+        result.Message.Should().Contain("completed");
+        appointment.StatusId.Should().Be(completedStatus.Id);
+        appointment.IsActive.Should().BeTrue();
+        appointment.UpdatedAt.Should().NotBe(default);
     }
 
     private void SetupAvailability(CreateAppointmentRequest request, bool hasMatchingSlot)

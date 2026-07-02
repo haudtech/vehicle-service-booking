@@ -40,30 +40,16 @@ public class CachedServiceStatusLookupRepository : ServiceStatusLookupRepository
 
     private async Task<IReadOnlyList<ServiceStatusLookup>> GetAllCachedAsync(CancellationToken cancellationToken)
     {
-        if (!_options.Enabled || !_options.CacheServiceStatuses)
-        {
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<ServiceStatusLookup> ?? fallback.ToList();
-        }
-
-        try
-        {
-            return await _memoryCache.GetOrCreateAsync(
-                       StaticCacheKeys.ServiceStatusesAll,
-                       async entry =>
-                       {
-                           entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.ServiceStatusesTtlMinutes);
-                           var fromInner = await base.GetAllAsync(cancellationToken: cancellationToken);
-                           return fromInner as IReadOnlyList<ServiceStatusLookup> ?? fromInner.ToList();
-                       })
-                   ?? Array.Empty<ServiceStatusLookup>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "ServiceStatus cache read failed; falling back to database.");
-            var fallback = await base.GetAllAsync(cancellationToken: cancellationToken);
-            return fallback as IReadOnlyList<ServiceStatusLookup> ?? fallback.ToList();
-        }
+        return await CachedQueryHelper.GetAllCachedAsync(
+            _memoryCache,
+            _options,
+            _logger,
+            StaticCacheKeys.ServiceStatusesAll,
+            _options.CacheServiceStatuses,
+            _options.ServiceStatusesTtlMinutes,
+            ct => base.GetAllAsync(cancellationToken: ct),
+            "ServiceStatus cache read failed; falling back to database.",
+            cancellationToken);
     }
 
     public override async Task<IEnumerable<ServiceStatusLookup>> GetAllAsync(
