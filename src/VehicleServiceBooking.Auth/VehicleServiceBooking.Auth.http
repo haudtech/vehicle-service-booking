@@ -1,0 +1,40 @@
+@authHost = http://localhost:5158
+@ts = {{$timestamp}}
+@email = workflow.{{ts}}@example.com
+@accountName = workflow_{{ts}}
+@password = Test1234!
+
+### Sign up
+POST {{authHost}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+	"email": "{{email}}",
+	"accountName": "{{accountName}}",
+	"password": "{{password}}",
+	"displayName": "HTTP Workflow User"
+}
+
+### Login by account name
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+	"identifier": "{{accountName}}",
+	"password": "{{password}}"
+}
+
+### Login by email (backward compatible)
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+	"email": "{{email}}",
+	"password": "{{password}}"
+}
+
+### JWKS
+GET {{authHost}}/api/v1/.well-known/jwks.json
+Accept: application/json
+
+###

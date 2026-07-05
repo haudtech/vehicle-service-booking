@@ -35,6 +35,9 @@ public static class MiddlewareExtensions
         // HTTPS redirection
         app.UseHttpsRedirection();
 
+        // Authentication must execute before authorization.
+        app.UseAuthentication();
+
         // Authorization (will be used in Phase 3 for JWT)
         app.UseAuthorization();
 

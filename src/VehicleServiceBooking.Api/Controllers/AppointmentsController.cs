@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -118,6 +119,7 @@ public class AppointmentsController : ControllerBase
     /// <response code="409">Service bay slot already booked or no longer available</response>
     /// <response code="500">Internal server error</response>
     [HttpPost("appointments")]
+    [Authorize(Policy = "AppointmentCreatePolicy")]
     [ProducesResponseType(typeof(CreateAppointmentResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
@@ -275,6 +277,7 @@ public class AppointmentsController : ControllerBase
     /// <response code="404">Appointment not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("appointments/{id}")]
+    [Authorize(Policy = "AppointmentReadPolicy")]
     [ProducesResponseType(typeof(CreateAppointmentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -322,6 +325,7 @@ public class AppointmentsController : ControllerBase
     /// Cancels an existing appointment by its unique identifier.
     /// </summary>
     [HttpPatch("appointments/{id}/cancel")]
+    [Authorize(Policy = "AppointmentCompletePolicy")]
     [ProducesResponseType(typeof(AppointmentStatusUpdateResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -366,6 +370,7 @@ public class AppointmentsController : ControllerBase
     /// Completes an existing appointment by its unique identifier.
     /// </summary>
     [HttpPatch("appointments/{id}/complete")]
+    [Authorize(Policy = "AppointmentCompletePolicy")]
     [ProducesResponseType(typeof(AppointmentStatusUpdateResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
