@@ -75,3 +75,31 @@ By migrating from heavy C# loop checking to direct index-backed SQL database vie
 ## 🔐 5. REFERENTIAL INTEGRITY MATRIX
 
 The system operates under strict cascading structures configured via Fluent API, ensuring data consistency (e.g., Appointment cascading to Services, Technician setting Null).
+
+---
+
+## 🧩 6. AUTH DB VS BOOKING DB BOUNDARIES
+
+The platform now operates with separate persistence boundaries for identity and scheduling concerns.
+
+### Auth Database (Identity Domain)
+- Owns user authentication and authorization data.
+- Core entities include User, Role, Group, Permission, and mapping tables (UserRole, UserGroup, RolePermission).
+- Stores refresh token/session state used by refresh and logout flows.
+- Publishes trust information through JWKS at the API layer, while key metadata and auth state remain in the identity domain.
+
+### Booking Database (Scheduling Domain)
+- Owns booking and operational scheduling data.
+- Core entities include Appointment, Service, Technician, ServiceBay, and slot/time reference data.
+- Enforces overlap protection and slot invariants using PostgreSQL exclusion constraints.
+- Remains independent from identity table ownership; consumes identity only through validated JWT claims.
+
+### Cross-Database Contract
+- No direct relational foreign keys between Auth DB and Booking DB.
+- Service-to-service trust is based on JWT + JWKS verification rather than shared identity tables.
+- Authorization decisions in Booking are claim-driven (roles/scopes/groups) after token validation.
+
+### Why This Boundary Matters
+- Keeps bounded contexts clean and independently deployable.
+- Reduces coupling between identity lifecycle changes and scheduling schema evolution.
+- Preserves security posture by treating identity as a separate trust domain.

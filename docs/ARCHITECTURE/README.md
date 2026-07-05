@@ -9,7 +9,7 @@
 
 ## 🗺️ 1. ARCHITECTURAL VIEWPOINTS MAP
 
-To ensure long-term maintainability, scalability, and seamless onboarding for engineering teams, the architecture of this project is separated into four specialized, high-utility perspectives. 
+To ensure long-term maintainability, scalability, and seamless onboarding for engineering teams, the architecture of this project is separated into specialized, high-utility perspectives.
 
 Please navigate through the specialized views below depending on your review objective:
 
@@ -21,6 +21,10 @@ Please navigate through the specialized views below depending on your review obj
     *   *Focus:* Structured logging via Serilog, production monitoring with **OpenTelemetry**, and End-to-End distributed tracing using `CorrelationId`.
 4.  **[GenAI Collaboration & Engineering Process](./GENAI_ENGINEERING_PROCESS.md)**
     *   *Focus:* **4-Gate Quality Assurance Pipeline**, prompt-isolation strategies for local LLMs, and the Team Leader's design decision ownership matrix.
+5.  **[Auth and Booking Components View](./AUTH_COMPONENTS_VIEW.md)**
+    *   *Focus:* Runtime component boundaries between Auth and Booking services, JWKS trust path, and data-store separation.
+6.  **[Auth and Booking Sequential Flows View](./AUTH_SEQUENTIAL_FLOW_VIEW.md)**
+    *   *Focus:* End-to-end sign-up/login, booking authorization, token refresh, and logout sequence flows.
 
 ---
 
@@ -93,3 +97,12 @@ Deep-diving inside the API container reveals how the software components communi
 *   **Sub-50ms Latency:** Achieved by moving complex data calculation loops out of C# application memory and shifting them to optimized PostgreSQL Views (`ServiceTypeAvailabilityView`), delivering a **19x read performance leap**.
 *   **Race Condition Immunity:** Solved via an advanced **Two-Stage Validation Strategy** wrapping Application pre-checks around physical Database GIST range exclusion guards, ensuring zero overlapping bookings can ever occur.
 *   **Production Traceability:** Every request is wrapped in a dynamic `CorrelationId` and tracked natively across system boundaries via OpenTelemetry child spans and Serilog structures.
+
+---
+
+## 🔐 5. IDENTITY INTEGRATION ARCHITECTURE
+
+The platform now includes a dedicated Auth service and JWT/JWKS trust integration for Booking APIs.
+
+- Component topology and service boundaries: `AUTH_COMPONENTS_VIEW.md`
+- Runtime interaction and token lifecycle flows: `AUTH_SEQUENTIAL_FLOW_VIEW.md`
