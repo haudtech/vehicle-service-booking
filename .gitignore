@@ -18,6 +18,7 @@ obj/
 # Logs
 *.log
 src/VehicleServiceBooking.Api/logs/
+src/VehicleServiceBooking.Auth/logs/
 
 # OS
 .DS_Store

@@ -1,0 +1,433 @@
+2026-07-04 21:34:25.114 +07:00 [INF] Now listening on: http://localhost:5158 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:34:25.150 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:34:25.150 +07:00 [INF] Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:34:25.150 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Auth {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:34:46.753 +07:00 [WRN] Failed to determine the https port for redirect. {"EventId":{"Id":3,"Name":"FailedToDeterminePort"},"SourceContext":"Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.071 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.072 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.072 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.391 +07:00 [INF] Executed DbCommand (30ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.503 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.542 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.563 +07:00 [INF] Executed DbCommand (4ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.649 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"9e8ba1d4-f675-4678-be41-ad5962bdd1d9","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR5INUDTJ:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.658 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 201 in 911.4129 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR5INUDTJ:00000001","ConnectionId":"0HNMPR5INUDTJ"}
+2026-07-04 21:34:47.682 +07:00 [ERR] JWT authentication failed. {"SourceContext":"Auth.JwtBearer","RequestId":"0HNMPR5INUDTK:00000001","RequestPath":"/api/v1/me","ConnectionId":"0HNMPR5INUDTK"}
+Microsoft.IdentityModel.Tokens.SecurityTokenMalformedException: IDX14100: JWT is not well formed, there are no dots (.).
+The token needs to be in JWS or JWE Compact Serialization Format. (JWS): 'EncodedHeader.EndcodedPayload.EncodedSignature'. (JWE): 'EncodedProtectedHeader.EncodedEncryptedKey.EncodedInitializationVector.EncodedCiphertext.EncodedAuthenticationTag'.
+ ---> System.MissingMethodException: Method not found: 'Byte[] Microsoft.IdentityModel.Tokens.Base64UrlEncoder.UnsafeDecode(System.ReadOnlyMemory`1<Char>)'.
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebToken.ReadToken(String encodedJson)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebToken..ctor(String jwtEncodedString)
+   at Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.ReadToken(String token, TokenValidationParameters validationParameters)
+   --- End of inner exception stack trace ---
+2026-07-04 21:34:47.692 +07:00 [WRN] JWT challenge triggered. Error: invalid_token. Description:  {"SourceContext":"Auth.JwtBearer","RequestId":"0HNMPR5INUDTK:00000001","RequestPath":"/api/v1/me","ConnectionId":"0HNMPR5INUDTK"}
+2026-07-04 21:34:47.692 +07:00 [INF] HTTP GET /api/v1/me responded 401 in 16.6376 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR5INUDTK:00000001","ConnectionId":"0HNMPR5INUDTK"}
+2026-07-04 21:35:36.017 +07:00 [INF] Now listening on: http://localhost:5158 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:35:36.052 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:35:36.052 +07:00 [INF] Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:35:36.052 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Auth {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:36:02.734 +07:00 [WRN] Failed to determine the https port for redirect. {"EventId":{"Id":3,"Name":"FailedToDeterminePort"},"SourceContext":"Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.049 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.050 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.050 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.341 +07:00 [INF] Executed DbCommand (27ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.449 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.487 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.507 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.622 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"72f7a7bb-38a0-4339-92c0-52ce28409937","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA3:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.632 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 201 in 902.3588 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA3:00000001","ConnectionId":"0HNMPR69CKTA3"}
+2026-07-04 21:36:03.680 +07:00 [INF] HTTP GET /api/v1/me responded 200 in 25.5600 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA4:00000001","ConnectionId":"0HNMPR69CKTA4"}
+2026-07-04 21:36:03.729 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__token_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id", r."CreatedAt", r."CreatedByIp", r."ExpiresAt", r."IsActive", r."RevokedAt", r."Token", r."UpdatedAt", r."UserId", t."Id", t."CreatedAt", t."DisplayName", t."Email", t."IsActive", t."PasswordHash", t."SecurityStamp", t."UpdatedAt"
+FROM "RefreshTokens" AS r
+INNER JOIN (
+    SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+    FROM "Users" AS u
+    WHERE u."IsActive"
+) AS t ON r."UserId" = t."Id"
+WHERE r."IsActive" AND r."Token" = @__token_0 AND r."IsActive" AND r."RevokedAt" IS NULL AND r."ExpiresAt" > now()
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA5:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.746 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@p8='?' (DbType = Guid), @p0='?' (DbType = DateTime), @p1='?', @p2='?' (DbType = DateTime), @p3='?' (DbType = Boolean), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid), @p16='?' (DbType = Guid), @p9='?' (DbType = DateTime), @p10='?', @p11='?', @p12='?' (DbType = Boolean), @p13='?', @p14='?', @p15='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+UPDATE "RefreshTokens" SET "CreatedAt" = @p0, "CreatedByIp" = @p1, "ExpiresAt" = @p2, "IsActive" = @p3, "RevokedAt" = @p4, "Token" = @p5, "UpdatedAt" = @p6, "UserId" = @p7
+WHERE "Id" = @p8;
+UPDATE "Users" SET "CreatedAt" = @p9, "DisplayName" = @p10, "Email" = @p11, "IsActive" = @p12, "PasswordHash" = @p13, "SecurityStamp" = @p14, "UpdatedAt" = @p15
+WHERE "Id" = @p16; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA5:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.754 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA5:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.755 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA5:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.760 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA5:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.761 +07:00 [INF] HTTP POST /api/v1/auth/refresh responded 200 in 70.4275 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA5:00000001","ConnectionId":"0HNMPR69CKTA5"}
+2026-07-04 21:36:03.790 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__token_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id", r."CreatedAt", r."CreatedByIp", r."ExpiresAt", r."IsActive", r."RevokedAt", r."Token", r."UpdatedAt", r."UserId"
+FROM "RefreshTokens" AS r
+WHERE r."IsActive" AND r."Token" = @__token_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"d34e853e-54ba-40a5-ad37-418c1569222c","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Logout (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA6:00000001","RequestPath":"/api/v1/auth/logout","ConnectionId":"0HNMPR69CKTA6"}
+2026-07-04 21:36:03.792 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@p8='?' (DbType = Guid), @p0='?' (DbType = DateTime), @p1='?', @p2='?' (DbType = DateTime), @p3='?' (DbType = Boolean), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+UPDATE "RefreshTokens" SET "CreatedAt" = @p0, "CreatedByIp" = @p1, "ExpiresAt" = @p2, "IsActive" = @p3, "RevokedAt" = @p4, "Token" = @p5, "UpdatedAt" = @p6, "UserId" = @p7
+WHERE "Id" = @p8; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"d34e853e-54ba-40a5-ad37-418c1569222c","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Logout (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA6:00000001","RequestPath":"/api/v1/auth/logout","ConnectionId":"0HNMPR69CKTA6"}
+2026-07-04 21:36:03.792 +07:00 [INF] HTTP POST /api/v1/auth/logout responded 204 in 16.7735 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA6:00000001","ConnectionId":"0HNMPR69CKTA6"}
+2026-07-04 21:36:03.803 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__token_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id", r."CreatedAt", r."CreatedByIp", r."ExpiresAt", r."IsActive", r."RevokedAt", r."Token", r."UpdatedAt", r."UserId", t."Id", t."CreatedAt", t."DisplayName", t."Email", t."IsActive", t."PasswordHash", t."SecurityStamp", t."UpdatedAt"
+FROM "RefreshTokens" AS r
+INNER JOIN (
+    SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+    FROM "Users" AS u
+    WHERE u."IsActive"
+) AS t ON r."UserId" = t."Id"
+WHERE r."IsActive" AND r."Token" = @__token_0 AND r."IsActive" AND r."RevokedAt" IS NULL AND r."ExpiresAt" > now()
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"840c6d82-ea9c-4187-b00f-d1ecffdde5bc","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.Refresh (VehicleServiceBooking.Auth)","RequestId":"0HNMPR69CKTA7:00000001","RequestPath":"/api/v1/auth/refresh","ConnectionId":"0HNMPR69CKTA7"}
+2026-07-04 21:36:03.805 +07:00 [INF] HTTP POST /api/v1/auth/refresh responded 401 in 3.4133 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA7:00000001","ConnectionId":"0HNMPR69CKTA7"}
+2026-07-04 21:36:03.819 +07:00 [INF] HTTP GET /api/v1/.well-known/jwks.json responded 200 in 5.3394 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPR69CKTA8:00000001","ConnectionId":"0HNMPR69CKTA8"}
+2026-07-04 21:41:15.043 +07:00 [INF] Now listening on: http://localhost:5158 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:41:15.079 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:41:15.079 +07:00 [INF] Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:41:15.079 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Auth {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 21:43:13.741 +07:00 [WRN] Failed to determine the https port for redirect. {"EventId":{"Id":3,"Name":"FailedToDeterminePort"},"SourceContext":"Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.075 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.075 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.075 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.388 +07:00 [INF] Executed DbCommand (28ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.498 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.534 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.554 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.647 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"aea1ea3f-bd9c-43a6-aac9-1c2e8671a78d","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPRA9QRUC9:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.664 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 201 in 934.6948 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPRA9QRUC9:00000001","ConnectionId":"0HNMPRA9QRUC9"}
+2026-07-04 21:43:14.805 +07:00 [INF] HTTP GET /api/v1/.well-known/jwks.json responded 200 in 9.7921 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPRA9QRUCA:00000001","ConnectionId":"0HNMPRA9QRUCA"}
+2026-07-04 23:05:41.818 +07:00 [INF] Now listening on: http://localhost:5158 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:05:41.856 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:05:41.856 +07:00 [INF] Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:05:41.856 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Auth {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:06:42.432 +07:00 [WRN] Failed to determine the https port for redirect. {"EventId":{"Id":3,"Name":"FailedToDeterminePort"},"SourceContext":"Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:42.820 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:42.820 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:42.821 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:43.204 +07:00 [INF] Executed DbCommand (36ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:43.322 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:43.345 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@__roleName_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id"
+FROM "Roles" AS r
+WHERE r."IsActive" AND r."Name" = @__roleName_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6H:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:43.354 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 409 in 931.6229 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSOUHDQ6H:00000001","ConnectionId":"0HNMPSOUHDQ6H"}
+2026-07-04 23:06:53.730 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6I:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6I"}
+2026-07-04 23:06:53.783 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6I:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6I"}
+2026-07-04 23:06:53.787 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__roleName_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id"
+FROM "Roles" AS r
+WHERE r."IsActive" AND r."Name" = @__roleName_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6I:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6I"}
+2026-07-04 23:06:53.795 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 409 in 107.4327 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSOUHDQ6I:00000001","ConnectionId":"0HNMPSOUHDQ6I"}
+2026-07-04 23:08:06.270 +07:00 [INF] Executed DbCommand (24ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.309 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.314 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__roleName_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id"
+FROM "Roles" AS r
+WHERE r."IsActive" AND r."Name" = @__roleName_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.372 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[@__userId_0='?' (DbType = Guid), @__roleId_1='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE u."UserId" = @__userId_0 AND u."RoleId" = @__roleId_1) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.406 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "UserRoles" ("RoleId", "UserId")
+VALUES (@p0, @p1); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.450 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.480 +07:00 [INF] Executed DbCommand (6ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.693 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"54ca49b4-7117-45cb-aef5-d83560c099ac","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSOUHDQ6J:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.705 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 201 in 598.9445 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSOUHDQ6J:00000001","ConnectionId":"0HNMPSOUHDQ6J"}
+2026-07-04 23:08:06.983 +07:00 [INF] HTTP GET /api/v1/.well-known/jwks.json responded 200 in 16.9748 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSOUHDQ6K:00000001","ConnectionId":"0HNMPSOUHDQ6K"}
+":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:25.633 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:25.633 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:52.537 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:52.579 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:52.579 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation"}
+2026-07-04 23:07:52.936 +07:00 [INF] Executed DbCommand (38ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:52.961 +07:00 [INF] Executed DbCommand (16ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:52.973 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.015 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.017 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.027 +07:00 [INF] Applying migration '20260704160726_SeedAuthorizationData'. {"EventId":{"Id":20402,"Name":"Microsoft.EntityFrameworkCore.Migrations.MigrationApplying"},"SourceContext":"Microsoft.EntityFrameworkCore.Migrations"}
+2026-07-04 23:07:53.100 +07:00 [INF] Executed DbCommand (40ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Permissions" ("Id", "CreatedAt", "Description", "IsActive", "Name", "UpdatedAt")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a002', TIMESTAMPTZ '2026-07-04T00:00:00Z', 'Create appointments', TRUE, 'appointment:create', TIMESTAMPTZ '2026-07-04T00:00:00Z');
+INSERT INTO "Permissions" ("Id", "CreatedAt", "Description", "IsActive", "Name", "UpdatedAt")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a003', TIMESTAMPTZ '2026-07-04T00:00:00Z', 'View appointment availability and details', TRUE, 'appointment:view', TIMESTAMPTZ '2026-07-04T00:00:00Z');
+INSERT INTO "Permissions" ("Id", "CreatedAt", "Description", "IsActive", "Name", "UpdatedAt")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a004', TIMESTAMPTZ '2026-07-04T00:00:00Z', 'Complete appointments', TRUE, 'appointment:complete', TIMESTAMPTZ '2026-07-04T00:00:00Z'); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.118 +07:00 [INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Roles" ("Id", "CreatedAt", "Description", "IsActive", "Name", "UpdatedAt")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a001', TIMESTAMPTZ '2026-07-04T00:00:00Z', 'Default role for booking service API access', TRUE, 'booking-user', TIMESTAMPTZ '2026-07-04T00:00:00Z'); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.123 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RolePermissions" ("PermissionId", "RoleId")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a002', '2d7b6113-2351-4b60-848f-8c3d28f5a001');
+INSERT INTO "RolePermissions" ("PermissionId", "RoleId")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a003', '2d7b6113-2351-4b60-848f-8c3d28f5a001');
+INSERT INTO "RolePermissions" ("PermissionId", "RoleId")
+VALUES ('2d7b6113-2351-4b60-848f-8c3d28f5a004', '2d7b6113-2351-4b60-848f-8c3d28f5a001'); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:07:53.124 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260704160726_SeedAuthorizationData', '8.0.0'); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command"}
+2026-07-04 23:17:58.947 +07:00 [INF] Now listening on: http://localhost:5158 {"EventId":{"Id":14,"Name":"ListeningOnAddress"},"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:17:58.984 +07:00 [INF] Application started. Press Ctrl+C to shut down. {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:17:58.985 +07:00 [INF] Hosting environment: Development {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:17:58.985 +07:00 [INF] Content root path: /Users/tech/dev/net/vehicle-service-booking/src/VehicleServiceBooking.Auth {"SourceContext":"Microsoft.Hosting.Lifetime"}
+2026-07-04 23:18:51.498 +07:00 [WRN] Failed to determine the https port for redirect. {"EventId":{"Id":3,"Name":"FailedToDeterminePort"},"SourceContext":"Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:51.992 +07:00 [WRN] Entity 'Permission' has a global query filter defined and is the required end of a relationship with the entity 'RolePermission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:51.993 +07:00 [WRN] Entity 'Group' has a global query filter defined and is the required end of a relationship with the entity 'UserGroup'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:51.993 +07:00 [WRN] Entity 'Role' has a global query filter defined and is the required end of a relationship with the entity 'UserRole'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information. {"EventId":{"Id":10622,"Name":"Microsoft.EntityFrameworkCore.Model.Validation.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning"},"SourceContext":"Microsoft.EntityFrameworkCore.Model.Validation","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.383 +07:00 [INF] Executed DbCommand (34ms) [Parameters=[@__normalizedEmail_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT u."Id", u."CreatedAt", u."DisplayName", u."Email", u."IsActive", u."PasswordHash", u."SecurityStamp", u."UpdatedAt"
+FROM "Users" AS u
+WHERE u."IsActive" AND u."Email" = @__normalizedEmail_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.495 +07:00 [INF] Executed DbCommand (7ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?', @p4='?', @p5='?', @p6='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Users" ("Id", "CreatedAt", "DisplayName", "Email", "PasswordHash", "SecurityStamp", "UpdatedAt")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.517 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@__roleName_0='?'], CommandType='"Text"', CommandTimeout='30']
+SELECT r."Id"
+FROM "Roles" AS r
+WHERE r."IsActive" AND r."Name" = @__roleName_0
+LIMIT 1 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.533 +07:00 [INF] Executed DbCommand (3ms) [Parameters=[@__userId_0='?' (DbType = Guid), @__roleId_1='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE u."UserId" = @__userId_0 AND u."RoleId" = @__roleId_1) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.566 +07:00 [INF] Executed DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "UserRoles" ("RoleId", "UserId")
+VALUES (@p0, @p1); {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.593 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT t."Name"
+FROM "UserRoles" AS u
+INNER JOIN (
+    SELECT r."Id", r."Name"
+    FROM "Roles" AS r
+    WHERE r."IsActive"
+) AS t ON u."RoleId" = t."Id"
+WHERE u."UserId" = @__userId_0 {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.618 +07:00 [INF] Executed DbCommand (4ms) [Parameters=[@__userId_0='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+SELECT DISTINCT t0."Name"
+FROM "RolePermissions" AS r
+INNER JOIN (
+    SELECT r0."Id"
+    FROM "Roles" AS r0
+    WHERE r0."IsActive"
+) AS t ON r."RoleId" = t."Id"
+INNER JOIN (
+    SELECT p."Id", p."Name"
+    FROM "Permissions" AS p
+    WHERE p."IsActive"
+) AS t0 ON r."PermissionId" = t0."Id"
+WHERE EXISTS (
+    SELECT 1
+    FROM "UserRoles" AS u
+    WHERE t."Id" = u."RoleId" AND u."UserId" = @__userId_0) {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.770 +07:00 [INF] Executed DbCommand (5ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = DateTime), @p5='?', @p6='?' (DbType = DateTime), @p7='?' (DbType = Guid)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RefreshTokens" ("Id", "CreatedAt", "CreatedByIp", "ExpiresAt", "RevokedAt", "Token", "UpdatedAt", "UserId")
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)
+RETURNING "IsActive"; {"EventId":{"Id":20101,"Name":"Microsoft.EntityFrameworkCore.Database.Command.CommandExecuted"},"SourceContext":"Microsoft.EntityFrameworkCore.Database.Command","ActionId":"bdda7f2e-1abd-4132-969e-6ae39eb26e45","ActionName":"VehicleServiceBooking.Auth.Controllers.AuthController.SignUp (VehicleServiceBooking.Auth)","RequestId":"0HNMPSVNQ0LF5:00000001","RequestPath":"/api/v1/auth/signup","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:52.782 +07:00 [INF] HTTP POST /api/v1/auth/signup responded 201 in 1303.4224 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSVNQ0LF5:00000001","ConnectionId":"0HNMPSVNQ0LF5"}
+2026-07-04 23:18:53.072 +07:00 [INF] HTTP GET /api/v1/.well-known/jwks.json responded 200 in 13.5305 ms {"SourceContext":"Serilog.AspNetCore.RequestLoggingMiddleware","RequestId":"0HNMPSVNQ0LF6:00000001","ConnectionId":"0HNMPSVNQ0LF6"}

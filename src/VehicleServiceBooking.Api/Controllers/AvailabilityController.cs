@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -94,6 +95,7 @@ public class AvailabilityController : ControllerBase
     /// <response code="400">Invalid parameters or validation failed</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("availability")]
+    [Authorize(Policy = "AppointmentReadPolicy")]
     [ProducesResponseType(typeof(List<AvailabilityOptionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]

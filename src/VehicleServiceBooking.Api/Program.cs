@@ -69,6 +69,9 @@ builder.Services.AddSwaggerDocumentation();
 // Register persistence layer (DbContext)
 builder.Services.AddPersistenceLayer(builder.Configuration);
 
+// Register JWT authentication and authorization policies
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 // Register application services and repositories
 builder.Services.AddApplicationServices();
 
@@ -110,7 +113,7 @@ app.UseSerilogRequestLogging(options =>
 });
 
 // Get CORS configuration and apply CORS middleware
-var corsConfig = builder.Services.BuildServiceProvider()
+var corsConfig = app.Services
     .GetRequiredService<VehicleServiceBooking.Application.Configuration.Interfaces.ICorsConfiguration>();
 
 app.UseCorsPolicy(corsConfig.PolicyName);
