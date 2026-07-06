@@ -17,6 +17,9 @@ This README provides a single entry point to the feature documents created for t
 - [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md)
   - Auth service requirements, API surface, JWT and token handling, and social login scope.
 
+- [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md)
+  - Visual, end-to-end explanation of login, token signing, refresh token lifecycle, JWKS key discovery, and Booking API authorization validation.
+
 - [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md)
   - Auth service database model and entity relationships for users, roles, groups, and permissions.
 
@@ -42,10 +45,11 @@ This README provides a single entry point to the feature documents created for t
 
 1. Start with [AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md](AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md) to understand the overall architecture and goals.
 2. Read [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md) for the practical end-to-end operational flow.
-3. Read [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) and [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md) to validate auth service requirements and schema.
-4. Use [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md) for JWT validation and booking authorization details.
-5. Follow [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md) and [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md) for implementation sequencing.
-6. Review [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md) before finalizing the split.
+3. Read [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) and [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md) to understand the exact runtime token and key validation behavior.
+4. Read [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md) to validate auth service schema.
+5. Use [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md) for JWT validation and booking authorization details.
+6. Follow [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md) and [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md) for implementation sequencing.
+7. Review [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md) before finalizing the split.
 
 ## Notes
 

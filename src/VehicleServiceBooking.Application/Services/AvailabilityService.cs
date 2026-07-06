@@ -91,6 +91,8 @@ public class AvailabilityService : IAvailabilityService
             var results = viewResults
                 .Select(x => new AvailabilityOption
                 {
+                    TimeSlotId = x.TimeSlotId,
+                    EndTimeSlotId = x.EndTimeSlotId,
                     // Map view's time slot information to TimeSlot DTO
                     DateTimeSlot = new DateTimeSlot
                     {

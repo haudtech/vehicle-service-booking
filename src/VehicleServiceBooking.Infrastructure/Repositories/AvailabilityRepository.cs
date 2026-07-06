@@ -50,16 +50,41 @@ public class AvailabilityRepository : IAvailabilityRepository
 
         baseQuery = baseQuery.Where(x => serviceTypeIds.Contains(x.ServiceTypeId));
 
-        return await baseQuery
-            .Select(x => new AvailabilityProjection
+        // Company-scoped scheduling: exclude candidate windows that overlap with
+        // any active service booking for the same technician or service bay,
+        // regardless of dealership.
+        baseQuery = baseQuery.Where(x =>
+            !_dbContext.Services.AsNoTracking().Any(s =>
+                s.IsActive &&
+                s.BookingDate == queryDate &&
+                (
+                    (s.TechnicianId.HasValue && s.TechnicianId.Value == x.TechnicianId) ||
+                    (s.ServiceBayId.HasValue && s.ServiceBayId.Value == x.ServiceBayId)
+                ) &&
+                x.SequenceOrder < s.EstimatedEndSlotSequenceExclusive &&
+                (x.SequenceOrder + x.RequiredSlots) > s.EstimatedStartSlotSequence));
+
+        var query =
+            from x in baseQuery
+            join endSlot in _dbContext.TimeSlots.AsNoTracking()
+                on x.SequenceOrder + x.RequiredSlots - 1 equals endSlot.SequenceOrder
+            where endSlot.IsActive
+            select new AvailabilityProjection
             {
                 TimeSlotId = x.TimeSlotId,
+                EndTimeSlotId = endSlot.Id,
                 SlotStartTime = x.SlotStartTime,
-                SlotEndTime = x.SlotEndTime,
+                SlotEndTime = endSlot.SlotEndTime,
                 TechnicianId = x.TechnicianId,
                 ServiceBayId = x.ServiceBayId
-            })
+            };
+
+        return await query
             .Distinct()
+            .OrderBy(x => x.SlotStartTime)
+            .ThenBy(x => x.SlotEndTime)
+            .ThenBy(x => x.TechnicianId)
+            .ThenBy(x => x.ServiceBayId)
             .ToListAsync(cancellationToken);
     }
 

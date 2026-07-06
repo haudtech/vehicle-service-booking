@@ -1,0 +1,77 @@
+@authHost = http://localhost:5158
+@bookingHost = http://localhost:5280
+@runId = 20260706_01
+@ts = {{$timestamp}}
+@email = happy+{{runId}}@example.com
+@accountName = happy_{{runId}}
+@password = Test1234!
+@appointmentDate = 2026-07-10
+@dealershipId = 11111111-1111-1111-1111-000000000001
+@customerId = 11111111-1111-1111-1111-010000000003
+@vehicleId = 11111111-1111-1111-1111-020000000003
+@serviceTypeId = 11111111-1111-1111-1111-030000000001
+@technicianId = 11111111-1111-1111-1111-040000000001
+@serviceBayId = 11111111-1111-1111-1111-050000000001
+@estimatedStartTimeSlotId = 00000000-0000-0000-0000-000000000007
+@estimatedEndTimeSlotId = 00000000-0000-0000-0000-000000000008
+
+###
+# Minimal happy path: signup -> login -> availability -> create appointment
+# If your Booking API runs on port 5290, change @bookingHost above.
+# Keep @runId stable while running all requests in sequence. Change it for a new test run.
+
+### 1) Sign up
+# @name signup
+POST {{authHost}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "accountName": "{{accountName}}",
+  "password": "{{password}}",
+  "displayName": "Happy Path User"
+}
+
+### 2) Login
+# @name login
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{accountName}}",
+  "password": "{{password}}"
+}
+
+###
+@accessToken = {{login.response.body.$.accessToken}}
+
+### 3) Availability
+# @name availability
+GET {{bookingHost}}/api/v1/availability?dealershipId={{dealershipId}}&serviceTypeId={{serviceTypeId}}&date={{appointmentDate}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###
+@availableTechnicianId = {{availability.response.body.$[0].technicianId}}
+@availableServiceBayId = {{availability.response.body.$[0].serviceBayId}}
+@availableStartTimeSlotId = {{availability.response.body.$[0].timeSlotId}}
+@availableEndTimeSlotId = {{availability.response.body.$[0].endTimeSlotId}}
+
+### 4) Create appointment
+# @name createAppointment
+POST {{bookingHost}}/api/v1/appointments
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: happy-appt-{{ts}}
+
+{
+  "dealershipId": "{{dealershipId}}",
+  "customerId": "{{customerId}}",
+  "vehicleId": "{{vehicleId}}",
+  "appointmentDate": "{{appointmentDate}}",
+  "serviceTypeId": "{{serviceTypeId}}",
+  "technicianId": "{{availableTechnicianId}}",
+  "serviceBayId": "{{availableServiceBayId}}",
+  "estimatedStartTimeSlotId": "{{availableStartTimeSlotId}}",
+  "estimatedEndTimeSlotId": "{{availableEndTimeSlotId}}"
+}

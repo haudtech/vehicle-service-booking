@@ -1,0 +1,135 @@
+@authHost = http://localhost:5158
+@bookingHost = http://localhost:5280
+// Update this runId for a new test run. Keep it stable while running all requests in sequence. 
+@runId = 20260706_02
+@email = workflow+{{runId}}@example.com
+@accountName = workflow_{{runId}}
+@password = Test1234!
+@appointmentDate = 2026-07-07
+@dealershipId = 11111111-1111-1111-1111-000000000001
+@customerId = 11111111-1111-1111-1111-010000000003
+@vehicleId = 11111111-1111-1111-1111-020000000003
+@serviceTypeId = 11111111-1111-1111-1111-030000000001
+@technicianId = 11111111-1111-1111-1111-040000000001
+@serviceBayId = 11111111-1111-1111-1111-050000000001
+@estimatedStartTimeSlotId = 00000000-0000-0000-0000-000000000007
+@estimatedEndTimeSlotId = 00000000-0000-0000-0000-000000000008
+@idempotencyKey = appt7-{{runId}}
+
+###
+# End-to-end workflow: signup -> login -> me -> availability -> appointments -> refresh -> logout
+# If your Booking API runs on port 5290, change @bookingHost above.
+# Keep @runId stable while running all requests in sequence. Change it for a new test run.
+
+### 1) Sign up (issue initial tokens)
+# @name signup
+POST {{authHost}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "accountName": "{{accountName}}",
+  "password": "{{password}}",
+  "displayName": "HTTP Workflow User"
+}
+
+###
+@signupAccessToken = {{signup.response.body.$.accessToken}}
+@signupRefreshToken = {{signup.response.body.$.refreshToken}}
+
+### 2) Login by account name (preferred)
+# @name login
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{accountName}}",
+  "password": "{{password}}"
+}
+
+###
+@loginAccessToken = {{login.response.body.$.accessToken}}
+@loginRefreshToken = {{login.response.body.$.refreshToken}}
+
+### 3) Optional: Login by email (backward-compatible)
+# @name loginByEmail
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 4) Verify current user claims
+# @name me
+GET {{authHost}}/api/v1/me
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+### 5) Query availability from Booking service (JWT/JWKS path)
+# @name availability
+GET {{bookingHost}}/api/v1/availability?dealershipId={{dealershipId}}&serviceTypeId={{serviceTypeId}}&date={{appointmentDate}}
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@availableTechnicianId = {{availability.response.body.$[0].technicianId}}
+@availableServiceBayId = {{availability.response.body.$[0].serviceBayId}}
+@availableStartTimeSlotId = {{availability.response.body.$[0].timeSlotId}}
+@availableEndTimeSlotId = {{availability.response.body.$[0].endTimeSlotId}}
+
+### 6) Create appointment (auth-integrated)
+# @name createAppointment
+POST {{bookingHost}}/api/v1/appointments
+Content-Type: application/json
+Authorization: Bearer {{loginAccessToken}}
+Idempotency-Key: {{idempotencyKey}}
+
+{
+  "dealershipId": "{{dealershipId}}",
+  "customerId": "{{customerId}}",
+  "vehicleId": "{{vehicleId}}",
+  "appointmentDate": "{{appointmentDate}}",
+  "serviceTypeId": "{{serviceTypeId}}",
+  "technicianId": "{{availableTechnicianId}}",
+  "serviceBayId": "{{availableServiceBayId}}",
+  "estimatedStartTimeSlotId": "{{availableStartTimeSlotId}}",
+  "estimatedEndTimeSlotId": "{{availableEndTimeSlotId}}"
+}
+
+###
+@appointmentId = {{createAppointment.response.body.$.appointmentId}}
+
+### 7) Read appointment by id (optional verification)
+# @name getAppointmentById
+GET {{bookingHost}}/api/v1/appointments/{{appointmentId}}
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+### 8) Refresh token (optional lifecycle step)
+# @name refresh
+POST {{authHost}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginRefreshToken}}"
+}
+
+###
+@newAccessToken = {{refresh.response.body.$.accessToken}}
+@newRefreshToken = {{refresh.response.body.$.refreshToken}}
+
+### 9) Logout / revoke refresh token (optional lifecycle step)
+# @name logout
+POST {{authHost}}/api/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{newRefreshToken}}"
+}
+
+### 10) JWKS verification endpoint (optional)
+# @name jwks
+GET {{authHost}}/api/v1/.well-known/jwks.json
+Accept: application/json

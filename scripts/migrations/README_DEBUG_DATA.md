@@ -4,8 +4,8 @@ This folder contains a reproducible SQL dataset for local debugging and integrat
 
 ## File
 
-- `docs/sql/populate_debug_test_data.sql`
-- `docs/sql/cleanup_debug_test_data.sql`
+- `scripts/migrations/populate_debug_test_data.sql`
+- `scripts/migrations/cleanup_debug_test_data.sql`
 
 ## Purpose
 
@@ -26,11 +26,11 @@ user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
 pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
 
 PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" \
-  -f docs/sql/populate_debug_test_data.sql
+  -f scripts/migrations/populate_debug_test_data.sql
 
 # remove only rows created by debug seed script
 PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" \
-  -f docs/sql/cleanup_debug_test_data.sql
+  -f scripts/migrations/cleanup_debug_test_data.sql
 ```
 
 ## Suggested Loop
@@ -45,10 +45,10 @@ user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
 pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
 
 # 1) reset previous debug dataset
-PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/cleanup_debug_test_data.sql
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f scripts/migrations/cleanup_debug_test_data.sql
 
 # 2) seed fresh dataset
-PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/populate_debug_test_data.sql
+PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f scripts/migrations/populate_debug_test_data.sql
 
 # 3) run tests / API checks
 dotnet test tests/VehicleServiceBooking.Tests/VehicleServiceBooking.Tests.csproj --no-build

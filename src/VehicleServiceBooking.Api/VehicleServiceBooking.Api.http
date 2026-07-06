@@ -1,6 +1,6 @@
-@VehicleServiceBooking.Api_HostAddress = http://localhost:5280
+@apiHost = http://localhost:5280
 
-GET {{VehicleServiceBooking.Api_HostAddress}}/weatherforecast/
+GET {{apiHost}}/weatherforecast/
 Accept: application/json
 
 ###

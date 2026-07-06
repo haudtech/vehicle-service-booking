@@ -9,11 +9,11 @@
 - [x] Token model baseline implemented for booking use case (Section 5)
 - [x] Core security operations implemented (lifetimes, revocation, jwks publishing) (Section 7)
 - [x] Cross-service compatibility baseline implemented (Section 8)
-- [x] End-to-end validation passed: build, tests, and runtime smoke checks (Section 11)
+- [x] Build and test validation baseline recorded (Section 11)
 
 ### Phase 2 - In Progress Hardening
 - [ ] Complete appointment creation happy-path test with auth (Section 10)
-- [ ] Finalize architecture and sequence documentation for stakeholders (Section 9)
+- [x] Finalize architecture and sequence documentation baseline (Section 9)
 - [ ] Define shared role/group semantics across services (Section 8)
 
 ### Phase 3 - Next Capabilities
@@ -113,11 +113,17 @@
 - [ ] Confirm optional introspection fallback plan
 
 ## 9. Documentation
-- [ ] Create conceptual architecture docs
-- [ ] Create workflow and sequence diagrams
+- [x] Create conceptual architecture docs
+- [x] Create workflow and sequence diagrams
 - [x] Add practical request/response examples
 - [x] Add checklist for implementation tasks
 - [ ] Review with stakeholders
+
+Documentation baseline references:
+- [x] docs/ARCHITECTURE/CONCEPTUAL_VIEW.md updated with cross-service auth-booking view
+- [x] docs/ARCHITECTURE/AUTH_COMPONENTS_VIEW.md added
+- [x] docs/ARCHITECTURE/AUTH_SEQUENTIAL_FLOW_VIEW.md added
+- [x] docs/ARCHITECTURE/DATA_DATABASE_VIEW.md updated with auth-db vs booking-db boundaries
 
 ## 10. Validation and Testing
 - [x] Validate JWT locally in booking service
@@ -133,3 +139,6 @@
 - [x] Live integration smoke test passed
   - [x] No token to booking endpoint -> 401
   - [x] Valid auth-issued token to booking endpoint -> 200
+
+Current note:
+- [ ] Re-run live booking runtime smoke check in current environment (latest local Booking API run returned exit code 134)
