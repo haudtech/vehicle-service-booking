@@ -120,6 +120,8 @@ public class AvailabilityController : ControllerBase
             var response = options
                 .Select(o => new AvailabilityOptionResponse
                 {
+                    TimeSlotId = o.TimeSlotId,
+                    EndTimeSlotId = o.EndTimeSlotId,
                     SlotStart = o.DateTimeSlot.Start,
                     SlotEnd = o.DateTimeSlot.End,
                     TechnicianId = o.TechnicianId,

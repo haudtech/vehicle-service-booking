@@ -35,8 +35,8 @@ Use PostgreSQL with database `vehicle_service_booking`.
 Run cleanup and seed scripts before executing happy-path tests.
 
 ```bash
-PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/cleanup_debug_test_data.sql
-PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
+PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f scripts/migrations/cleanup_debug_test_data.sql
+PGPASSWORD='<password>' psql -h localhost -p 5432 -U haudo -d vehicle_service_booking -f scripts/migrations/populate_debug_test_data.sql
 ```
 
 ### 3. Start API

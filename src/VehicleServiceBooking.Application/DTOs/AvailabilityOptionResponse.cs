@@ -28,6 +28,16 @@ namespace VehicleServiceBooking.Application.DTOs;
 public class AvailabilityOptionResponse
 {
     /// <summary>
+    /// Start time slot identifier to be reused in create appointment request.
+    /// </summary>
+    public Guid TimeSlotId { get; set; }
+
+    /// <summary>
+    /// End time slot identifier to be reused in create appointment request.
+    /// </summary>
+    public Guid EndTimeSlotId { get; set; }
+
+    /// <summary>
     /// Appointment start time (UTC)
     /// </summary>
     /// <remarks>

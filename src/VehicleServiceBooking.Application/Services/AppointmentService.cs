@@ -79,52 +79,9 @@ public class AppointmentService : IAppointmentService
                     "No available slots matching the specified criteria");
             }
 
-            // BUSINESS LOGIC 2: Validate requested slot is in available slots
-            var requestedSlotAvailable = availabilityOptions.Any(slot =>
-                slot.TechnicianId == request.TechnicianId &&
-                slot.ServiceBayId == request.ServiceBayId);
-
-            if (!requestedSlotAvailable)
-            {
-                throw new BookingConflictException(
-                    $"The selected technician and service bay combination is not in the available slots");
-            }
-
-            // BUSINESS LOGIC 3: Verify technician has required skill (data query)
-            _logger.LogDebug("Step 2: Verifying technician has required skill");
-            var technicianHasSkill = await _appointmentRepository.TechnicianHasSkillAsync(
-                request.TechnicianId,
-                request.ServiceTypeId,
-                cancellationToken);
-
-            if (!technicianHasSkill)
-            {
-                throw new InvalidOperationException(
-                    $"Technician {request.TechnicianId} does not have the required skill for service type {request.ServiceTypeId}");
-            }
-
-            // BUSINESS LOGIC 4: Check for vehicle conflicts (re-validate to prevent race conditions)
-            _logger.LogDebug("Step 3: Checking for vehicle appointment conflicts");
-            await CheckVehicleConflictsAsync(request, cancellationToken);
-
-            // BUSINESS LOGIC 5: Create appointment with services (atomic transaction via Repository)
-            _logger.LogDebug("Step 4: Creating appointment and service entities");
-            var bookedStatusId = await _appointmentStatusLookupRepository
-                .GetStatusIdByStatusAsync(AppointmentStatus.Booked, cancellationToken)
-                .ConfigureAwait(false);
-            if (!bookedStatusId.HasValue)
-            {
-                throw new InvalidOperationException("Appointment status lookup for 'Booked' was not found.");
-            }
-
-            var pendingServiceStatusLookup = await _serviceStatusLookupRepository
-                .GetByStatusAsync(ServiceStatus.Pending, cancellationToken)
-                .ConfigureAwait(false);
-            if (pendingServiceStatusLookup == null)
-            {
-                throw new InvalidOperationException("Service status lookup for 'Pending' was not found.");
-            }
-
+            // BUSINESS LOGIC 2: Resolve selected time slots and requested time window.
+            // This is required to validate that the exact requested slot window is available,
+            // not just the technician/service bay pair.
             var selectedTimeSlots = await _timeSlotRepository.GetByIdsAsync(
                 new[] { request.EstimatedStartTimeSlotId, request.EstimatedEndTimeSlotId },
                 cancellationToken).ConfigureAwait(false);
@@ -140,6 +97,57 @@ public class AppointmentService : IAppointmentService
             if (selectedEndSlot.SequenceOrder < selectedStartSlot.SequenceOrder)
             {
                 throw new InvalidOperationException("Estimated end time slot must be after or equal to estimated start time slot.");
+            }
+
+            var requestedSlotStart = request.AppointmentDate.ToDateTime(selectedStartSlot.SlotStartTime);
+            var requestedSlotEnd = request.AppointmentDate.ToDateTime(selectedEndSlot.SlotEndTime);
+
+            // BUSINESS LOGIC 3: Validate requested slot is in available slots
+            var requestedSlotAvailable = availabilityOptions.Any(slot =>
+                slot.TechnicianId == request.TechnicianId &&
+                slot.ServiceBayId == request.ServiceBayId &&
+                slot.DateTimeSlot.Start == requestedSlotStart &&
+                slot.DateTimeSlot.End == requestedSlotEnd);
+
+            if (!requestedSlotAvailable)
+            {
+                throw new BookingConflictException(
+                    "The selected technician/service bay and slot window is not in the available slots.");
+            }
+
+            // BUSINESS LOGIC 4: Verify technician has required skill (data query)
+            _logger.LogDebug("Step 2: Verifying technician has required skill");
+            var technicianHasSkill = await _appointmentRepository.TechnicianHasSkillAsync(
+                request.TechnicianId,
+                request.ServiceTypeId,
+                cancellationToken);
+
+            if (!technicianHasSkill)
+            {
+                throw new InvalidOperationException(
+                    $"Technician {request.TechnicianId} does not have the required skill for service type {request.ServiceTypeId}");
+            }
+
+            // BUSINESS LOGIC 5: Check for vehicle conflicts (re-validate to prevent race conditions)
+            _logger.LogDebug("Step 3: Checking for vehicle appointment conflicts");
+            await CheckVehicleConflictsAsync(request, cancellationToken);
+
+            // BUSINESS LOGIC 6: Create appointment with services (atomic transaction via Repository)
+            _logger.LogDebug("Step 4: Creating appointment and service entities");
+            var bookedStatusId = await _appointmentStatusLookupRepository
+                .GetStatusIdByStatusAsync(AppointmentStatus.Booked, cancellationToken)
+                .ConfigureAwait(false);
+            if (!bookedStatusId.HasValue)
+            {
+                throw new InvalidOperationException("Appointment status lookup for 'Booked' was not found.");
+            }
+
+            var pendingServiceStatusLookup = await _serviceStatusLookupRepository
+                .GetByStatusAsync(ServiceStatus.Pending, cancellationToken)
+                .ConfigureAwait(false);
+            if (pendingServiceStatusLookup == null)
+            {
+                throw new InvalidOperationException("Service status lookup for 'Pending' was not found.");
             }
 
             var appointment = new Appointment
@@ -329,7 +337,7 @@ public class AppointmentService : IAppointmentService
 
         _logger.LogInformation("Cancelling appointment: appointmentId={AppointmentId}", appointmentId);
 
-        var appointment = await _appointmentRepository.GetByIdAsync(appointmentId, cancellationToken);
+        var appointment = await _appointmentRepository.GetByIdWithServicesAsync(appointmentId, cancellationToken);
         if (appointment == null)
         {
             _logger.LogWarning("Appointment not found for cancellation: appointmentId={AppointmentId}", appointmentId);
@@ -359,6 +367,14 @@ public class AppointmentService : IAppointmentService
         appointment.StatusId = cancelledStatusId.Value;
         appointment.IsActive = false;
         appointment.UpdatedAt = DateTime.UtcNow;
+
+        // Keep DB overlap constraints and availability views consistent by deactivating
+        // all child service rows when an appointment is cancelled.
+        foreach (var service in appointment.Services.Where(s => s.IsActive))
+        {
+            service.IsActive = false;
+            service.UpdatedAt = DateTime.UtcNow;
+        }
 
         await _appointmentRepository.UpdateAsync(appointment, cancellationToken);
 

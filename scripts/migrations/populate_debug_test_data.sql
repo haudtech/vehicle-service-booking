@@ -13,7 +13,7 @@
 --   db=$(echo "$conn" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
 --   user=$(echo "$conn" | sed -n 's/.*Username=\([^;]*\).*/\1/p')
 --   pass=$(echo "$conn" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
---   PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f docs/sql/populate_debug_test_data.sql
+--   PGPASSWORD="$pass" psql -h "$host" -p "$port" -U "$user" -d "$db" -f scripts/migrations/populate_debug_test_data.sql
 
 BEGIN;
 

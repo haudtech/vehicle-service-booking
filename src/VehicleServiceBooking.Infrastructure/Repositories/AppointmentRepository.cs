@@ -143,6 +143,10 @@ public class AppointmentRepository : GenericRepository<Appointment>, IAppointmen
         }
         catch (DbUpdateException ex) when (IsBookingConflictViolation(ex))
         {
+            // Clear failed tracked entities so subsequent SaveChanges calls (e.g., idempotency bookkeeping)
+            // do not retry the same conflicting inserts in the same DbContext lifetime.
+            DbContext.DbContext.ChangeTracker.Clear();
+
             throw new BookingConflictException(
                 "The selected slot is no longer available. Please check availability again.",
                 ex);

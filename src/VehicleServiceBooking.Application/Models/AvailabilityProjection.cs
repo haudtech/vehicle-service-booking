@@ -14,6 +14,11 @@ public sealed class AvailabilityProjection
     public Guid TimeSlotId { get; set; }
 
     /// <summary>
+    /// End slot identifier derived from service duration window.
+    /// </summary>
+    public Guid EndTimeSlotId { get; set; }
+
+    /// <summary>
     /// Slot start time.
     /// </summary>
     public TimeOnly SlotStartTime { get; set; }

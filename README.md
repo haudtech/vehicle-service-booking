@@ -107,7 +107,7 @@ dotnet ef database update \
 ### 5. Seed Debug Data (Optional)
 
 ```bash
-PGPASSWORD='your_password' psql -h localhost -p 5432 -U postgres -d vehicle_service_booking -f docs/sql/populate_debug_test_data.sql
+PGPASSWORD='your_password' psql -h localhost -p 5432 -U postgres -d vehicle_service_booking -f scripts/migrations/populate_debug_test_data.sql
 ```
 
 ### 6. Run API

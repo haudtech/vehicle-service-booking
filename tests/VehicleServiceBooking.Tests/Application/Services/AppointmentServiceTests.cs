@@ -177,11 +177,18 @@ public class AppointmentServiceTests
     public async Task CancelAppointmentAsync_WhenAppointmentExists_ShouldUpdateStatusAndDeactivate()
     {
         var appointmentId = Guid.NewGuid();
+        var service = new Service
+        {
+            Id = Guid.NewGuid(),
+            IsActive = true,
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-5)
+        };
         var appointment = new Appointment
         {
             Id = appointmentId,
             StatusId = Guid.NewGuid(),
-            IsActive = true
+            IsActive = true,
+            Services = new List<Service> { service }
         };
         var cancelledStatus = new AppointmentStatusLookup
         {
@@ -191,7 +198,7 @@ public class AppointmentServiceTests
         };
 
         _mockAppointmentRepository
-            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByIdWithServicesAsync(appointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(appointment);
         _mockAppointmentStatusLookupRepository
             .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))
@@ -211,6 +218,7 @@ public class AppointmentServiceTests
         appointment.StatusId.Should().Be(cancelledStatus.Id);
         appointment.IsActive.Should().BeFalse();
         appointment.UpdatedAt.Should().NotBe(default);
+        service.IsActive.Should().BeFalse();
     }
 
     [Fact]
@@ -265,7 +273,7 @@ public class AppointmentServiceTests
         };
 
         _mockAppointmentRepository
-            .Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByIdWithServicesAsync(appointmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(appointment);
         _mockAppointmentStatusLookupRepository
             .Setup(r => r.GetByIdAsync(appointment.StatusId, It.IsAny<CancellationToken>()))

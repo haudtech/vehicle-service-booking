@@ -185,17 +185,31 @@ public class AppointmentsController : ControllerBase
 
             var response = new ErrorResponse
             {
-                Message = "The selected slot is no longer available. Please check availability again.",
+                Message =
+                    $"Selected slot is not available for technician '{request.TechnicianId}', " +
+                    $"service bay '{request.ServiceBayId}', date '{request.AppointmentDate:yyyy-MM-dd}', " +
+                    $"slot range '{request.EstimatedStartTimeSlotId}' to '{request.EstimatedEndTimeSlotId}'. " +
+                    "Query /api/v1/availability and retry with an available option.",
                 ErrorCode = "BOOKING_CONFLICT",
                 Timestamp = DateTime.UtcNow
             };
 
             if (idempotencyRecordId.HasValue)
             {
-                var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
-                await _idempotencyService
-                    .CompleteRequestAsync(idempotencyRecordId.Value, StatusCodes.Status409Conflict, body, cancellationToken)
-                    .ConfigureAwait(false);
+                try
+                {
+                    var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
+                    await _idempotencyService
+                        .CompleteRequestAsync(idempotencyRecordId.Value, StatusCodes.Status409Conflict, body, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception idempotencyEx)
+                {
+                    _logger.LogWarning(
+                        idempotencyEx,
+                        "Failed to persist idempotent conflict response for recordId={RecordId}",
+                        idempotencyRecordId.Value);
+                }
             }
 
             return Conflict(response);
