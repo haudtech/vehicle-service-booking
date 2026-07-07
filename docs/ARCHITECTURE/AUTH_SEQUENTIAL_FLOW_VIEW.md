@@ -33,7 +33,48 @@ sequenceDiagram
     AuthAPI-->>Client: 200 OK with tokens
 ```
 
-## 2. Booking Request Authorization with JWKS
+## 2. Google Sign-In to Local Token Issuance
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Browser as Client Browser
+    participant AuthAPI as Auth Service API
+    participant Google as Google OAuth
+    participant GoogleMW as Google Middleware (/signin-google)
+    participant AuthApp as Auth Application Service
+    participant AuthDB as Auth Database
+    participant Token as JWT/JWKS Service
+
+    Browser->>AuthAPI: GET /api/v1/auth/google/start
+    AuthAPI-->>Browser: 302 Challenge Google
+
+    Browser->>Google: Authenticate + consent
+    Google-->>Browser: 302 /signin-google?code=...&state=...
+
+    Browser->>GoogleMW: GET /signin-google
+    GoogleMW->>Google: Exchange auth code for identity claims
+    Google-->>GoogleMW: email + sub + profile claims
+    GoogleMW-->>Browser: External auth cookie + 302 /api/v1/auth/google/callback
+
+    Browser->>AuthAPI: GET /api/v1/auth/google/callback
+    AuthAPI->>AuthApp: LoginWithGoogleAsync(email, displayName, providerSubject, ip)
+
+    alt Existing user by normalized email
+        AuthApp->>AuthDB: Load active user + auth graph
+        AuthDB-->>AuthApp: Existing user
+    else First successful Google login
+        AuthApp->>AuthDB: Create user + assign default role
+        AuthDB-->>AuthApp: User provisioned
+    end
+
+    AuthApp->>Token: Issue access + refresh token
+    Token-->>AuthApp: Signed JWT + refresh token
+    AuthApp-->>AuthAPI: Auth response
+    AuthAPI-->>Browser: 200 OK with local tokens
+```
+
+## 3. Booking Request Authorization with JWKS
 
 ```mermaid
 sequenceDiagram
@@ -60,7 +101,7 @@ sequenceDiagram
     BookingAPI-->>Client: 201 Created
 ```
 
-## 3. Refresh and Logout Lifecycle
+## 4. Refresh and Logout Lifecycle
 
 ```mermaid
 sequenceDiagram
