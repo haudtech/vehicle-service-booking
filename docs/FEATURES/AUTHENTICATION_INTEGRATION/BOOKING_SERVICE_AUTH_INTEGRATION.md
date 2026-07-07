@@ -14,9 +14,20 @@ This document defines how the Vehicle Scheduling Service integrates with the ext
 ### 1.2 Key principles
 - Local JWT validation for performance
 - Use `aud = vehicle-booking-api`
-- Use `roles`, `groups`, and `scope` claims
+- Use `permissions` claims as the primary authorization contract
+- Keep `roles` for coarse identity context and compatibility
+- Keep `groups` as optional business-partition context (future scoping)
 - Keep booking service user-agnostic beyond token validation
 - Do not implement sign-up/login in booking service
+
+### 1.3 Shared role/group semantics (cross-service contract)
+- `roles`: broad identity category labels, stable across services.
+- `permissions`: action-level grants used by Booking API policies.
+- `groups`: organizational/partition context, not direct permission grants.
+
+Current Booking policy behavior:
+- Authorization is permission-first using `permissions` claims.
+- `roles` and `groups` are informational unless a policy explicitly opts in.
 
 ---
 
@@ -59,7 +70,7 @@ Booking service must validate:
 - `aud` contains `vehicle-booking-api`
 - token not expired (`exp`)
 - token not used before `nbf` if present
-- token includes required claims: `sub`, `roles`, `scope`
+- token includes required claims: `sub`, `permissions`
 
 ### 3.2 JWKS discovery
 - Booking service fetches public keys from `https://auth.example.com/.well-known/jwks.json`
@@ -70,6 +81,12 @@ Booking service must validate:
 - auth service rotates signing keys transparently
 - booking service must support multiple active keys via `kid`
 - fallback when key is missing: refresh JWKS and retry once
+
+Defined baseline policy:
+- rotation cadence: periodic (recommended 30 days)
+- overlap window: at least max access token TTL + clock skew buffer
+- key retirement: only after overlap window expires
+- incident fallback: force JWKS refresh and deny on persistent kid miss
 
 ---
 
@@ -86,21 +103,18 @@ Policies:
 ### 4.2 Policy requirements
 
 `AppointmentCreatePolicy`
-- requires `scope` contains `appointment:create`
-- or `roles` contains `client`, `manager`, or `admin`
+- requires `permissions` contains `appointment:create`
 
 `AppointmentCompletePolicy`
-- requires `scope` contains `appointment:complete`
-- or `roles` contains `manager` or `admin`
+- requires `permissions` contains `appointment:complete`
 
 `AppointmentReadPolicy`
-- requires `scope` contains `appointment:view`
-- or `roles` contains `manager` or `admin`
+- requires `permissions` contains `appointment:view`
 
 ### 4.3 Claim mapping
 - `roles` claim maps to broad authorization categories
-- `scope` claim maps to precise actions
-- `groups` claim can be used for dealership or region-specific access later
+- `permissions` claim maps to precise actions
+- `groups` claim can be used for dealership or region-specific access when tenant-scoped policies are introduced
 
 ---
 
@@ -185,8 +199,15 @@ Example:
 
 ### 8.2 Integration tests
 - request booking endpoint with a valid token and verify success
-- request booking endpoint with a token missing `appointment:create` and verify `403`
+- request booking endpoint with a token missing `permissions=appointment:create` and verify `403`
 - request booking endpoint with expired token and verify `401`
+
+### 8.4 Key rotation validation matrix
+- active key token -> `200/201` expected
+- previous key token during overlap -> `200/201` expected
+- token with unknown `kid` -> `401` expected
+- key miss then JWKS refresh resolves `kid` -> request succeeds
+- retired key token after overlap -> `401` expected
 
 ### 8.3 End-to-end tests
 - sign in via auth service

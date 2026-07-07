@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAuthServiceDependencies(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+        services.Configure<KeyRotationOptions>(configuration.GetSection("KeyRotation"));
 
         var jwtOptions = new JwtOptions();
         configuration.GetSection("Jwt").Bind(jwtOptions);
@@ -35,12 +36,24 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException("Jwt:Issuer and Jwt:Audience must be configured in appsettings.");
         }
+
+        var keyRotationOptions = new KeyRotationOptions();
+        configuration.GetSection("KeyRotation").Bind(keyRotationOptions);
+        if (keyRotationOptions.OverlapMinutes < 1)
+        {
+            throw new InvalidOperationException("KeyRotation:OverlapMinutes must be >= 1.");
+        }
+
+        if (keyRotationOptions.MaxPublishedKeys < 1)
+        {
+            throw new InvalidOperationException("KeyRotation:MaxPublishedKeys must be >= 1.");
+        }
+
         var enableJwtDiagnostics = configuration.GetValue<bool>("Jwt:EnableDiagnostics");
 
-        var signingKeyProvider = new RsaSigningKeyProvider();
-
         services.AddSingleton(jwtOptions);
-        services.AddSingleton<ISigningKeyProvider>(signingKeyProvider);
+        services.AddSingleton(keyRotationOptions);
+        services.AddSingleton<ISigningKeyProvider, RsaSigningKeyProvider>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
@@ -96,9 +109,16 @@ public static class ServiceCollectionExtensions
                     ValidAudience = jwtOptions.Audience,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = signingKeyProvider.SigningKey,
                     ClockSkew = TimeSpan.FromMinutes(1)
                 };
+            });
+
+        services
+            .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<ISigningKeyProvider>((jwtBearerOptions, signingKeyProvider) =>
+            {
+                jwtBearerOptions.TokenValidationParameters.IssuerSigningKeyResolver =
+                    (token, securityToken, kid, validationParameters) => signingKeyProvider.GetValidationKeys(kid);
             });
 
         services.AddAuthorization();

@@ -1,11 +1,11 @@
 @authHost = http://localhost:5158
 @bookingHost = http://localhost:5280
 // Update this runId for a new test run. Keep it stable while running all requests in sequence. 
-@runId = 20260706_02
+@runId = 20260707_01
 @email = workflow+{{runId}}@example.com
 @accountName = workflow_{{runId}}
 @password = Test1234!
-@appointmentDate = 2026-07-07
+@appointmentDate = 2026-07-14
 @dealershipId = 11111111-1111-1111-1111-000000000001
 @customerId = 11111111-1111-1111-1111-010000000003
 @vehicleId = 11111111-1111-1111-1111-020000000003

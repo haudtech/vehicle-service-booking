@@ -270,6 +270,16 @@ Examples:
 
 ## 3. Claim and token contract
 
+### 3.0 Canonical cross-service authorization semantics
+- `roles`: coarse-grained identity categories (for example: `booking-user`, `manager`, `admin`). Roles are stable and human-readable.
+- `permissions`: operation-level authorization primitives consumed directly by service policies (for example: `appointment:create`, `appointment:view`, `appointment:complete`).
+- `groups`: business-partition metadata (for example dealership/region/tenant grouping). Groups are for data-partition rules and reporting contexts, not for direct permission grants.
+
+Normative rules for current implementation:
+- Booking API authorization is permission-first.
+- Roles can be used as optional compatibility context but do not replace permission checks.
+- Groups are reserved for future cross-tenant/dealership scoping and are currently optional in tokens.
+
 ### 3.1 Required JWT claims
 - `sub`: user id
 - `iss`: issuer URI
@@ -278,8 +288,11 @@ Examples:
 - `iat`: issued at time
 - `email`
 - `roles`
+- `permissions`
+
+Optional (planned) claims:
 - `groups`
-- `scope`
+- `scope` (alias/interoperability claim, if enabled in future)
 
 ### 3.2 Example JWT payload
 ```json
@@ -288,9 +301,9 @@ Examples:
   "email": "alice@example.com",
   "iss": "https://auth.example.com",
   "aud": ["vehicle-booking-api"],
-  "roles": ["client"],
+  "roles": ["booking-user"],
+  "permissions": ["appointment:create","appointment:view"],
   "groups": ["dealership-north"],
-  "scope": ["appointment:create","appointment:view"],
   "exp": 1710000000,
   "iat": 1709996400
 }
