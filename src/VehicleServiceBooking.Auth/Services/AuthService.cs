@@ -77,23 +77,7 @@ public sealed class AuthService : IAuthService
         await _userRepository.AddAsync(user, cancellationToken);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
-        var roleId = await _roleRepository.GetRoleIdByNameAsync(DefaultSignupRoleName, cancellationToken);
-        if (roleId is null)
-        {
-            throw new InvalidOperationException($"Role '{DefaultSignupRoleName}' is not configured.");
-        }
-
-        var hasRole = await _userRoleRepository.ExistsAsync(user.Id, roleId.Value, cancellationToken);
-        if (!hasRole)
-        {
-            await _userRoleRepository.AddAsync(new UserRole
-            {
-                UserId = user.Id,
-                RoleId = roleId.Value
-            }, cancellationToken);
-
-            await _userRoleRepository.SaveChangesAsync(cancellationToken);
-        }
+        await EnsureDefaultRoleAssignedAsync(user, cancellationToken);
 
         return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
     }
@@ -110,6 +94,52 @@ public sealed class AuthService : IAuthService
         if (user is null || !_passwordHasher.VerifyPassword(user.PasswordHash, request.Password))
         {
             throw new InvalidOperationException("Invalid email or password.");
+        }
+
+        return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthResponse> LoginWithGoogleAsync(string email, string? displayName, string providerUserId, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerUserId))
+        {
+            throw new InvalidOperationException("Google identity is missing provider subject.");
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            throw new InvalidOperationException("Google identity did not provide a usable email address.");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user is null)
+        {
+            var normalizedAccountName = await GenerateUniqueAccountNameAsync(normalizedEmail, cancellationToken);
+            var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
+                ? normalizedAccountName
+                : displayName.Trim();
+
+            user = new User
+            {
+                Email = normalizedEmail,
+                AccountName = normalizedAccountName,
+                DisplayName = resolvedDisplayName,
+                PasswordHash = _passwordHasher.HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))),
+                SecurityStamp = Guid.NewGuid().ToString("N"),
+                IsActive = true
+            };
+
+            await _userRepository.AddAsync(user, cancellationToken);
+            await _userRepository.SaveChangesAsync(cancellationToken);
+
+            await EnsureDefaultRoleAssignedAsync(user, cancellationToken);
+        }
+
+        if (!user.IsActive)
+        {
+            throw new InvalidOperationException("User account is not active.");
         }
 
         return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
@@ -170,6 +200,56 @@ public sealed class AuthService : IAuthService
             RefreshToken = refreshToken.Token,
             ExpiresAt = refreshToken.ExpiresAt
         };
+    }
+
+    private async Task EnsureDefaultRoleAssignedAsync(User user, CancellationToken cancellationToken)
+    {
+        var roleId = await _roleRepository.GetRoleIdByNameAsync(DefaultSignupRoleName, cancellationToken);
+        if (roleId is null)
+        {
+            throw new InvalidOperationException($"Role '{DefaultSignupRoleName}' is not configured.");
+        }
+
+        var hasRole = await _userRoleRepository.ExistsAsync(user.Id, roleId.Value, cancellationToken);
+        if (!hasRole)
+        {
+            await _userRoleRepository.AddAsync(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = roleId.Value
+            }, cancellationToken);
+
+            await _userRoleRepository.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<string> GenerateUniqueAccountNameAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        var basePart = normalizedEmail.Split('@')[0];
+        var sanitized = new string(basePart
+            .Where(ch => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.')
+            .ToArray())
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            sanitized = "googleuser";
+        }
+
+        sanitized = sanitized[..Math.Min(40, sanitized.Length)];
+
+        var candidate = sanitized;
+        var suffix = 0;
+        while (await _userRepository.GetByAccountNameAsync(candidate, cancellationToken) is not null)
+        {
+            suffix++;
+            var suffixText = $"_{suffix}";
+            var prefixLength = Math.Min(40, Math.Max(1, sanitized.Length));
+            prefixLength = Math.Min(prefixLength, 50 - suffixText.Length);
+            candidate = sanitized[..prefixLength] + suffixText;
+        }
+
+        return candidate;
     }
 
     private RefreshToken CreateRefreshToken(Guid userId, string ipAddress)

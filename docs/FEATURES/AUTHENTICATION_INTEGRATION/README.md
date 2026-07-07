@@ -20,8 +20,8 @@ This README provides a single entry point to the feature documents created for t
 - [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md)
   - Visual, end-to-end explanation of login, token signing, refresh token lifecycle, JWKS key discovery, and Booking API authorization validation.
 
-- [AUTH_KEY_ROTATION_GUIDE.md](AUTH_KEY_ROTATION_GUIDE.md)
-  - Focused guide for JWT signing key rotation: definition, necessity, mechanism, proven scenario evidence, risks of missing rotation, and when to apply rotation.
+- [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md)
+  - End-to-end Google OAuth workflow from `/api/v1/auth/google/start` through middleware callback `/signin-google` to local token issuance at `/api/v1/auth/google/callback`.
 
 - [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md)
   - Auth service database model and entity relationships for users, roles, groups, and permissions.

@@ -1,4 +1,8 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using VehicleServiceBooking.Auth.Configuration;
 using VehicleServiceBooking.Auth.Models.Requests;
 using VehicleServiceBooking.Auth.Services;
 
@@ -12,14 +16,16 @@ namespace VehicleServiceBooking.Auth.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly GoogleAuthOptions _googleAuthOptions;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthController"/> class.
     /// </summary>
     /// <param name="authService">Authentication service.</param>
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, GoogleAuthOptions googleAuthOptions)
     {
         _authService = authService;
+        _googleAuthOptions = googleAuthOptions;
     }
 
     /// <summary>
@@ -59,6 +65,89 @@ public class AuthController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Starts Google OAuth challenge flow.
+    /// </summary>
+    /// <returns>Authentication challenge response.</returns>
+    [HttpGet("google/start")]
+    public IActionResult StartGoogleLogin()
+    {
+        if (!_googleAuthOptions.Enabled)
+        {
+            return Conflict(new
+            {
+                message = "Google login is disabled by configuration.",
+                code = "GOOGLE_LOGIN_DISABLED"
+            });
+        }
+
+        var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/v1/auth/google/callback";
+
+        var properties = new AuthenticationProperties
+        {
+            RedirectUri = callbackUrl
+        };
+
+        return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Handles Google OAuth callback and issues local access/refresh tokens.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Issued token payload or authorization error response.</returns>
+    [HttpGet("google/callback")]
+    public async Task<IActionResult> GoogleCallback(CancellationToken cancellationToken)
+    {
+        if (!_googleAuthOptions.Enabled)
+        {
+            return Conflict(new
+            {
+                message = "Google login is disabled by configuration.",
+                code = "GOOGLE_LOGIN_DISABLED"
+            });
+        }
+
+        var externalResult = await HttpContext.AuthenticateAsync(GoogleAuthOptions.ExternalCookieScheme);
+        if (externalResult is null || !externalResult.Succeeded || externalResult.Principal is null)
+        {
+            return Unauthorized(new { message = "Google authentication failed." });
+        }
+
+        try
+        {
+            var email = externalResult.Principal.FindFirstValue(ClaimTypes.Email)
+                ?? externalResult.Principal.FindFirstValue("email");
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return Unauthorized(new { message = "Google identity did not return an email address." });
+            }
+
+            var providerSubject = externalResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? externalResult.Principal.FindFirstValue("sub");
+
+            if (string.IsNullOrWhiteSpace(providerSubject))
+            {
+                return Unauthorized(new { message = "Google identity is missing provider subject." });
+            }
+
+            var displayName = externalResult.Principal.FindFirstValue(ClaimTypes.Name);
+            var response = await _authService.LoginWithGoogleAsync(
+                email,
+                displayName,
+                providerSubject,
+                HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                cancellationToken);
+
+            return Ok(response);
+        }
+        finally
+        {
+            await HttpContext.SignOutAsync(GoogleAuthOptions.ExternalCookieScheme);
         }
     }
 

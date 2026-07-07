@@ -39,3 +39,6 @@ appsettings.Local.json
 
 # API key files
 api-key/
+
+## Authentication tokens
+tests/integration/http/google-signin-token.json
