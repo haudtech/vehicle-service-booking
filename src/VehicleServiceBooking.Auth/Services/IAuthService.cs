@@ -19,6 +19,11 @@ public interface IAuthService
     Task<AuthResponse> LoginAsync(LoginRequest request, string ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Authenticates or provisions a user from Google identity and returns issued tokens.
+    /// </summary>
+    Task<AuthResponse> LoginWithGoogleAsync(string email, string? displayName, string providerUserId, string ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Refreshes tokens using a valid refresh token.
     /// </summary>
     Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string ipAddress, CancellationToken cancellationToken = default);

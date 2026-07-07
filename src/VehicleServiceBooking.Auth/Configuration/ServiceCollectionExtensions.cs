@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +32,7 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         services.Configure<KeyRotationOptions>(configuration.GetSection("KeyRotation"));
+        services.Configure<GoogleAuthOptions>(configuration.GetSection("Authentication:Google"));
 
         var jwtOptions = new JwtOptions();
         configuration.GetSection("Jwt").Bind(jwtOptions);
@@ -51,8 +55,24 @@ public static class ServiceCollectionExtensions
 
         var enableJwtDiagnostics = configuration.GetValue<bool>("Jwt:EnableDiagnostics");
 
+        var googleAuthOptions = new GoogleAuthOptions();
+        configuration.GetSection("Authentication:Google").Bind(googleAuthOptions);
+        if (googleAuthOptions.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(googleAuthOptions.ClientId))
+            {
+                throw new InvalidOperationException("Authentication:Google:ClientId must be configured when Google login is enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(googleAuthOptions.ClientSecret))
+            {
+                throw new InvalidOperationException("Authentication:Google:ClientSecret must be configured when Google login is enabled.");
+            }
+        }
+
         services.AddSingleton(jwtOptions);
         services.AddSingleton(keyRotationOptions);
+        services.AddSingleton(googleAuthOptions);
         services.AddSingleton<ISigningKeyProvider, RsaSigningKeyProvider>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -71,7 +91,11 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(10), null));
         });
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        var authenticationBuilder = services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
             .AddJwtBearer(options =>
             {
                 options.IncludeErrorDetails = enableJwtDiagnostics;
@@ -112,6 +136,26 @@ public static class ServiceCollectionExtensions
                     ClockSkew = TimeSpan.FromMinutes(1)
                 };
             });
+
+        if (googleAuthOptions.Enabled)
+        {
+            authenticationBuilder
+                .AddCookie(GoogleAuthOptions.ExternalCookieScheme)
+                .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+                {
+                    options.SignInScheme = GoogleAuthOptions.ExternalCookieScheme;
+                    options.ClientId = googleAuthOptions.ClientId;
+                    options.ClientSecret = googleAuthOptions.ClientSecret;
+                    options.CallbackPath = string.IsNullOrWhiteSpace(googleAuthOptions.CallbackPath)
+                        ? "/signin-google"
+                        : googleAuthOptions.CallbackPath;
+
+                    // Local development in this repository typically runs on HTTP localhost.
+                    // Keep correlation cookie aligned with request scheme to avoid correlation-failed callbacks.
+                    options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                    options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+                });
+        }
 
         services
             .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)

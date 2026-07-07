@@ -1,5 +1,13 @@
+using System.IO;
+using DotNetEnv;
 using VehicleServiceBooking.Auth.Configuration;
 using Serilog;
+
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envFile))
+{
+	Env.Load(envFile);
+}
 
 var builder = WebApplication.CreateBuilder(args);
 

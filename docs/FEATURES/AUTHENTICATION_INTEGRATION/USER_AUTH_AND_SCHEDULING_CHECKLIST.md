@@ -17,9 +17,9 @@
 - [x] Define shared role/group semantics across services (Section 8)
 
 ### Phase 3 - Next Capabilities
-- [ ] Social login design and implementation (Google/GitHub + callback + provisioning) (Section 6)
+- [ ] Social login design and implementation (GitHub pending; Google callback + provisioning completed) (Section 6)
 - [ ] Admin endpoints for user/group/role management (Section 3)
-- [ ] JWT key rotation runtime execution validation (Sections 7, 10)
+- [ ] Expand JWT key rotation runtime matrix coverage beyond current smoke scenarios (Sections 7, 10)
 - [ ] Optional introspection fallback strategy (Section 8)
 
 ## Detailed Checklist (By Domain)
@@ -28,7 +28,7 @@
 - [x] Define auth service responsibilities
   - [x] user registration / sign-up
   - [x] user login
-  - [ ] social login / OAuth2 integration
+  - [x] social login / OAuth2 integration (Google-first)
   - [ ] group membership management
   - [x] role management (seeded default role for booking access)
   - [x] permission mapping (role-permission mapping seeded)
@@ -52,7 +52,8 @@
 - [x] POST /api/v1/auth/refresh
 - [x] POST /api/v1/auth/logout
 - [x] GET /api/v1/.well-known/jwks.json
-- [ ] GET /api/v1/auth/{provider}/callback (social login)
+- [x] GET /api/v1/auth/google/callback (social login)
+- [ ] GET /api/v1/auth/github/callback (social login)
 - [x] GET /api/v1/me
 - [ ] Admin endpoints for user/group/role management
 
@@ -64,7 +65,7 @@
   - [x] AppointmentCreatePolicy
   - [x] AppointmentCompletePolicy
   - [x] AppointmentReadPolicy
-- [x] Apply [Authorize] to booking controllers/actions
+- [x] Apply `Authorize` to booking controllers/actions
 - [x] Map JWT claims to booking permissions
 
 ## 5. Token Model
@@ -88,12 +89,15 @@
   - [x] appointment:view
 
 ## 6. Social Login
-- [ ] Select providers to support
-  - [ ] Google
+- [x] Select providers to support
+  - [x] Google (implemented + tested end-to-end)
   - [ ] GitHub
-- [ ] Define OAuth2 callback flow
-- [ ] Implement user provisioning from provider claims
-- [ ] Map external identity to internal user record
+- [x] Define OAuth2 callback flow (Google-first)
+- [x] Implement user provisioning from provider claims (Google-first)
+- [x] Map external identity to internal user record (Google email-based mapping baseline)
+
+Social login flow reference:
+- [x] docs/FEATURES/AUTHENTICATION_INTEGRATION/AUTH_GOOGLE_OAUTH_FULL_FLOW.md (workflow + sequence + callback details)
 
 ## 7. Security and Operations
 - [x] Set access token lifetime (15-30 minutes)
@@ -137,7 +141,7 @@ Documentation baseline references:
 - [x] Validate JWT locally in booking service
 - [x] Test successful appointment creation with auth
 - [x] Test forbidden access for unauthorized roles
-- [ ] Test social login flow end-to-end
+- [x] Test social login flow end-to-end (Google live OAuth credentials and callback environment)
 - [x] Test refresh token flow
 - [x] Test JWT key rotation handling
 - [x] Define JWT key rotation validation coverage plan
@@ -152,6 +156,10 @@ Validation evidence:
 - [x] End-to-end API workflow passed using tests/integration/http/user_workflow_signup_to_appointment_with_auth.http (signup -> login -> me -> availability -> create appointment -> refresh -> logout -> jwks)
 - [x] JWKS provider unit tests passed: tests/VehicleServiceBooking.Tests/Api/Configuration/JwksSigningKeyProviderTests.cs (3/3)
 - [x] Auth key-ring rotation tests passed: tests/VehicleServiceBooking.Tests/Auth/Services/RsaSigningKeyProviderTests.cs (3/3)
+- [x] Automated Google callback-path tests passed: tests/VehicleServiceBooking.Tests/Auth/Controllers/AuthControllerGoogleTests.cs (controller callback success + failure paths)
+- [x] Automated Google provisioning-repeatability test passed: tests/VehicleServiceBooking.Tests/Auth/Services/AuthServiceGoogleLoginTests.cs (same Google email called twice -> single user provision)
+- [x] Google live sign-in callback returned valid local tokens and `/api/v1/me` validated with bearer token in runtime test (2026-07-08)
+- [x] Google-based HTTP workflow file added for hybrid/manual OAuth handoff: tests/integration/http/user_workflow_google_login_to_appointment_with_auth.http
 
 ## 11. Session Validation Snapshot (2026-07-04)
 - [x] Full solution build passed: `dotnet build VehicleServiceBooking.slnx`
@@ -180,8 +188,13 @@ Validation evidence:
   - [x] Retired-key post-overlap rejection validated in deterministic unit tests (`AdjustableTimeProvider` path)
 
 ## 13. Remaining Backlog (Phase 3 Only)
-- [ ] Social login end-to-end (providers, callback, provisioning)
+- [ ] GitHub social login implementation and end-to-end validation
 - [ ] Admin user/group/role management endpoints
 - [ ] Expand key rotation runtime matrix coverage beyond current smoke scenarios
 - [ ] Decide and document optional introspection fallback plan
 - [ ] Stakeholder review of finalized documentation set
+
+## 14. Session Validation Snapshot (2026-07-08)
+- [x] Google OAuth runtime callback completed successfully after local correlation-cookie hardening for HTTP localhost dev flow.
+- [x] Google callback produced local `accessToken` and `refreshToken` and `/api/v1/me` validated with bearer token.
+- [x] Google integration HTTP workflow updated for hybrid test execution and secret-safe commit cleanup.
