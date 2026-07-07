@@ -219,3 +219,45 @@ Validation layers in Booking API:
 - Booking API uses JWKS key resolver with cache window.
 
 These details are enough to reason about all request auth paths from login to protected Booking API authorization.
+
+---
+
+## 11. JWT key rotation strategy (defined baseline)
+
+Rotation goals:
+- no downtime during key rollover
+- existing non-expired tokens continue to validate during overlap window
+- deterministic key selection using `kid`
+
+Defined strategy:
+1. Maintain one active signing key and at least one previous verification key.
+2. Publish all currently valid verification keys in JWKS (`keys[]`).
+3. Stamp every access token with the active key `kid` in JWT header.
+4. Rotate on schedule (for example every 30 days) with overlap >= max access-token TTL + clock skew.
+5. Retire old key only after overlap window elapses.
+
+Booking validation behavior during rotation:
+1. Read `kid` from token header.
+2. Resolve matching JWKS key by `kid`.
+3. If no `kid` match, refresh JWKS once and retry key lookup.
+4. If still no match, fail authentication with 401.
+
+Operational notes:
+- Keep key history metadata (`kid`, createdAt, activateAt, retireAt) for auditability.
+- Alert on repeated `kid not found` validation failures.
+
+---
+
+## 12. JWT key rotation validation coverage plan
+
+Required scenarios:
+1. Current key validation: token signed by active key validates.
+2. Overlap window validation: token signed by previous key still validates.
+3. Unknown kid: token with non-existent kid returns 401.
+4. JWKS refresh path: first lookup misses kid, refresh succeeds, token validates.
+5. Retirement path: token signed by retired key fails after overlap window.
+
+Suggested test layers:
+- Unit tests: key resolver selection, cache invalidation, refresh-on-miss logic.
+- Integration tests: Auth JWKS multi-key response + Booking end-to-end authorization outcomes.
+- Smoke tests: rotate key in non-prod and verify no outage for active clients.

@@ -42,24 +42,37 @@ public sealed class JwksSigningKeyProvider : IJwksSigningKeyProvider
             return _cachedKeys;
         }
 
-        var matching = _cachedKeys
-            .Where(key => string.Equals(key.KeyId, kid, StringComparison.Ordinal))
-            .ToList();
+        var matching = FindKeysByKid(kid);
+        if (matching.Count > 0)
+        {
+            return matching;
+        }
 
-        return matching.Count > 0 ? matching : _cachedKeys;
+        // If kid is missing from cache, force one refresh to support rotation overlap.
+        EnsureKeysLoaded(forceRefresh: true);
+
+        matching = FindKeysByKid(kid);
+        return matching;
     }
 
-    private void EnsureKeysLoaded()
+    private List<SecurityKey> FindKeysByKid(string kid)
+    {
+        return _cachedKeys
+            .Where(key => string.Equals(key.KeyId, kid, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    private void EnsureKeysLoaded(bool forceRefresh = false)
     {
         var cacheDuration = TimeSpan.FromMinutes(Math.Max(1, _options.JwksCacheMinutes));
-        if (_cachedKeys.Count > 0 && DateTime.UtcNow - _lastRefreshUtc < cacheDuration)
+        if (!forceRefresh && _cachedKeys.Count > 0 && DateTime.UtcNow - _lastRefreshUtc < cacheDuration)
         {
             return;
         }
 
         lock (_syncRoot)
         {
-            if (_cachedKeys.Count > 0 && DateTime.UtcNow - _lastRefreshUtc < cacheDuration)
+            if (!forceRefresh && _cachedKeys.Count > 0 && DateTime.UtcNow - _lastRefreshUtc < cacheDuration)
             {
                 return;
             }

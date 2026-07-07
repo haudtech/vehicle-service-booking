@@ -18,7 +18,20 @@ public interface ISigningKeyProvider
     string KeyId { get; }
 
     /// <summary>
+    /// Gets currently valid verification keys, optionally filtered by kid.
+    /// </summary>
+    /// <param name="kid">Optional key identifier filter.</param>
+    /// <returns>Collection of usable verification keys.</returns>
+    IReadOnlyCollection<SecurityKey> GetValidationKeys(string? kid = null);
+
+    /// <summary>
     /// Returns public JWK information for token validation clients.
     /// </summary>
     object GetPublicJwks();
+
+    /// <summary>
+    /// Rotates the active signing key and returns the new kid.
+    /// </summary>
+    /// <returns>New active key identifier.</returns>
+    string RotateKey();
 }
