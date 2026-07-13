@@ -2,6 +2,7 @@ using System.IO;
 using DotNetEnv;
 using VehicleServiceBooking.Auth.Configuration;
 using Serilog;
+using VehicleServiceBooking.Observability;
 
 var envDirectory = new DirectoryInfo(Directory.GetCurrentDirectory());
 while (envDirectory is not null)

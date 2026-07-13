@@ -23,6 +23,9 @@ public static class PersistenceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var enableDetailedErrors = configuration.GetValue<bool?>("Observability:EntityFramework:EnableDetailedErrors") ?? false;
+        var enableSensitiveDataLogging = configuration.GetValue<bool?>("Observability:EntityFramework:EnableSensitiveDataLogging") ?? false;
+
         // Get connection string from configuration
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
@@ -41,6 +44,16 @@ public static class PersistenceExtensions
                     // Enable retry on transient failures
                     npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(10), null);
                 });
+
+            if (enableDetailedErrors)
+            {
+                options.EnableDetailedErrors();
+            }
+
+            if (enableSensitiveDataLogging)
+            {
+                options.EnableSensitiveDataLogging();
+            }
         });
 
         return services;
