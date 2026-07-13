@@ -1,6 +1,6 @@
-# Auth and Booking Sequential Flows View
+# Auth, Booking, and Notification Sequential Flows View
 
-Purpose: Describe end-to-end runtime interactions between clients, Auth service, and Booking service.
+Purpose: Describe end-to-end runtime interactions between clients, Auth service, Booking service, and Notification service.
 Status: CURRENT - Reflects implemented flows.
 
 ---
@@ -122,4 +122,65 @@ sequenceDiagram
     AuthAPI->>AuthDB: Revoke refresh token/session
     AuthDB-->>AuthAPI: Revoked
     AuthAPI-->>Client: 204 No Content
+```
+
+## 5. Async Notification Dispatch and Delivery
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant API as VehicleServiceBooking.Api
+    participant AuthAPI as Auth Service API
+    participant AuthApp as Auth Application Service
+    participant Queue as Azure Storage Queue
+    participant Func as SendNotificationEmail Function
+    participant Sender as IEmailSender Provider
+    participant Provider as Email Provider API
+
+    Client->>API: Signup/Login-related request
+    API->>AuthAPI: Forward request
+    AuthAPI->>AuthApp: Execute auth workflow
+    AuthApp->>Queue: Enqueue NotificationMessage (async)
+    AuthApp-->>AuthAPI: Business success response
+    AuthAPI-->>API: Auth result
+    API-->>Client: HTTP success
+
+    Queue-->>Func: Trigger with queued message
+    Func->>Func: Deserialize + validate payload
+    Func->>Sender: SendAsync(message)
+    Sender->>Provider: HTTP send request
+    Provider-->>Sender: Success/Failure response
+
+    alt Provider success
+        Sender-->>Func: Success
+        Func-->>Queue: Complete message
+    else Provider failure
+        Sender-->>Func: Exception
+        Func-->>Queue: Rethrow for retry/dead-letter
+    end
+```
+
+## 6. Notification Retry and Poison Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Queue as Notification Queue
+    participant Func as SendNotificationEmail Function
+    participant Runtime as Functions Runtime
+    participant Poison as Notification Poison Queue
+    participant PoisonFunc as ProcessNotificationPoison Function
+
+    Queue-->>Func: Deliver message
+    Func-->>Runtime: Throw on retriable delivery failure
+    Runtime-->>Queue: Increment dequeue count
+
+    alt DequeueCount below threshold
+        Runtime-->>Queue: Message visible for retry
+    else MaxDequeueCount reached
+        Runtime-->>Poison: Move message to poison queue
+        Poison-->>PoisonFunc: Trigger poison handler
+        PoisonFunc->>PoisonFunc: Log payload + diagnostics
+    end
 ```

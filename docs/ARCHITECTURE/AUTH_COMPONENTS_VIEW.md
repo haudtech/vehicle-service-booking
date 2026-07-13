@@ -1,7 +1,7 @@
-# Auth and Booking Components View
+# Auth, Booking, and Notification Components View
 
-Purpose: Present the runtime component topology for identity and scheduling collaboration.
-Status: CURRENT - Reflects implemented Auth and Booking integration.
+Purpose: Present the runtime component topology for identity, scheduling, and asynchronous notification delivery.
+Status: CURRENT - Reflects implemented Auth, Booking, and Notification integration.
 
 ---
 
@@ -31,6 +31,18 @@ flowchart TB
         JwksKeyResolver[JWKS Signing Key Resolver]
     end
 
+    subgraph NotificationService[Notification Service]
+        Publisher[Auth Notification Publisher]
+        NotificationQueue[(Azure Queue user-notification-events)]
+        PoisonQueue[(Azure Queue user-notification-events-poison)]
+        NotificationFunction[SendNotificationEmail Function]
+        PoisonFunction[ProcessNotificationPoison Function]
+        EmailSender[IEmailSender Provider Adapter]
+        GoogleSender[GoogleEmailSender]
+        SendGridSender[SendGridEmailSender]
+        LoggingSender[LoggingEmailSender]
+    end
+
     subgraph DataStores
         AuthDb[(Auth PostgreSQL)]
         BookingDb[(Booking PostgreSQL)]
@@ -49,14 +61,22 @@ flowchart TB
 
     BookingControllers --> JwtValidation --> JwksKeyResolver --> JwksEndpoint
     BookingControllers --> BookingApplication --> BookingInfrastructure --> BookingDb
+
+    AuthApplication --> Publisher --> NotificationQueue
+    NotificationQueue --> NotificationFunction --> EmailSender
+    EmailSender --> GoogleSender
+    EmailSender --> SendGridSender
+    EmailSender --> LoggingSender
+    NotificationQueue -. retry exhausted .-> PoisonQueue --> PoisonFunction
 ```
 
 ## 2. Design Intent
 
 - Auth service is the identity provider and token issuer.
 - Booking service is a protected resource API and validates JWT locally.
+- Notification service is an async worker pipeline for delivery side effects.
 - Signing keys are discovered through JWKS and reused for token verification.
-- Persistence boundaries remain separate between identity and scheduling domains.
+- Persistence boundaries remain separate between identity, scheduling, and delivery concerns.
 
 ## 3. Responsibilities by Service
 
@@ -70,3 +90,9 @@ flowchart TB
 - JWT authentication and authorization policy enforcement.
 - Availability and appointment business workflows.
 - Scheduling data consistency and persistence.
+
+### Notification Service
+- Async queue-triggered notification processing.
+- Provider abstraction for delivery channels (`IEmailSender`).
+- Structured provider diagnostics (status, provider message ids, response body).
+- Retry/dead-letter behavior with dedicated poison queue processor.
