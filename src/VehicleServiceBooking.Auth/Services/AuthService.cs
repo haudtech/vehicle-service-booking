@@ -51,8 +51,8 @@ public sealed class AuthService : IAuthService
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var normalizedAccountName = request.AccountName.Trim().ToLowerInvariant();
-        var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
-
+        
+var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
         if (existing is not null)
         {
             throw new InvalidOperationException("A user with that email address already exists.");

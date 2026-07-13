@@ -1,3 +1,4 @@
+using Azure.Storage.Queues;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -33,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         services.Configure<KeyRotationOptions>(configuration.GetSection("KeyRotation"));
         services.Configure<GoogleAuthOptions>(configuration.GetSection("Authentication:Google"));
+        services.Configure<NotificationOptions>(configuration.GetSection("Notification"));
 
         var jwtOptions = new JwtOptions();
         configuration.GetSection("Jwt").Bind(jwtOptions);
@@ -70,9 +72,25 @@ public static class ServiceCollectionExtensions
             }
         }
 
+        var notificationOptions = new NotificationOptions();
+        configuration.GetSection("Notification").Bind(notificationOptions);
+        if (notificationOptions.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(notificationOptions.QueueConnectionString))
+            {
+                throw new InvalidOperationException("Notification:QueueConnectionString must be configured when notifications are enabled.");
+            }
+
+            if (string.IsNullOrWhiteSpace(notificationOptions.QueueName))
+            {
+                throw new InvalidOperationException("Notification:QueueName must be configured when notifications are enabled.");
+            }
+        }
+
         services.AddSingleton(jwtOptions);
         services.AddSingleton(keyRotationOptions);
         services.AddSingleton(googleAuthOptions);
+        services.AddSingleton(notificationOptions);
         services.AddSingleton<ISigningKeyProvider, RsaSigningKeyProvider>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -82,6 +100,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
+
+        if (notificationOptions.Enabled)
+        {
+            services.AddSingleton(_ => new QueueClient(notificationOptions.QueueConnectionString, notificationOptions.QueueName));
+            services.AddSingleton<INotificationPublisher, QueueNotificationPublisher>();
+        }
+        else
+        {
+            services.AddSingleton<INotificationPublisher, NoOpNotificationPublisher>();
+        }
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");

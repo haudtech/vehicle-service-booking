@@ -32,10 +32,23 @@ using VehicleServiceBooking.Api.Configuration;
 // Load environment variables from .env file (for local development)
 // This must happen BEFORE CreateBuilder so environment variables are set
 // before configuration is read
-var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-if (File.Exists(envFile))
+var envDirectory = new DirectoryInfo(Directory.GetCurrentDirectory());
+while (envDirectory is not null)
 {
-    Env.Load(envFile);
+    var envFile = Path.Combine(envDirectory.FullName, ".env");
+    if (File.Exists(envFile))
+    {
+        Env.Load(envFile);
+        break;
+    }
+
+    envDirectory = envDirectory.Parent;
+}
+
+var apiSpecificConnection = Environment.GetEnvironmentVariable("API__CONNECTIONSTRINGS__DEFAULTCONNECTION");
+if (!string.IsNullOrWhiteSpace(apiSpecificConnection))
+{
+    Environment.SetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULTCONNECTION", apiSpecificConnection);
 }
 
 var builder = WebApplication.CreateBuilder(args);

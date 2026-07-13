@@ -5,6 +5,7 @@
     <Project Path="src/VehicleServiceBooking.Auth/VehicleServiceBooking.Auth.csproj" />
     <Project Path="src/VehicleServiceBooking.Domain/VehicleServiceBooking.Domain.csproj" />
     <Project Path="src/VehicleServiceBooking.Infrastructure/VehicleServiceBooking.Infrastructure.csproj" />
+    <Project Path="src/VehicleServiceBooking.Notification.Functions/VehicleServiceBooking.Notification.Functions.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/VehicleServiceBooking.Tests/VehicleServiceBooking.Tests.csproj" />

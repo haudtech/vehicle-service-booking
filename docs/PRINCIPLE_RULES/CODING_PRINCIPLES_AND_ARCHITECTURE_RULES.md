@@ -18,6 +18,9 @@ This document defines **non-negotiable architectural principles and coding stand
 - Enable maintainability and extensibility
 - Establish clear boundaries between layers
 
+**Related Rulebooks:**
+- Function-service specific standards are documented in `docs/PRINCIPLE_RULES/FUNCTION_SERVICE_PRINCIPLE_RULES.md`.
+
 **Compliance:** Code review will verify adherence to all principles. Non-compliant code will NOT be merged.
 
 ---
