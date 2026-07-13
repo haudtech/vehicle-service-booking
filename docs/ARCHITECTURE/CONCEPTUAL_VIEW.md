@@ -34,13 +34,15 @@ The application isolates core business invariants from external technical infras
 
 ---
 
-## 🔗 2. CROSS-SERVICE ARCHITECTURE (AUTH + BOOKING)
+## 🔗 2. CROSS-SERVICE ARCHITECTURE (AUTH + BOOKING + NOTIFICATION)
 
-The current production shape is a two-service collaboration model:
+The current production shape is a three-service collaboration model:
 
 - Auth service acts as identity provider and JWT issuer.
 - Booking service acts as protected resource API.
 - Booking validates JWT locally using keys published by Auth via JWKS.
+- Notification service (Azure Functions) acts as asynchronous delivery worker.
+- Auth publishes notification events to queue; Notification Functions process delivery via provider adapters.
 
 ```mermaid
 flowchart TB
@@ -66,6 +68,18 @@ flowchart TB
         JwksKeyResolver[JWKS Signing Key Resolver]
     end
 
+    subgraph NotificationPipeline[Notification Service]
+        Publisher[Auth Notification Publisher]
+        Queue[(Azure Queue user-notification-events)]
+        Poison[(Azure Queue user-notification-events-poison)]
+        NotificationFunc[SendNotificationEmail Function]
+        PoisonFunc[ProcessNotificationPoison Function]
+        EmailSender[IEmailSender Adapter]
+        GoogleProvider[GoogleEmailSender]
+        SendGridProvider[SendGridEmailSender]
+        LoggingProvider[LoggingEmailSender]
+    end
+
     subgraph DataStores
         AuthDb[(Auth PostgreSQL)]
         BookingDb[(Booking PostgreSQL)]
@@ -84,6 +98,13 @@ flowchart TB
 
     BookingControllers --> JwtValidation --> JwksKeyResolver --> JwksEndpoint
     BookingControllers --> BookingApplication --> BookingInfrastructure --> BookingDb
+
+    AuthApplication --> Publisher --> Queue
+    Queue --> NotificationFunc --> EmailSender
+    EmailSender --> GoogleProvider
+    EmailSender --> SendGridProvider
+    EmailSender --> LoggingProvider
+    Queue -. retry exhausted .-> Poison --> PoisonFunc
 ```
 
 ---
@@ -94,3 +115,4 @@ For detailed step-by-step runtime interactions, use:
 
 - `AUTH_SEQUENTIAL_FLOW_VIEW.md` for request sequences.
 - `AUTH_COMPONENTS_VIEW.md` for component-level boundaries.
+- `../FEATURES/NOTIFICATION/README.md` for notification workflow details.

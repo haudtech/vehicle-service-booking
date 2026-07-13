@@ -1,61 +1,72 @@
-# Authentication Integration Documentation Index
-
-This folder contains the documentation for the planned authentication and scheduling service split.
+# Authentication Integration Feature Guide
 
 ## Purpose
+Feature-level guide for Auth/Booking integration details, contracts, implementation plans, and runbooks.
 
-This README provides a single entry point to the feature documents created for the auth service and booking service integration plan.
+System-wide architecture and cross-service runtime views are centralized in:
+1. `docs/ARCHITECTURE/README.md`
+2. `docs/ARCHITECTURE/CONCEPTUAL_VIEW.md`
+3. `docs/ARCHITECTURE/AUTH_COMPONENTS_VIEW.md`
+4. `docs/ARCHITECTURE/AUTH_SEQUENTIAL_FLOW_VIEW.md`
 
-## Documents
+## Documentation Ownership
+1. Centralized architecture docs:
+2. Cross-service topology and canonical runtime diagrams.
+3. Feature docs in this folder:
+4. Auth-specific contracts, implementation details, migration plans, and execution checklists.
 
-- [AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md](AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md)
-  - High-level summary of the auth and scheduling split, business goals, and architecture decisions.
+## Core Feature Documents
 
-- [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md)
-  - Step-by-step roadmap for implementing the auth service and booking service changes.
+### Specifications and Runtime Contracts
+1. [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md)
+2. [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md)
+3. [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md)
+4. [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md)
+5. [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md)
 
-- [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md)
-  - Auth service requirements, API surface, JWT and token handling, and social login scope.
+### Implementation and Planning
+1. [AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md](AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md)
+2. [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md)
+3. [AUTH_SERVICE_DETAILED_DESIGN.md](AUTH_SERVICE_DETAILED_DESIGN.md)
+4. [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md)
 
-- [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md)
-  - Visual, end-to-end explanation of login, token signing, refresh token lifecycle, JWKS key discovery, and Booking API authorization validation.
+### Workflow and Verification
+1. [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md)
+2. [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md)
+3. [USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md](USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md)
 
-- [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md)
-  - End-to-end Google OAuth workflow from `/api/v1/auth/google/start` through middleware callback `/signin-google` to local token issuance at `/api/v1/auth/google/callback`.
+## Document Lifecycle Status
 
-- [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md)
-  - Auth service database model and entity relationships for users, roles, groups, and permissions.
+### Current (Primary References)
+1. [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md)
+2. [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md)
+3. [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md)
+4. [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md)
+5. [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md)
+6. [AUTH_KEY_ROTATION_GUIDE.md](AUTH_KEY_ROTATION_GUIDE.md)
+7. [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md)
 
-- [AUTH_SERVICE_DETAILED_DESIGN.md](AUTH_SERVICE_DETAILED_DESIGN.md)
-  - Detailed design for auth service internals, token issuance, refresh flows, and JWKS.
+### Mixed (Current + Planned Sections)
+1. [AUTH_SERVICE_DETAILED_DESIGN.md](AUTH_SERVICE_DETAILED_DESIGN.md)
+2. [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md)
+3. [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md)
 
-- [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md)
-  - Concrete implementation plan with tasks and developer actions.
+### Historical / Planning Baseline (Use for context, not source of truth)
+1. [AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md](AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md)
+2. [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md)
+3. [USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md](USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md)
 
-- [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md)
-  - Booking service integration guidance for JWT validation, authorization policies, and audience/issuer checks.
+Notes:
+1. If conflicts appear between documents, prioritize Current references first.
+2. Architecture authority remains in `docs/ARCHITECTURE`.
 
-- [USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md](USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md)
-  - Document describing the responsibilities split between the auth service and the booking service.
-
-- [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md)
-  - Completion checklist for both auth service and booking service work.
-
-- [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md)
-  - End-to-end user journey from sign-up to appointment creation with workflow/sequence diagrams and curl-by-step API execution.
-
-## How to use this directory
-
-1. Start with [AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md](AUTH_SCHEDULING_EXECUTIVE_SUMMARY.md) to understand the overall architecture and goals.
-2. Read [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md) for the practical end-to-end operational flow.
-3. Read [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) and [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md) to understand the exact runtime token and key validation behavior.
-4. Read [AUTH_SERVICE_DATA_MODEL.md](AUTH_SERVICE_DATA_MODEL.md) to validate auth service schema.
-5. Use [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md) for JWT validation and booking authorization details.
-6. Follow [AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md](AUTH_SCHEDULING_IMPLEMENTATION_ROADMAP.md) and [AUTH_SERVICE_IMPLEMENTATION_PLAN.md](AUTH_SERVICE_IMPLEMENTATION_PLAN.md) for implementation sequencing.
-7. Review [USER_AUTH_AND_SCHEDULING_CHECKLIST.md](USER_AUTH_AND_SCHEDULING_CHECKLIST.md) before finalizing the split.
+## Recommended Reading Order
+1. Start with [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) for the current API contract.
+2. Read [AUTH_JWT_JWKS_FULL_FLOW.md](AUTH_JWT_JWKS_FULL_FLOW.md) and [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md) for runtime auth flows.
+3. Read [BOOKING_SERVICE_AUTH_INTEGRATION.md](BOOKING_SERVICE_AUTH_INTEGRATION.md) for consumer-side JWT verification behavior.
+4. Use [USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md](USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md) for operational path validation.
+5. Use roadmap/plan/checklist docs for delivery tracking and release readiness.
 
 ## Notes
-
-- This directory is intended for current feature planning and implementation guidance.
-- Auth login supports `identifier` (account name or email), while `email` login input remains backward compatible.
-- Rename or move the folder into a more permanent location once the feature work is complete.
+1. Auth login supports `identifier` (account name or email), while `email` input remains backward compatible.
+2. Notification architecture is documented under `docs/FEATURES/NOTIFICATION` and centralized architecture docs.
