@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using VehicleServiceBooking.Auth.Configuration;
 using VehicleServiceBooking.Auth.Controllers;
+using VehicleServiceBooking.Auth.Models.Notifications;
+using VehicleServiceBooking.Auth.Models.Requests;
 using VehicleServiceBooking.Auth.Models.Responses;
 using VehicleServiceBooking.Auth.Services;
 
@@ -19,7 +22,13 @@ public class AuthControllerGoogleTests
     public void StartGoogleLogin_WhenEnabled_ReturnsChallengeResultForGoogleScheme()
     {
         var authService = new Mock<IAuthService>();
-        var sut = new AuthController(authService.Object, new GoogleAuthOptions { Enabled = true });
+        var notificationPublisher = new Mock<INotificationPublisher>();
+        var sut = new AuthController(
+            authService.Object,
+            new GoogleAuthOptions { Enabled = true },
+            new NotificationOptions { Enabled = false },
+            notificationPublisher.Object,
+            NullLogger<AuthController>.Instance);
         sut.ControllerContext = BuildControllerContext();
 
         var result = sut.StartGoogleLogin();
@@ -55,7 +64,13 @@ public class AuthControllerGoogleTests
             new(ClaimTypes.NameIdentifier, "google-subject-123")
         };
 
-        var sut = new AuthController(authService.Object, new GoogleAuthOptions { Enabled = true });
+        var notificationPublisher = new Mock<INotificationPublisher>();
+        var sut = new AuthController(
+            authService.Object,
+            new GoogleAuthOptions { Enabled = true },
+            new NotificationOptions { Enabled = false },
+            notificationPublisher.Object,
+            NullLogger<AuthController>.Instance);
         sut.ControllerContext = BuildControllerContext(CreateAuthenticationService(claims));
 
         var result = await sut.GoogleCallback(CancellationToken.None);
@@ -74,7 +89,13 @@ public class AuthControllerGoogleTests
             new(ClaimTypes.NameIdentifier, "google-subject-123")
         };
 
-        var sut = new AuthController(authService.Object, new GoogleAuthOptions { Enabled = true });
+        var notificationPublisher = new Mock<INotificationPublisher>();
+        var sut = new AuthController(
+            authService.Object,
+            new GoogleAuthOptions { Enabled = true },
+            new NotificationOptions { Enabled = false },
+            notificationPublisher.Object,
+            NullLogger<AuthController>.Instance);
         sut.ControllerContext = BuildControllerContext(CreateAuthenticationService(claims));
 
         var result = await sut.GoogleCallback(CancellationToken.None);
@@ -86,6 +107,50 @@ public class AuthControllerGoogleTests
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SignUp_WhenNotificationPublishTimesOut_ReturnsCreatedResponse()
+    {
+        var expected = new AuthResponse
+        {
+            AccessToken = "token",
+            RefreshToken = "refresh",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+
+        var authService = new Mock<IAuthService>();
+        authService
+            .Setup(x => x.SignUpAsync(It.IsAny<SignUpRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var notificationPublisher = new Mock<INotificationPublisher>();
+        notificationPublisher
+            .Setup(x => x.PublishAsync(It.IsAny<NotificationMessage>(), It.IsAny<CancellationToken>()))
+            .Returns<NotificationMessage, CancellationToken>((_, token) =>
+            {
+                token.IsCancellationRequested.Should().BeTrue();
+                return Task.FromCanceled(token);
+            });
+
+        var sut = new AuthController(
+            authService.Object,
+            new GoogleAuthOptions { Enabled = false },
+            new NotificationOptions { Enabled = true, PublishTimeout = TimeSpan.Zero },
+            notificationPublisher.Object,
+            NullLogger<AuthController>.Instance);
+        sut.ControllerContext = BuildControllerContext();
+
+        var result = await sut.SignUp(new SignUpRequest
+        {
+            Email = "signup.user@example.com",
+            AccountName = "signupuser",
+            Password = "password123",
+            DisplayName = "Signup User"
+        }, CancellationToken.None);
+
+        var created = result.Should().BeOfType<CreatedResult>().Subject;
+        created.Value.Should().BeEquivalentTo(expected);
     }
 
     private static ControllerContext BuildControllerContext(IAuthenticationService? authenticationService = null)

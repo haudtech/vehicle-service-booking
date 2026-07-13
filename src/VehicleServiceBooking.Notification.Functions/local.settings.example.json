@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "NotificationQueueName": "user-notification-events",
+    "NotificationPoisonQueueName": "user-notification-events-poison",
+    "EmailSender__Provider": "SendGrid",
+    "EmailSender__FromAddress": "noreply@vehicle-service-booking.local",
+    "EmailSender__FromName": "Vehicle Service Booking",
+    "EmailSender__SendGridEndpoint": "https://api.sendgrid.com/v3/mail/send",
+    "EmailSender__SendGridApiKey": "",
+    "EmailSender__GoogleApiEndpoint": "https://gmail.googleapis.com/gmail/v1/users",
+    "EmailSender__GoogleTokenEndpoint": "https://oauth2.googleapis.com/token",
+    "EmailSender__GoogleUserId": "me",
+    "EmailSender__GoogleClientId": "",
+    "EmailSender__GoogleClientSecret": "",
+    "EmailSender__GoogleRefreshToken": "",
+    "EmailSender__GoogleAccessToken": ""
+  }
+}
