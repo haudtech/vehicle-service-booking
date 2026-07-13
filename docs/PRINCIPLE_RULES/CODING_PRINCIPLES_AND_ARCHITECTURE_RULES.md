@@ -1,7 +1,7 @@
 # Vehicle Service Booking: Coding Principles & Architecture Rules
 
-**Document Version:** 1.0  
-**Last Updated:** June 28, 2026  
+**Document Version:** 1.1  
+**Last Updated:** July 13, 2026  
 **Status:** ✅ ACTIVE - STRICTLY ENFORCED  
 **Audience:** All Developers  
 
@@ -1386,6 +1386,101 @@ public async Task<IActionResult> CreateAppointment(
     return Ok(appointment);  // ← Exposes internal structure
 }
 ```
+
+### Rule 6.7: Centralized Observability Setup (NO DUPLICATION)
+
+**Core Rule:**
+```
+Shared cross-service logging and tracing configuration MUST live in the
+VehicleServiceBooking.Observability project. API/Auth/Functions hosts MUST call
+the shared extension methods and MUST NOT re-implement Serilog/OpenTelemetry wiring.
+```
+
+**✅ Required approach:**
+- Use shared host extensions from the observability project.
+- Keep exporter selection and connection string binding configuration-driven.
+- Add service-specific enrichment only when necessary and non-duplicative.
+
+**❌ Forbidden approach:**
+- Copy-pasting Serilog/OpenTelemetry registration across API/Auth/Functions.
+- Keeping multiple local `LogConfigurationExtensions` with equivalent logic.
+- Diverging exporter behavior between services without explicit requirement.
+
+### Rule 6.8: Request Logging Middleware Order
+
+**Core Rule:**
+```
+UseSerilogRequestLogging() MUST be registered before endpoint mapping or any middleware
+that can terminate the pipeline. If endpoint mapping happens in a composite middleware,
+request logging MUST execute before that composite middleware.
+```
+
+**✅ Correct ordering pattern:**
+
+```csharp
+app.UseSerilogRequestLogging(options =>
+{
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+                var correlationId = httpContext.Items["CorrelationId"]?.ToString();
+                if (!string.IsNullOrWhiteSpace(correlationId))
+                        diagnosticContext.Set("CorrelationId", correlationId);
+
+                diagnosticContext.Set("TraceIdentifier", httpContext.TraceIdentifier);
+        };
+});
+
+app.UseCorsPolicy(...);
+app.UseApplicationMiddleware(); // This may include endpoint mapping
+```
+
+**❌ Wrong ordering pattern:**
+
+```csharp
+app.UseApplicationMiddleware();
+app.UseSerilogRequestLogging(); // Too late when controllers are already mapped/executed
+```
+
+### Rule 6.9: Correlation ID Contract Across Services
+
+**Core Rule:**
+```
+Every inbound HTTP request MUST have a CorrelationId consistently available in:
+1) HttpContext.Items["CorrelationId"],
+2) LogContext,
+3) request diagnostic context for Serilog request logs.
+```
+
+**Required behavior:**
+- Header key: `X-Correlation-ID`.
+- If header is missing, generate a new correlation ID.
+- Add response header `X-Correlation-ID`.
+- Push value to log context and request diagnostic context.
+
+**Why this is mandatory:**
+- Prevents cross-service trace fragmentation.
+- Makes request-level logs grep/query friendly in file and centralized sinks.
+- Ensures parity between API and Auth logging behavior.
+
+### Rule 6.10: Telemetry and EF Diagnostics Configuration Precedence
+
+**Telemetry exporter configuration:**
+- Exporter selection MUST be configuration-driven (`Console`, `AzureMonitor`, `ApplicationInsights`).
+- Connection string precedence MUST be deterministic:
+    1. `Observability:OpenTelemetry:Tracing:AzureMonitor:ConnectionString`
+    2. `Observability:ApplicationInsights:ConnectionString`
+    3. `APPLICATIONINSIGHTS_CONNECTION_STRING` (environment fallback)
+
+**EF SQL diagnostics configuration:**
+- EF detail flags MUST be appsettings-driven, not hardcoded:
+    - `Observability:EntityFramework:EnableDetailedErrors`
+    - `Observability:EntityFramework:EnableSensitiveDataLogging`
+- Development can enable sensitive data logging for debugging.
+- Non-development environments SHOULD keep sensitive data logging disabled.
+
+**Governance rule:**
+- Local templates (`.env.example`, `local.settings.example.json`) MUST expose the preferred
+    primary connection key and avoid duplicate/conflicting keys unless needed for fallback.
 
 ---
 

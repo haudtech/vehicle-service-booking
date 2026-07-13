@@ -16,6 +16,8 @@
     "EmailSender__GoogleClientId": "",
     "EmailSender__GoogleClientSecret": "",
     "EmailSender__GoogleRefreshToken": "",
-    "EmailSender__GoogleAccessToken": ""
+    "EmailSender__GoogleAccessToken": "",
+    "Observability__OpenTelemetry__Tracing__Exporter": "Console",
+    "Observability__OpenTelemetry__Tracing__AzureMonitor__ConnectionString": ""
   }
 }

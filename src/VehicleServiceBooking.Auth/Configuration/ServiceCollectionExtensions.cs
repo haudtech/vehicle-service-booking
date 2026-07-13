@@ -114,9 +114,22 @@ public static class ServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");
 
+        var enableDetailedErrors = configuration.GetValue<bool?>("Observability:EntityFramework:EnableDetailedErrors") ?? false;
+        var enableSensitiveDataLogging = configuration.GetValue<bool?>("Observability:EntityFramework:EnableSensitiveDataLogging") ?? false;
+
         services.AddDbContext<AuthDbContext>(options =>
         {
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(10), null));
+
+            if (enableDetailedErrors)
+            {
+                options.EnableDetailedErrors();
+            }
+
+            if (enableSensitiveDataLogging)
+            {
+                options.EnableSensitiveDataLogging();
+            }
         });
 
         var authenticationBuilder = services.AddAuthentication(options =>

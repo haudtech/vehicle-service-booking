@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using VehicleServiceBooking.Notification.Functions.Configuration;
 using VehicleServiceBooking.Notification.Functions.Services;
+using VehicleServiceBooking.Observability;
 
 static string? FindEnvFile(params string[] startPaths)
 {
@@ -98,6 +99,7 @@ Console.WriteLine(
 $"Notification Functions startup config: Queue={Environment.GetEnvironmentVariable("NotificationQueueName") ?? "<unset>"}, PoisonQueue={Environment.GetEnvironmentVariable("NotificationPoisonQueueName") ?? "<unset>"}, EmailProvider={emailProvider}, SendGridApiKeyConfigured={hasSendGridApiKey}, GoogleAccessTokenConfigured={hasGoogleAccessToken}, GoogleRefreshFlowConfigured={hasGoogleRefreshFlowConfig}");
 
 var host = new HostBuilder()
+    .AddLoggingAndTracingForFunctions()
     .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices((context, services) =>
     {

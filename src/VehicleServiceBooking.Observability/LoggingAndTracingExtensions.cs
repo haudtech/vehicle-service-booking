@@ -1,4 +1,5 @@
 using System;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,12 +8,12 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 
-namespace VehicleServiceBooking.Api.Configuration;
+namespace VehicleServiceBooking.Observability;
 
 /// <summary>
 /// Extension methods for configuring structured logging and tracing.
 /// </summary>
-public static class LogConfigurationExtensions
+public static class LoggingAndTracingExtensions
 {
     /// <summary>
     /// Configures Serilog and OpenTelemetry tracing from configuration.
@@ -27,6 +28,10 @@ public static class LogConfigurationExtensions
             serilogSection.GetValue<string>("Override:Microsoft") ?? "Information");
         var aspNetCoreLogLevel = ParseLogEventLevel(
             serilogSection.GetValue<string>("Override:Microsoft.AspNetCore") ?? "Warning");
+        var efCommandLogLevel = ParseOptionalLogEventLevel(
+            serilogSection.GetValue<string>("Override:Microsoft.EntityFrameworkCore.Database.Command"));
+        var efQueryLogLevel = ParseOptionalLogEventLevel(
+            serilogSection.GetValue<string>("Override:Microsoft.EntityFrameworkCore.Query"));
         var enableConsoleSink = serilogSection.GetValue<bool?>("EnableConsole") ?? true;
         var enableFileSink = serilogSection.GetValue<bool?>("EnableFile") ?? true;
         var filePath = serilogSection.GetValue<string>("FilePath") ?? "logs/app-.txt";
@@ -40,6 +45,16 @@ public static class LogConfigurationExtensions
             .MinimumLevel.Override("Microsoft.AspNetCore", aspNetCoreLogLevel)
             .MinimumLevel.Is(defaultLogLevel)
             .Enrich.FromLogContext();
+
+        if (efCommandLogLevel.HasValue)
+        {
+            loggerConfiguration.MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", efCommandLogLevel.Value);
+        }
+
+        if (efQueryLogLevel.HasValue)
+        {
+            loggerConfiguration.MinimumLevel.Override("Microsoft.EntityFrameworkCore.Query", efQueryLogLevel.Value);
+        }
 
         if (enableConsoleSink)
         {
@@ -58,6 +73,7 @@ public static class LogConfigurationExtensions
         var useAspNetCoreInstrumentation = tracingSection.GetValue<bool?>("UseAspNetCoreInstrumentation") ?? true;
         var useEntityFrameworkCoreInstrumentation = tracingSection.GetValue<bool?>("UseEntityFrameworkCoreInstrumentation") ?? true;
         var exporter = tracingSection.GetValue<string>("Exporter") ?? "Console";
+        var appInsightsConnectionString = ResolveApplicationInsightsConnectionString(builder.Configuration, tracingSection);
 
         builder.Services
             .AddOpenTelemetry()
@@ -77,6 +93,17 @@ public static class LogConfigurationExtensions
                 {
                     tracing.AddConsoleExporter();
                 }
+                else if (string.Equals(exporter, "AzureMonitor", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(exporter, "ApplicationInsights", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+                    {
+                        tracing.AddAzureMonitorTraceExporter(options =>
+                        {
+                            options.ConnectionString = appInsightsConnectionString;
+                        });
+                    }
+                }
             });
 
         return builder;
@@ -94,5 +121,37 @@ public static class LogConfigurationExtensions
         return Enum.TryParse<RollingInterval>(value, ignoreCase: true, out var interval)
             ? interval
             : RollingInterval.Day;
+    }
+
+    private static LogEventLevel? ParseOptionalLogEventLevel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return Enum.TryParse<LogEventLevel>(value, ignoreCase: true, out var level)
+            ? level
+            : null;
+    }
+
+    private static string? ResolveApplicationInsightsConnectionString(
+        IConfiguration configuration,
+        IConfigurationSection tracingSection)
+    {
+        var fromTracing = tracingSection.GetValue<string>("AzureMonitor:ConnectionString");
+        if (!string.IsNullOrWhiteSpace(fromTracing))
+        {
+            return fromTracing;
+        }
+
+        var fromObservability = configuration.GetValue<string>("Observability:ApplicationInsights:ConnectionString");
+        if (!string.IsNullOrWhiteSpace(fromObservability))
+        {
+            return fromObservability;
+        }
+
+        var fromEnvironment = Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
+        return string.IsNullOrWhiteSpace(fromEnvironment) ? null : fromEnvironment;
     }
 }

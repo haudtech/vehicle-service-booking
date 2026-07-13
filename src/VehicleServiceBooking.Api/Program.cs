@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using VehicleServiceBooking.Api.Configuration;
+using VehicleServiceBooking.Observability;
 
 //
 // ============================================================================
@@ -110,8 +111,6 @@ var app = builder.Build();
 //
 
 // Configure middleware pipeline
-app.UseApplicationMiddleware();
-
 app.UseSerilogRequestLogging(options =>
 {
     options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
@@ -130,5 +129,7 @@ var corsConfig = app.Services
     .GetRequiredService<VehicleServiceBooking.Application.Configuration.Interfaces.ICorsConfiguration>();
 
 app.UseCorsPolicy(corsConfig.PolicyName);
+
+app.UseApplicationMiddleware();
 
 app.Run();
