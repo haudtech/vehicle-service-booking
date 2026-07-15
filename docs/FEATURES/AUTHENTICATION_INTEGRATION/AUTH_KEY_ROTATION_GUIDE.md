@@ -9,6 +9,9 @@ This document explains JWT signing key rotation in this repository:
 - advantages and disadvantages
 - when key rotation should be applied
 
+## Status
+Current operational reference for JWT signing key rotation.
+
 ## 1. What Is Key Rotation?
 Key rotation is the controlled replacement of the JWT signing key used by the Auth service.
 

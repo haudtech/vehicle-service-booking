@@ -9,6 +9,9 @@ This document explains the full mechanism from login to:
 
 The goal is to make the flow easy to reason about during implementation, debugging, and API testing.
 
+## Status
+Current source of truth for JWT issuance, refresh, and JWKS validation behavior.
+
 ---
 
 ## 1. One-screen mental model

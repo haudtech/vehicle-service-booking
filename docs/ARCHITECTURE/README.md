@@ -24,7 +24,12 @@ Please navigate through the specialized views below depending on your review obj
 5.  **[Auth and Booking Components View](./AUTH_COMPONENTS_VIEW.md)**
     *   *Focus:* Runtime component boundaries across Auth, Booking, and Notification services; JWT/JWKS trust path; async queue delivery path.
 6.  **[Auth and Booking Sequential Flows View](./AUTH_SEQUENTIAL_FLOW_VIEW.md)**
-    *   *Focus:* End-to-end sign-up verification, challenge-based login, Google sign-in, booking authorization, token refresh/logout, and async notification delivery flows.
+    *   *Focus:* End-to-end runtime interactions across Auth, Booking, and Notification.
+
+### Documentation Status Rules
+*   **Current:** stable runtime topology, trust boundaries, and canonical system flows.
+*   **Supporting:** detailed feature contracts and executable workflow docs in `docs/FEATURES/AUTHENTICATION_INTEGRATION`.
+*   **Historical / Planned:** design notes, roadmaps, and implementation plans that are not the primary source of truth.
 
 ---
 
@@ -118,11 +123,16 @@ Deep-diving inside the runtime containers reveals how service components communi
 
 ## 🔐 5. IDENTITY AND NOTIFICATION INTEGRATION ARCHITECTURE
 
-The platform now includes a dedicated Auth service and JWT/JWKS trust integration for Booking APIs.
+The platform includes Auth, Booking, and Notification as separate runtime services.
 
-The platform also includes asynchronous notification delivery via queue and Function service.
+Use the specialized views for current detail:
 
 - Component topology and service boundaries: `AUTH_COMPONENTS_VIEW.md`
 - Runtime interaction and token lifecycle flows: `AUTH_SEQUENTIAL_FLOW_VIEW.md`
+- Current auth contract and OTP/MFA behavior: `../FEATURES/AUTHENTICATION_INTEGRATION/AUTH_SERVICE_SPEC.md`
+- Current Google login flow: `../FEATURES/AUTHENTICATION_INTEGRATION/AUTH_GOOGLE_OAUTH_FULL_FLOW.md`
+- Current JWT/JWKS validation flow: `../FEATURES/AUTHENTICATION_INTEGRATION/AUTH_JWT_JWKS_FULL_FLOW.md`
+- Current OTP / authenticator strategy: `../FEATURES/AUTHENTICATION_INTEGRATION/AUTH_OTP_METHODODOLOGY_AND_CHANNEL_STRATEGY.md`
+- Current user workflow script: `../FEATURES/AUTHENTICATION_INTEGRATION/USER_WORKFLOW_SIGNUP_TO_APPOINTMENT_WITH_AUTH.md`
 - Notification feature deep-dive: `../FEATURES/NOTIFICATION/README.md`
 - Notification troubleshooting runbook: `../FEATURES/NOTIFICATION/TROUBLESHOOTING_PLAYBOOK.md`

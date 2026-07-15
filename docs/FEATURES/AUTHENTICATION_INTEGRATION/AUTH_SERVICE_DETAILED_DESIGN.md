@@ -1,221 +1,65 @@
 # Auth/User Service Detailed Design
 
 ## Purpose
-This document defines the detailed design of the Auth/User Service, including:
-- database schema
-- entity relationships
-- endpoint request/response payloads
-- authentication and token issuance details
-- social login metadata model
+Current design reference for auth persistence, token handling, and social identity linking.
 
-This design is intended to support the Vehicle Scheduling Service and future downstream services.
+## Status
+Current supporting reference. Historical planning detail was removed to keep this doc focused on the active model.
 
----
+## 1. Current design summary
 
-## 1. Database schema
+The active auth/user model centers on:
 
-### 1.1 Users
-Stores user accounts.
+- user accounts with email, account name, password hash, confirmation state, and activity flag
+- role, group, and permission relations for downstream authorization
+- refresh token storage with hashed token values and revocation tracking
+- social provider metadata for Google-first login and future provider expansion
+- optional login history for auditing and troubleshooting
 
-Columns:
-- `Id` UUID PK
-- `Email` varchar(256) NOT NULL UNIQUE
-- `NormalizedEmail` varchar(256) NOT NULL UNIQUE
-- `AccountName` varchar(50) NOT NULL UNIQUE
-- `PasswordHash` text NULL
-- `DisplayName` varchar(100) NULL
-- `IsEmailConfirmed` bool NOT NULL DEFAULT false
-- `IsActive` bool NOT NULL DEFAULT true
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
+## 2. Entity set
 
-Indexes:
-- unique `Email`
-- unique `NormalizedEmail`
-- unique `AccountName`
+### Core entities
+- User
+- Role
+- Group
+- Permission
 
-Implementation note:
-- Account name is normalized before persistence and stored in `AccountName`.
+### Relationship entities
+- UserRole
+- UserGroup
+- RolePermission
 
-### 1.2 Roles
-Defines named roles.
+### Auth-specific entities
+- RefreshToken
+- SocialProvider
+- UserLoginHistory
 
-Columns:
-- `Id` UUID PK
-- `Name` varchar(100) NOT NULL UNIQUE
-- `Description` varchar(256) NULL
-- `IsActive` bool NOT NULL DEFAULT true
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
+## 3. Current behavioral notes
 
-Example values:
-- `admin`
-- `manager`
-- `client`
-- `technician`
+1. Password-based accounts keep a stored password hash.
+2. Social-only accounts may omit a password hash.
+3. Email confirmation is tracked separately from sign-in authorization.
+4. Refresh tokens are stored as hashes and revocable independently of access tokens.
+5. Social provider links are unique by provider name plus provider user id.
 
-### 1.3 Groups
-Represents organizational membership.
+## 4. Relationship snapshot
 
-Columns:
-- `Id` UUID PK
-- `Name` varchar(100) NOT NULL UNIQUE
-- `Description` varchar(256) NULL
-- `IsActive` bool NOT NULL DEFAULT true
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Example values:
-- `dealership-north`
-- `service-supervisors`
-
-### 1.4 Permissions
-Represents granular actions.
-
-Columns:
-- `Id` UUID PK
-- `Name` varchar(150) NOT NULL UNIQUE
-- `Description` varchar(256) NULL
-- `IsActive` bool NOT NULL DEFAULT true
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Example values:
-- `appointment:create`
-- `appointment:complete`
-- `appointment:view`
-- `user:manage`
-
-### 1.5 UserRoles
-Maps users to roles.
-
-Columns:
-- `Id` UUID PK
-- `UserId` UUID NOT NULL REFERENCES Users(Id)
-- `RoleId` UUID NOT NULL REFERENCES Roles(Id)
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Indexes:
-- unique `(UserId, RoleId)`
-
-### 1.6 UserGroups
-Maps users to groups.
-
-Columns:
-- `Id` UUID PK
-- `UserId` UUID NOT NULL REFERENCES Users(Id)
-- `GroupId` UUID NOT NULL REFERENCES Groups(Id)
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Indexes:
-- unique `(UserId, GroupId)`
-
-### 1.7 RolePermissions
-Maps roles to permissions.
-
-Columns:
-- `Id` UUID PK
-- `RoleId` UUID NOT NULL REFERENCES Roles(Id)
-- `PermissionId` UUID NOT NULL REFERENCES Permissions(Id)
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Indexes:
-- unique `(RoleId, PermissionId)`
-
-### 1.8 RefreshTokens
-Tracks refresh tokens for long-lived sessions.
-
-Columns:
-- `Id` UUID PK
-- `UserId` UUID NOT NULL REFERENCES Users(Id)
-- `TokenHash` text NOT NULL
-- `CreatedByIp` varchar(45) NULL
-- `RevokedByIp` varchar(45) NULL
-- `ReplacedByTokenHash` text NULL
-- `ReasonRevoked` varchar(256) NULL
-- `IssuedAt` timestamptz NOT NULL
-- `ExpiresAt` timestamptz NOT NULL
-- `RevokedAt` timestamptz NULL
-- `IsActive` bool NOT NULL DEFAULT true
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Indexes:
-- unique `TokenHash`
-- index `(UserId, IsActive)`
-
-### 1.9 SocialProviders
-Stores external provider link metadata.
-
-Columns:
-- `Id` UUID PK
-- `UserId` UUID NOT NULL REFERENCES Users(Id)
-- `ProviderName` varchar(50) NOT NULL
-- `ProviderUserId` varchar(200) NOT NULL
-- `Email` varchar(256) NULL
-- `DisplayName` varchar(200) NULL
-- `ProfilePictureUrl` varchar(512) NULL
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-- `UpdatedAt` timestamptz NOT NULL DEFAULT now()
-
-Indexes:
-- unique `(ProviderName, ProviderUserId)`
-
-### 1.10 UserLoginHistory (optional)
-Tracks login events.
-
-Columns:
-- `Id` UUID PK
-- `UserId` UUID NOT NULL REFERENCES Users(Id)
-- `LoginType` varchar(50) NOT NULL
-- `Success` bool NOT NULL
-- `IpAddress` varchar(45) NULL
-- `UserAgent` varchar(256) NULL
-- `CreatedAt` timestamptz NOT NULL DEFAULT now()
-
----
-
-## 2. Entity relationship diagram
-
-```
-Users
- ├─< UserRoles >─ Roles
- ├─< UserGroups >─ Groups
- ├─< SocialProviders >
- ├─< RefreshTokens >
+```text
+User
+ ├─< UserRole >─ Role
+ ├─< UserGroup >─ Group
+ ├─< SocialProvider >
+ ├─< RefreshToken >
  └─< UserLoginHistory >
 
-Roles
- └─< RolePermissions >─ Permissions
+Role
+ └─< RolePermission >─ Permission
 ```
 
----
+## 5. How to use this doc
 
-## 3. Endpoint payload definitions
-
-### 3.1 POST /api/v1/auth/signup
-
-Request:
-```json
-{
-  "email": "alice@example.com",
-  "accountName": "alice.smith",
-  "password": "P@ssw0rd!",
-  "displayName": "Alice Smith"
-}
-```
-
-Response:
-```json
-{
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "alice@example.com",
-  "status": "PendingVerification"
-}
-```
+Use this file when you need the current auth/user data model and persistence shape.
+Use [AUTH_SERVICE_SPEC.md](AUTH_SERVICE_SPEC.md) for endpoint contracts and [AUTH_GOOGLE_OAUTH_FULL_FLOW.md](AUTH_GOOGLE_OAUTH_FULL_FLOW.md) for runtime login behavior.
 
 ### 3.2 POST /api/v1/auth/login
 

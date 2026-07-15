@@ -9,7 +9,7 @@ This document describes the conceptual architecture, workflow, and implementatio
 - integration guidance for multiple downstream services
 
 ## Status
-Historical planning reference; use for context only.
+Archived historical planning reference; use for context only.
 
 ---
 
