@@ -2,6 +2,9 @@
 
 Last updated: 2026-07-15
 
+## Status
+Current source of truth for OTP channel resolution, email_otp, and authenticator_app behavior.
+
 ## 1. Purpose
 
 This document defines the One-Time Password (OTP) methodology used by Auth service login challenges, including:

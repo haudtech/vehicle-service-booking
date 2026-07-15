@@ -4,7 +4,7 @@
 This roadmap defines the implementation phases, tasks, and milestones for building the Auth/User Service and integrating it with the Vehicle Scheduling Service.
 
 ## Status
-Historical planning reference; implementation phases are largely complete.
+Archived historical planning reference; implementation phases are largely complete.
 
 ---
 

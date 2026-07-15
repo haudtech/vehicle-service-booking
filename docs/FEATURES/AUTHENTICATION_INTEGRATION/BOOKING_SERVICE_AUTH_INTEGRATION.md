@@ -3,6 +3,9 @@
 ## Purpose
 This document defines how the Vehicle Scheduling Service integrates with the external Auth/User Service using local JWT validation and service-side authorization.
 
+## Status
+Current source of truth for Booking-side Auth integration behavior.
+
 ---
 
 ## 1. Integration overview

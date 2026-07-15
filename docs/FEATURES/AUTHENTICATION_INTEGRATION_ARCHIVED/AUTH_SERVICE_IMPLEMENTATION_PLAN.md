@@ -4,7 +4,7 @@
 This document defines a concrete, code-oriented plan to implement the Auth/User Service. It is intended to move from design to execution with clear tasks, component ownership, and implementation guidance.
 
 ## Status
-Planning reference; now mostly superseded by implemented code and current feature docs.
+Archived historical planning reference; superseded by implemented code and current feature docs.
 
 ---
 

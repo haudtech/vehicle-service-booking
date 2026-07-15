@@ -3,6 +3,9 @@
 ## Purpose
 This document explains the full Google login flow in this repository from user click to Auth API token response.
 
+## Status
+Current source of truth for Google login runtime behavior.
+
 It focuses on the runtime path implemented in:
 - `AuthController` (`/api/v1/auth/google/start`, `/api/v1/auth/google/callback`)
 - Google middleware callback (`/signin-google`)

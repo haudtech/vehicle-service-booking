@@ -4,6 +4,9 @@
 
 This document describes the implemented end-to-end flow from local sign-up to appointment creation after verification-first authentication hardening.
 
+## Status
+Current executable workflow reference for Auth + Booking integration.
+
 It reflects the current contract:
 1. Sign-up does not issue JWT tokens immediately.
 2. User must verify email first.

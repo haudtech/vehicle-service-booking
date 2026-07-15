@@ -11,6 +11,9 @@ This document defines the Auth/User Service data model for:
 
 The model is designed to support both local authentication and OAuth2/social login, while enabling role- and permission-based access for downstream services such as the Vehicle Scheduling Service.
 
+## Status
+Current supporting reference for auth persistence model.
+
 ---
 
 ## 1. Core entities

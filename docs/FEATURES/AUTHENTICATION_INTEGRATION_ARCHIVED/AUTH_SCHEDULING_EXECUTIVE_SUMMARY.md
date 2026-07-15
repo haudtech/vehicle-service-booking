@@ -8,7 +8,7 @@ This executive summary provides a concise overview of the planned architecture s
 It is intended for stakeholders, technical leads, and implementation planning.
 
 ## Status
-Historical planning reference; keep for context, not as current contract.
+Archived historical planning reference; keep for context only.
 
 ---
 

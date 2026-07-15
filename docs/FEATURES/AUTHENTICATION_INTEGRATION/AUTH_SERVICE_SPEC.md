@@ -15,6 +15,9 @@ This document defines the Auth/User Service API contract for:
 
 This service is intended to be the central identity provider for the Vehicle Scheduling Service and other future services.
 
+## Status
+Current source of truth for implemented Auth contracts.
+
 ---
 
 ## 1. API Overview

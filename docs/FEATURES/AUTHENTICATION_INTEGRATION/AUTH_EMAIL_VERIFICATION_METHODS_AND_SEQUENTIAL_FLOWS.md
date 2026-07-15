@@ -3,6 +3,9 @@
 Last updated: 2026-07-14
 Scope: Practical guidance for sign-up verification, login assurance, and modern authentication methodology in service-oriented systems.
 
+## Status
+Supporting reference for verification strategy; not a primary runtime contract.
+
 ## 1. Purpose
 
 This document captures reusable knowledge and decision methodology for authentication verification flows, especially:
