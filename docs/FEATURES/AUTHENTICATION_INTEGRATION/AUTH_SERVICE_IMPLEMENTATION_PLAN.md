@@ -142,10 +142,8 @@ Controller actions:
 - `GET /api/v1/.well-known/jwks.json`
 
 Planned actions (not implemented yet):
-- `GET /api/v1/auth/google`
+- `GET /api/v1/auth/google/start`
 - `GET /api/v1/auth/google/callback`
-- `GET /api/v1/auth/github`
-- `GET /api/v1/auth/github/callback`
 
 ### 4.2 Response formats
 Use structured responses with standard error payloads.
@@ -192,13 +190,14 @@ Implement `.well-known/jwks.json` to expose public signing keys.
 ## 6. Social login implementation
 
 ### 6.1 OAuth client setup
-- configure Google and GitHub client IDs/secrets
+- configure Google client ID/secret
 - set redirect URIs to auth service callback endpoints
 
 ### 6.2 Social auth flow
-- `GET /api/v1/auth/google` redirects to Google
+- `GET /api/v1/auth/google/start` redirects to Google
 - `GET /api/v1/auth/google/callback` receives `code`
 - exchange code for user info
+- validate provider verified-email evidence
 - map provider identity to internal user
 - if user exists, sign in
 - if not, create user and sign in
@@ -306,7 +305,6 @@ Seed permissions:
 
 ### Phase E: Social login
 - [ ] configure Google OAuth
-- [ ] configure GitHub OAuth
 - [ ] implement social login redirect and callback
 - [ ] implement social provider link tracking
 

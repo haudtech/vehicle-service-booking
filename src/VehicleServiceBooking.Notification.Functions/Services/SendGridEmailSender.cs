@@ -59,14 +59,7 @@ public sealed class SendGridEmailSender : IEmailSender
                     subject = message.Subject
                 }
             },
-            content = new[]
-            {
-                new
-                {
-                    type = "text/plain",
-                    value = message.Content
-                }
-            }
+            content = BuildContentParts(message)
         };
 
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.SendGridEndpoint)
@@ -104,5 +97,34 @@ public sealed class SendGridEmailSender : IEmailSender
             message.EventType,
             message.CorrelationId,
             responseBody);
+    }
+
+    private static object[] BuildContentParts(NotificationMessage message)
+    {
+        if (string.IsNullOrWhiteSpace(message.HtmlContent))
+        {
+            return
+            [
+                new
+                {
+                    type = "text/plain",
+                    value = message.Content
+                }
+            ];
+        }
+
+        return
+        [
+            new
+            {
+                type = "text/plain",
+                value = message.Content
+            },
+            new
+            {
+                type = "text/html",
+                value = message.HtmlContent
+            }
+        ];
     }
 }

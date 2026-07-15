@@ -81,7 +81,9 @@ flowchart TB
 ## 3. Responsibilities by Service
 
 ### Auth Service
-- User sign-up, login, refresh, and logout flows.
+- User sign-up with email verification required before password login.
+- Two-step password login (credential challenge then code verification).
+- Google login with provider verified-email evidence checks.
 - Me endpoint for current principal.
 - JWKS publication for downstream trust.
 - Role/group/permission graph management.

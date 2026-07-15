@@ -1,4 +1,5 @@
 using FluentValidation;
+using VehicleServiceBooking.Auth.Common.Enums;
 using VehicleServiceBooking.Auth.Models.Requests;
 
 namespace VehicleServiceBooking.Auth.Validators;
@@ -26,5 +27,11 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
         RuleFor(x => x.Password)
             .NotEmpty()
             .MaximumLength(256);
+
+        RuleFor(x => x.ChallengeChannel)
+            .NotEmpty()
+            .MaximumLength(32)
+            .Must(x => ChallengeChannelExtensions.TryParseWireValue(x, out _))
+            .WithMessage("ChallengeChannel must be one of: otp_first, email_otp, authenticator_app.");
     }
 }

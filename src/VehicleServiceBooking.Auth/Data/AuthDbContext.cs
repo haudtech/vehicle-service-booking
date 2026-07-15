@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using VehicleServiceBooking.Auth.Models;
+using VehicleServiceBooking.Auth.Common.Enums;
 
 namespace VehicleServiceBooking.Auth.Data;
 
@@ -104,6 +105,17 @@ public class AuthDbContext : DbContext
             builder.HasIndex(x => x.Email).IsUnique();
             builder.HasIndex(x => x.AccountName).IsUnique();
             builder.Property(x => x.Email).IsRequired().HasMaxLength(256);
+            builder.Property(x => x.IsEmailVerified).IsRequired().HasDefaultValue(false);
+            builder.Property(x => x.EmailVerifiedAtUtc);
+            builder.Property(x => x.EmailVerificationTokenHash).IsRequired().HasMaxLength(128).HasDefaultValue(string.Empty);
+            builder.Property(x => x.EmailVerificationTokenExpiresAtUtc);
+            builder.Property(x => x.LoginVerificationChallengeId);
+            builder.Property(x => x.LoginVerificationCodeHash).IsRequired().HasMaxLength(128).HasDefaultValue(string.Empty);
+            builder.Property(x => x.LoginVerificationCodeExpiresAtUtc);
+            builder.Property(x => x.LoginVerificationCodeAttempts).IsRequired().HasDefaultValue(0);
+            builder.Property(x => x.LoginVerificationChannel).IsRequired().HasMaxLength(32).HasDefaultValue(ChallengeChannel.EmailOtp.ToWireValue());
+            builder.Property(x => x.IsAuthenticatorAppEnabled).IsRequired().HasDefaultValue(false);
+            builder.Property(x => x.AuthenticatorAppSecret).IsRequired().HasMaxLength(256).HasDefaultValue(string.Empty);
             builder.Property(x => x.AccountName).IsRequired().HasMaxLength(50);
             builder.Property(x => x.PasswordHash).IsRequired();
             builder.Property(x => x.SecurityStamp).IsRequired().HasMaxLength(50);

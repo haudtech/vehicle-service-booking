@@ -38,6 +38,7 @@ appsettings.Local.json
 .env.local
 local.settings.json
 src/VehicleServiceBooking.Notification.Functions/local.settings.json
+src/VehicleServiceBooking.Auth/.keys/
 
 # API key files
 api-key/

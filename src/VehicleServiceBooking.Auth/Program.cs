@@ -4,13 +4,19 @@ using VehicleServiceBooking.Auth.Configuration;
 using Serilog;
 using VehicleServiceBooking.Observability;
 
+// Configuration precedence for Auth startup (highest to lowest):
+// 1) Shell/host environment variables
+// 2) .env values only for missing keys (NoClobber)
+// 3) appsettings.{Environment}.json
+// 4) appsettings.json
 var envDirectory = new DirectoryInfo(Directory.GetCurrentDirectory());
 while (envDirectory is not null)
 {
 	var envFile = Path.Combine(envDirectory.FullName, ".env");
 	if (File.Exists(envFile))
 	{
-		Env.Load(envFile);
+		// Preserve pre-set process environment values (for example, ASPNETCORE_ENVIRONMENT=Production).
+		Env.NoClobber().Load(envFile);
 		break;
 	}
 

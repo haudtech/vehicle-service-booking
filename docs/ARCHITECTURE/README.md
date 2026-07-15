@@ -24,7 +24,7 @@ Please navigate through the specialized views below depending on your review obj
 5.  **[Auth and Booking Components View](./AUTH_COMPONENTS_VIEW.md)**
     *   *Focus:* Runtime component boundaries across Auth, Booking, and Notification services; JWT/JWKS trust path; async queue delivery path.
 6.  **[Auth and Booking Sequential Flows View](./AUTH_SEQUENTIAL_FLOW_VIEW.md)**
-    *   *Focus:* End-to-end sign-up/login, booking authorization, token refresh/logout, and async notification delivery flows.
+    *   *Focus:* End-to-end sign-up verification, challenge-based login, Google sign-in, booking authorization, token refresh/logout, and async notification delivery flows.
 
 ---
 

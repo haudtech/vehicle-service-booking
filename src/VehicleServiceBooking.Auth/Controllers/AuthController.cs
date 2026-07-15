@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using VehicleServiceBooking.Auth.Common.Enums;
 using VehicleServiceBooking.Auth.Configuration;
 using VehicleServiceBooking.Auth.Models.Notifications;
 using VehicleServiceBooking.Auth.Models.Requests;
@@ -53,14 +56,22 @@ public class AuthController : ControllerBase
         try
         {
             var response = await _authService.SignUpAsync(request, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown", cancellationToken);
+            var verificationLink = BuildEmailVerificationLink(response.Email, response.VerificationToken);
             await PublishNotificationSafeAsync(
-                eventType: "Auth.SignUp.Success",
+                eventType: "Auth.EmailVerification.Requested",
                 toEmail: request.Email,
-                subject: "Welcome to Vehicle Service Booking",
-                content: "Your account was created successfully.",
+                subject: "Verify your email address",
+                content: $"Please verify your email address.\n\nOpen this link: {verificationLink}",
+                htmlContent: BuildEmailVerificationHtml(verificationLink),
                 cancellationToken);
 
-            return Created(string.Empty, response);
+            return Accepted(new
+            {
+                message = "Sign-up successful. Please verify your email before signing in.",
+                email = response.Email,
+                verificationLink,
+                verificationTokenExpiresAtUtc = response.VerificationTokenExpiresAtUtc
+            });
         }
         catch (InvalidOperationException ex)
         {
@@ -69,23 +80,130 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticates an existing user and returns access and refresh tokens.
+    /// Verifies email using callback link query parameters.
+    /// </summary>
+    /// <param name="email">Email address to verify.</param>
+    /// <param name="token">One-time verification token.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Success response when verification completes.</returns>
+    [HttpGet("verify-email")]
+    public async Task<IActionResult> VerifyEmailCallback([FromQuery] string email, [FromQuery] string token, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _authService.VerifyEmailAsync(new VerifyEmailRequest
+            {
+                Email = email,
+                Token = token
+            }, cancellationToken);
+
+            await PublishNotificationSafeAsync(
+                eventType: "Auth.EmailVerification.Success",
+                toEmail: email,
+                subject: "Email verified successfully",
+                content: "Your account email has been verified. You can now sign in.",
+                htmlContent: null,
+                cancellationToken);
+
+            return Ok(new { message = "Email verified successfully." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Verifies ownership of an email address for a pending account.
+    /// </summary>
+    /// <param name="request">Verify-email payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>No-content response when verification succeeds.</returns>
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _authService.VerifyEmailAsync(request, cancellationToken);
+
+            await PublishNotificationSafeAsync(
+                eventType: "Auth.EmailVerification.Success",
+                toEmail: request.Email,
+                subject: "Email verified successfully",
+                content: "Your account email has been verified. You can now sign in.",
+                htmlContent: null,
+                cancellationToken);
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Authenticates credentials and starts login verification challenge.
     /// </summary>
     /// <param name="request">Login payload.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Token payload or unauthorized response.</returns>
+    /// <returns>Accepted response requiring verification code submission.</returns>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _authService.LoginAsync(request, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown", cancellationToken);
-            var email = ResolveLoginEmail(request);
+            var response = await _authService.StartLoginChallengeAsync(request, cancellationToken);
+            if (response.ChallengeChannel == ChallengeChannel.EmailOtp)
+            {
+                await PublishNotificationSafeAsync(
+                    eventType: "Auth.Login.VerificationCode.Requested",
+                    toEmail: response.Email,
+                    subject: "Your login verification code",
+                    content: $"Use this code to complete login: {response.VerificationCode}",
+                    htmlContent: null,
+                    cancellationToken);
+            }
+
+            return Accepted(new
+            {
+                message = response.ChallengeChannel == ChallengeChannel.AuthenticatorApp
+                    ? "Credentials accepted. Open your authenticator app and submit the current OTP code."
+                    : "Credentials accepted. Submit the verification code sent to your email.",
+                email = response.Email,
+                challengeId = response.ChallengeId,
+                challengeChannel = response.ChallengeChannel.ToWireValue(),
+                verificationCodeExpiresAtUtc = response.VerificationCodeExpiresAtUtc
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Completes login verification challenge and returns access and refresh tokens.
+    /// </summary>
+    /// <param name="request">Login code verification payload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Token payload or unauthorized response.</returns>
+    [HttpPost("login/verify-code")]
+    public async Task<IActionResult> VerifyLoginCode([FromBody] LoginVerifyCodeRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _authService.VerifyLoginCodeAsync(
+                request,
+                HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                cancellationToken);
+
             await PublishNotificationSafeAsync(
                 eventType: "Auth.Login.Success",
-                toEmail: email,
+                toEmail: request.Email,
                 subject: "New sign-in detected",
                 content: "Your account has signed in successfully.",
+                htmlContent: null,
                 cancellationToken);
 
             return Ok(response);
@@ -93,6 +211,86 @@ public class AuthController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Starts authenticator-app enrollment for the current user.
+    /// Purpose: provide otpauth URI/QR payload so the client can scan and register the account in an authenticator app.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Enrollment material including otpauth URI and masked secret.</returns>
+    [Authorize]
+    [HttpPost("mfa/authenticator/setup/start")]
+    public async Task<IActionResult> StartAuthenticatorSetup(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Authenticated user id claim is missing or invalid." });
+        }
+
+        try
+        {
+            var response = await _authService.StartAuthenticatorSetupAsync(userId, cancellationToken);
+            response.QrImageUrl = $"{Request.Scheme}://{Request.Host}/api/v1/auth/mfa/authenticator/setup/qr";
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Returns QR PNG image for the current user's pending authenticator-app setup.
+    /// Purpose: allow clients to display/scannable QR without external QR generation tools.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>PNG image bytes for authenticator enrollment.</returns>
+    [Authorize]
+    [HttpGet("mfa/authenticator/setup/qr")]
+    public async Task<IActionResult> GetAuthenticatorSetupQrCode(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Authenticated user id claim is missing or invalid." });
+        }
+
+        try
+        {
+            var png = await _authService.GetAuthenticatorSetupQrCodePngAsync(userId, cancellationToken);
+            return File(png, "image/png");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Verifies authenticator-app enrollment for the current user.
+    /// Purpose: confirm possession of the authenticator secret using a valid TOTP, then enable authenticator-based login challenges.
+    /// </summary>
+    /// <param name="request">Current TOTP code from authenticator app.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Enabled status and active login verification channel.</returns>
+    [Authorize]
+    [HttpPost("mfa/authenticator/setup/verify")]
+    public async Task<IActionResult> VerifyAuthenticatorSetup([FromBody] AuthenticatorSetupVerifyRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            return Unauthorized(new { message = "Authenticated user id claim is missing or invalid." });
+        }
+
+        try
+        {
+            var response = await _authService.VerifyAuthenticatorSetupAsync(userId, request, cancellationToken);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 
@@ -168,6 +366,7 @@ public class AuthController : ControllerBase
                 email,
                 displayName,
                 providerSubject,
+                ReadGoogleEmailVerifiedClaim(externalResult.Principal, externalResult.Properties),
                 HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 cancellationToken);
 
@@ -176,9 +375,14 @@ public class AuthController : ControllerBase
                 toEmail: email,
                 subject: "Google sign-in successful",
                 content: "You have signed in successfully using Google.",
+                htmlContent: null,
                 cancellationToken);
 
             return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
         }
         finally
         {
@@ -224,6 +428,7 @@ public class AuthController : ControllerBase
         string? toEmail,
         string subject,
         string content,
+        string? htmlContent,
         CancellationToken cancellationToken)
     {
         if (!_notificationOptions.Enabled)
@@ -248,6 +453,7 @@ public class AuthController : ControllerBase
                 ToEmail = toEmail.Trim(),
                 Subject = subject,
                 Content = content,
+                HtmlContent = htmlContent,
                 CorrelationId = HttpContext.TraceIdentifier,
                 Source = string.IsNullOrWhiteSpace(_notificationOptions.Source) ? "auth-service" : _notificationOptions.Source,
                 OccurredAtUtc = DateTime.UtcNow
@@ -267,18 +473,66 @@ public class AuthController : ControllerBase
         }
     }
 
-    private static string? ResolveLoginEmail(LoginRequest request)
+    private string BuildEmailVerificationLink(string email, string token)
     {
-        if (!string.IsNullOrWhiteSpace(request.Email))
+        var callbackUrl = Url.ActionLink(
+            nameof(VerifyEmailCallback),
+            values: new { email, token });
+
+        return callbackUrl ?? $"{Request.Scheme}://{Request.Host}/api/v1/auth/verify-email?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+    }
+
+    private static bool ReadGoogleEmailVerifiedClaim(ClaimsPrincipal principal, AuthenticationProperties? properties)
+    {
+        var raw = principal.FindFirstValue("email_verified")
+            ?? principal.FindFirstValue("urn:google:email_verified")
+            ?? principal.FindFirstValue("verified_email")
+            ?? ReadEmailVerifiedFromIdToken(properties?.GetTokenValue("id_token"));
+
+        if (string.IsNullOrWhiteSpace(raw))
         {
-            return request.Email;
+            return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Identifier) && request.Identifier.Contains('@'))
+        if (bool.TryParse(raw, out var parsedBool))
         {
-            return request.Identifier;
+            return parsedBool;
         }
 
-        return null;
+        return raw == "1";
+    }
+
+    private static string? ReadEmailVerifiedFromIdToken(string? idToken)
+    {
+        if (string.IsNullOrWhiteSpace(idToken))
+        {
+            return null;
+        }
+
+        var handler = new JwtSecurityTokenHandler();
+        if (!handler.CanReadToken(idToken))
+        {
+            return null;
+        }
+
+        var token = handler.ReadJwtToken(idToken);
+        return token.Claims.FirstOrDefault(claim =>
+            claim.Type == "email_verified" ||
+            claim.Type == "verified_email")?.Value;
+    }
+
+    private static string BuildEmailVerificationHtml(string verificationLink)
+    {
+        var encodedLink = System.Net.WebUtility.HtmlEncode(verificationLink);
+        return $"<p>Please verify your email address.</p><p><a href=\"{encodedLink}\">Verify your email address</a></p>";
+    }
+
+    private bool TryGetCurrentUserId(out Guid userId)
+    {
+        var claimValue = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        return Guid.TryParse(claimValue, out userId);
     }
 }

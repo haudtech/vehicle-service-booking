@@ -53,6 +53,7 @@ public class AuthControllerGoogleTests
                 "google.user@example.com",
                 "Google User",
                 "google-subject-123",
+                true,
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
@@ -61,7 +62,8 @@ public class AuthControllerGoogleTests
         {
             new(ClaimTypes.Email, "google.user@example.com"),
             new(ClaimTypes.Name, "Google User"),
-            new(ClaimTypes.NameIdentifier, "google-subject-123")
+            new(ClaimTypes.NameIdentifier, "google-subject-123"),
+            new("email_verified", "true")
         };
 
         var notificationPublisher = new Mock<INotificationPublisher>();
@@ -105,18 +107,55 @@ public class AuthControllerGoogleTests
             It.IsAny<string>(),
             It.IsAny<string?>(),
             It.IsAny<string>(),
+            It.IsAny<bool>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
+    public async Task GoogleCallback_WhenServiceRejectsUnverifiedEmail_ReturnsUnauthorized()
+    {
+        var authService = new Mock<IAuthService>();
+        authService
+            .Setup(x => x.LoginWithGoogleAsync(
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<string>(),
+                It.IsAny<bool>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Google identity email is not verified."));
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Email, "google.user@example.com"),
+            new(ClaimTypes.Name, "Google User"),
+            new(ClaimTypes.NameIdentifier, "google-subject-123"),
+            new("email_verified", "true")
+        };
+
+        var notificationPublisher = new Mock<INotificationPublisher>();
+        var sut = new AuthController(
+            authService.Object,
+            new GoogleAuthOptions { Enabled = true },
+            new NotificationOptions { Enabled = false },
+            notificationPublisher.Object,
+            NullLogger<AuthController>.Instance);
+        sut.ControllerContext = BuildControllerContext(CreateAuthenticationService(claims));
+
+        var result = await sut.GoogleCallback(CancellationToken.None);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
     public async Task SignUp_WhenNotificationPublishTimesOut_ReturnsCreatedResponse()
     {
-        var expected = new AuthResponse
+        var expected = new SignUpResult
         {
-            AccessToken = "token",
-            RefreshToken = "refresh",
-            ExpiresAt = DateTime.UtcNow.AddDays(1)
+            Email = "signup.user@example.com",
+            VerificationToken = "verification-token",
+            VerificationTokenExpiresAtUtc = DateTime.UtcNow.AddHours(24)
         };
 
         var authService = new Mock<IAuthService>();
@@ -149,8 +188,8 @@ public class AuthControllerGoogleTests
             DisplayName = "Signup User"
         }, CancellationToken.None);
 
-        var created = result.Should().BeOfType<CreatedResult>().Subject;
-        created.Value.Should().BeEquivalentTo(expected);
+        var accepted = result.Should().BeOfType<AcceptedResult>().Subject;
+        accepted.Value.Should().NotBeNull();
     }
 
     private static ControllerContext BuildControllerContext(IAuthenticationService? authenticationService = null)

@@ -15,13 +15,46 @@ Content-Type: application/json
 	"displayName": "HTTP Workflow User"
 }
 
+### Verify email
+POST {{authHost}}/api/v1/auth/verify-email
+Content-Type: application/json
+
+{
+	"email": "{{email}}",
+	"token": "PASTE_VERIFICATION_TOKEN_FROM_SIGNUP_NOTIFICATION"
+}
+
+### Verify email by callback link (alternative)
+GET {{authHost}}/api/v1/auth/verify-email?email={{email}}&token=PASTE_VERIFICATION_TOKEN_FROM_SIGNUP_NOTIFICATION
+
 ### Login by account name
 POST {{authHost}}/api/v1/auth/login
 Content-Type: application/json
 
 {
 	"identifier": "{{accountName}}",
+	"challengeChannel": "otp_first",
 	"password": "{{password}}"
+}
+
+### Login by account name forcing authenticator-app channel
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+	"identifier": "{{accountName}}",
+	"challengeChannel": "authenticator_app",
+	"password": "{{password}}"
+}
+
+### Complete login by verification code
+POST {{authHost}}/api/v1/auth/login/verify-code
+Content-Type: application/json
+
+{
+	"email": "{{email}}",
+	"challengeId": "PASTE_CHALLENGE_ID_FROM_LOGIN_RESPONSE",
+	"code": "PASTE_CODE_FROM_EMAIL"
 }
 
 ### Login by email (backward compatible)
