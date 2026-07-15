@@ -48,19 +48,39 @@ flowchart TD
 sequenceDiagram
     participant U as User Client
     participant A as Auth Service
+    participant Mail as Email Notification
+    participant App as Authenticator App
     participant B as Booking Service
 
     U->>A: POST /api/v1/auth/signup
-    A-->>U: 202 Accepted (verification required)
+    A->>Mail: Publish verification email notification
+    A-->>U: 202 Accepted (verificationLink)
 
     U->>A: GET /api/v1/auth/verify-email?email=...&token=...
     A-->>U: 200 OK
 
-    U->>A: POST /api/v1/auth/login
-    A-->>U: 202 Accepted (challengeId, expiresAt)
+    U->>A: POST /api/v1/auth/login (challengeChannel=email_otp)
+    A->>Mail: Send login OTP
+    A-->>U: 202 Accepted (challengeId, resolved challengeChannel=email_otp)
 
     U->>A: POST /api/v1/auth/login/verify-code
     A-->>U: 200 OK (accessToken, refreshToken)
+
+    U->>A: POST /api/v1/auth/mfa/authenticator/setup/start (Bearer accessToken)
+    A-->>U: 200 OK (otpauthUri, qrPayload, qrImageUrl)
+
+    U->>A: GET /api/v1/auth/mfa/authenticator/setup/qr (Bearer accessToken)
+    A-->>U: 200 OK (PNG QR image)
+
+    U->>App: Scan QR / add account
+    U->>A: POST /api/v1/auth/mfa/authenticator/setup/verify (Bearer accessToken)
+    A-->>U: 200 OK (authenticator enabled)
+
+    U->>A: POST /api/v1/auth/login (challengeChannel=authenticator_app)
+    A-->>U: 202 Accepted (challengeId, resolved challengeChannel=authenticator_app)
+
+    U->>A: POST /api/v1/auth/login/verify-code
+    A-->>U: 200 OK (JWT tokens)
 
     U->>A: GET /api/v1/me (Bearer accessToken)
     A-->>U: 200 OK
