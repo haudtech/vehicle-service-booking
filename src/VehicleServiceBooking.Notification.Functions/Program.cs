@@ -6,6 +6,11 @@ using VehicleServiceBooking.Notification.Functions.Configuration;
 using VehicleServiceBooking.Notification.Functions.Services;
 using VehicleServiceBooking.Observability;
 
+// Configuration precedence for Notification startup (highest to lowest):
+// 1) Shell/host environment variables
+// 2) .env values only for missing keys (NoClobber)
+// 3) local.settings.json and other host configuration sources
+
 static string? FindEnvFile(params string[] startPaths)
 {
     foreach (var startPath in startPaths)
@@ -29,7 +34,8 @@ static string? FindEnvFile(params string[] startPaths)
 var envFilePath = FindEnvFile(Directory.GetCurrentDirectory(), AppContext.BaseDirectory);
 if (!string.IsNullOrWhiteSpace(envFilePath))
 {
-    Env.Load(envFilePath);
+    // Preserve pre-set process environment values for predictable overrides.
+    Env.NoClobber().Load(envFilePath);
 }
 
 static string? FirstNonEmpty(params string[] keys)

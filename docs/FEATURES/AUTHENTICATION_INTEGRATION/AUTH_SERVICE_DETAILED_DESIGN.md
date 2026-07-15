@@ -307,29 +307,13 @@ Response example:
 }
 ```
 
-### 3.7 GET /api/v1/auth/google (Planned - Not Implemented Yet)
+### 3.7 GET /api/v1/auth/google/start (Implemented)
 
 Behavior:
 - redirects client to Google auth endpoint
 - includes `client_id`, `redirect_uri`, `scope`, `state`
 
-### 3.8 GET /api/v1/auth/google/callback (Planned - Not Implemented Yet)
-
-Response:
-```json
-{
-  "accessToken": "<jwt>",
-  "refreshToken": "<refresh-token>",
-  "expiresIn": 900
-}
-```
-
-### 3.9 GET /api/v1/auth/github (Planned - Not Implemented Yet)
-
-Behavior:
-- redirects client to GitHub auth endpoint
-
-### 3.10 GET /api/v1/auth/github/callback (Planned - Not Implemented Yet)
+### 3.8 GET /api/v1/auth/google/callback (Implemented)
 
 Response:
 ```json
@@ -401,7 +385,7 @@ Social provider links store:
 
 ### 5.3 Provider-specific login types
 - `google`
-- `github`
+- optional future: `github`
 
 ---
 
@@ -484,7 +468,8 @@ Request:
 - [ ] implement signup and login endpoints
 - [ ] implement refresh/logout endpoints
 - [ ] implement JWKS publishing
-- [ ] implement Google and GitHub OAuth callback flows
+- [ ] implement Google OAuth callback flow
+- [ ] optional future: implement GitHub OAuth callback flow
 - [ ] implement role/permission seeding
 - [ ] implement social provider metadata linking
 - [ ] validate auth service contract with booking integration team

@@ -26,6 +26,11 @@ public sealed class NotificationMessage
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets optional HTML body content.
+    /// </summary>
+    public string? HtmlContent { get; set; }
+
+    /// <summary>
     /// Gets or sets correlation identifier from request pipeline.
     /// </summary>
     public string CorrelationId { get; set; } = string.Empty;

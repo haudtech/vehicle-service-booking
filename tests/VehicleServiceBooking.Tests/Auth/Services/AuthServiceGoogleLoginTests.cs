@@ -76,6 +76,18 @@ public class AuthServiceGoogleLoginTests
             .Setup(x => x.GenerateAccessToken(It.IsAny<User>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>()))
             .Returns("access-token");
 
+        var authenticatorSecretProtector = new Mock<IAuthenticatorSecretProtector>();
+        authenticatorSecretProtector
+            .Setup(x => x.Protect(It.IsAny<string>()))
+            .Returns((string s) => s);
+        authenticatorSecretProtector
+            .Setup(x => x.TryUnprotect(It.IsAny<string>(), out It.Ref<string>.IsAny))
+            .Returns((string stored, out string plaintext) =>
+            {
+                plaintext = stored;
+                return true;
+            });
+
         var sut = new AuthService(
             userRepository.Object,
             refreshTokenRepository.Object,
@@ -84,6 +96,7 @@ public class AuthServiceGoogleLoginTests
             rolePermissionRepository.Object,
             passwordHasher.Object,
             jwtTokenGenerator.Object,
+            authenticatorSecretProtector.Object,
             new JwtOptions
             {
                 Issuer = "https://auth.vehicle-service-booking.local",
@@ -96,6 +109,7 @@ public class AuthServiceGoogleLoginTests
             "google.user@example.com",
             "Google User",
             "google-subject-123",
+            true,
             "127.0.0.1",
             CancellationToken.None);
 
@@ -103,6 +117,7 @@ public class AuthServiceGoogleLoginTests
             "google.user@example.com",
             "Google User",
             "google-subject-123",
+            true,
             "127.0.0.1",
             CancellationToken.None);
 

@@ -1,3 +1,5 @@
+using VehicleServiceBooking.Auth.Common.Enums;
+
 namespace VehicleServiceBooking.Auth.Models;
 
 /// <summary>
@@ -6,6 +8,28 @@ namespace VehicleServiceBooking.Auth.Models;
 public class User : AuthBaseEntity
 {
     public string Email { get; set; } = string.Empty;
+
+    public bool IsEmailVerified { get; set; }
+
+    public DateTime? EmailVerifiedAtUtc { get; set; }
+
+    public string EmailVerificationTokenHash { get; set; } = string.Empty;
+
+    public DateTime? EmailVerificationTokenExpiresAtUtc { get; set; }
+
+    public Guid? LoginVerificationChallengeId { get; set; }
+
+    public string LoginVerificationCodeHash { get; set; } = string.Empty;
+
+    public DateTime? LoginVerificationCodeExpiresAtUtc { get; set; }
+
+    public int LoginVerificationCodeAttempts { get; set; }
+
+    public string LoginVerificationChannel { get; set; } = ChallengeChannel.EmailOtp.ToWireValue();
+
+    public bool IsAuthenticatorAppEnabled { get; set; }
+
+    public string AuthenticatorAppSecret { get; set; } = string.Empty;
 
     public string AccountName { get; set; } = string.Empty;
 

@@ -42,10 +42,10 @@ This architecture supports future extension services by using the Auth/User Serv
 
 ### Auth/User Service
 - user sign-up
-- user login
+- email verification and user login
 - refresh tokens
 - logout
-- social login (Google, GitHub)
+- social login (Google)
 - groups and roles
 - permissions
 - JWT issuance
@@ -83,11 +83,11 @@ This architecture supports future extension services by using the Auth/User Serv
 ## 5. Implementation status
 
 ### Completed documentation
-- `docs/FEATURES_TEMP/USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md`
-- `docs/FEATURES_TEMP/USER_AUTH_AND_SCHEDULING_CHECKLIST.md`
-- `docs/FEATURES_TEMP/AUTH_SERVICE_SPEC.md`
-- `docs/FEATURES_TEMP/AUTH_SERVICE_DATA_MODEL.md`
-- `docs/FEATURES_TEMP/BOOKING_SERVICE_AUTH_INTEGRATION.md`
+- `docs/FEATURES/AUTHENTICATION_INTEGRATION/USER_AUTH_AND_SCHEDULING_SERVICE_SPLIT.md`
+- `docs/FEATURES/AUTHENTICATION_INTEGRATION/USER_AUTH_AND_SCHEDULING_CHECKLIST.md`
+- `docs/FEATURES/AUTHENTICATION_INTEGRATION/AUTH_SERVICE_SPEC.md`
+- `docs/FEATURES/AUTHENTICATION_INTEGRATION/AUTH_SERVICE_DATA_MODEL.md`
+- `docs/FEATURES/AUTHENTICATION_INTEGRATION/BOOKING_SERVICE_AUTH_INTEGRATION.md`
 
 ### Pending next steps
 - finalize auth service data model details if needed

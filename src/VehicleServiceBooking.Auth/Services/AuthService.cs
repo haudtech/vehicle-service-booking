@@ -1,4 +1,10 @@
 using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using QRCoder;
+using VehicleServiceBooking.Auth.Common.Enums;
+using VehicleServiceBooking.Auth.Common.Verification;
 using VehicleServiceBooking.Auth.Configuration;
 using VehicleServiceBooking.Auth.Models;
 using VehicleServiceBooking.Auth.Models.Requests;
@@ -13,7 +19,9 @@ namespace VehicleServiceBooking.Auth.Services;
 public sealed class AuthService : IAuthService
 {
     private const string DefaultSignupRoleName = "booking-user";
-
+    private static readonly TimeSpan EmailVerificationTokenLifetime = TimeSpan.FromHours(24);
+    private static readonly TimeSpan LoginVerificationCodeLifetime = TimeSpan.FromMinutes(10);
+    private const int LoginVerificationCodeMaxAttempts = 5;
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IRoleRepository _roleRepository;
@@ -21,6 +29,7 @@ public sealed class AuthService : IAuthService
     private readonly IRolePermissionRepository _rolePermissionRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IAuthenticatorSecretProtector _authenticatorSecretProtector;
     private readonly JwtOptions _jwtOptions;
 
     /// <summary>
@@ -34,6 +43,7 @@ public sealed class AuthService : IAuthService
         IRolePermissionRepository rolePermissionRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
+        IAuthenticatorSecretProtector authenticatorSecretProtector,
         JwtOptions jwtOptions)
     {
         _userRepository = userRepository;
@@ -43,16 +53,17 @@ public sealed class AuthService : IAuthService
         _rolePermissionRepository = rolePermissionRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _authenticatorSecretProtector = authenticatorSecretProtector;
         _jwtOptions = jwtOptions;
     }
 
     /// <inheritdoc />
-    public async Task<AuthResponse> SignUpAsync(SignUpRequest request, string ipAddress, CancellationToken cancellationToken = default)
+    public async Task<SignUpResult> SignUpAsync(SignUpRequest request, string ipAddress, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var normalizedAccountName = request.AccountName.Trim().ToLowerInvariant();
-        
-var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+
+        var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
         if (existing is not null)
         {
             throw new InvalidOperationException("A user with that email address already exists.");
@@ -64,6 +75,7 @@ var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellati
             throw new InvalidOperationException("A user with that account name already exists.");
         }
 
+        var verificationToken = VerificationUtils.GenerateVerificationToken();
         var user = new User
         {
             Email = normalizedEmail,
@@ -71,19 +83,73 @@ var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellati
             DisplayName = request.DisplayName.Trim(),
             PasswordHash = _passwordHasher.HashPassword(request.Password),
             SecurityStamp = Guid.NewGuid().ToString("N"),
-            IsActive = true
+            IsActive = true,
+            IsEmailVerified = false,
+            EmailVerificationTokenHash = VerificationUtils.HashVerificationToken(verificationToken),
+            EmailVerificationTokenExpiresAtUtc = DateTime.UtcNow.Add(EmailVerificationTokenLifetime)
         };
 
-        await _userRepository.AddAsync(user, cancellationToken);
-        await _userRepository.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _userRepository.AddAsync(user, cancellationToken);
+            await _userRepository.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new InvalidOperationException("A user with that email address or account name already exists.");
+        }
 
         await EnsureDefaultRoleAssignedAsync(user, cancellationToken);
 
-        return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
+        return new SignUpResult
+        {
+            Email = user.Email,
+            VerificationToken = verificationToken,
+            VerificationTokenExpiresAtUtc = user.EmailVerificationTokenExpiresAtUtc!.Value
+        };
     }
 
     /// <inheritdoc />
-    public async Task<AuthResponse> LoginAsync(LoginRequest request, string ipAddress, CancellationToken cancellationToken = default)
+    public async Task VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user is null)
+        {
+            throw new InvalidOperationException("Invalid email verification request.");
+        }
+
+        if (user.IsEmailVerified)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(user.EmailVerificationTokenHash) ||
+            !user.EmailVerificationTokenExpiresAtUtc.HasValue ||
+            user.EmailVerificationTokenExpiresAtUtc.Value < DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("Email verification token is invalid or expired.");
+        }
+
+        var providedHash = VerificationUtils.HashVerificationToken(request.Token.Trim());
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(user.EmailVerificationTokenHash),
+                Encoding.UTF8.GetBytes(providedHash)))
+        {
+            throw new InvalidOperationException("Email verification token is invalid or expired.");
+        }
+
+        user.IsEmailVerified = true;
+        user.EmailVerifiedAtUtc = DateTime.UtcNow;
+        user.EmailVerificationTokenHash = string.Empty;
+        user.EmailVerificationTokenExpiresAtUtc = null;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<LoginChallengeResult> StartLoginChallengeAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var rawIdentifier = string.IsNullOrWhiteSpace(request.Identifier)
             ? request.Email
@@ -96,15 +162,253 @@ var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellati
             throw new InvalidOperationException("Invalid email or password.");
         }
 
-        return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
+        if (!user.IsEmailVerified)
+        {
+            throw new InvalidOperationException("Email is not verified.");
+        }
+
+        var requestedChannel = ChallengeChannelExtensions.ParseWireValueOrDefault(request.ChallengeChannel, ChallengeChannel.OtpFirst);
+        var resolvedChannel = ResolveChallengeChannel(user, requestedChannel);
+
+        var challengeId = Guid.NewGuid();
+        user.LoginVerificationChallengeId = challengeId;
+        user.LoginVerificationCodeExpiresAtUtc = DateTime.UtcNow.Add(LoginVerificationCodeLifetime);
+        user.LoginVerificationCodeAttempts = 0;
+        user.LoginVerificationChannel = resolvedChannel.ToWireValue();
+
+        var code = string.Empty;
+        if (resolvedChannel == ChallengeChannel.EmailOtp)
+        {
+            code = VerificationUtils.GenerateLoginVerificationCode();
+            user.LoginVerificationCodeHash = VerificationUtils.HashVerificationToken(code);
+        }
+        else
+        {
+            user.LoginVerificationCodeHash = string.Empty;
+        }
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        return new LoginChallengeResult
+        {
+            Email = user.Email,
+            ChallengeId = challengeId,
+            ChallengeChannel = resolvedChannel,
+            VerificationCode = code,
+            VerificationCodeExpiresAtUtc = user.LoginVerificationCodeExpiresAtUtc.Value
+        };
     }
 
     /// <inheritdoc />
-    public async Task<AuthResponse> LoginWithGoogleAsync(string email, string? displayName, string providerUserId, string ipAddress, CancellationToken cancellationToken = default)
+    public async Task<AuthenticatorSetupStartResult> StartAuthenticatorSetupAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException("User account is not active.");
+        }
+
+        if (!user.IsEmailVerified)
+        {
+            throw new InvalidOperationException("Email must be verified before enabling authenticator app.");
+        }
+
+        var secret = AuthenticatorSetupUtils.GenerateBase32Secret();
+        user.AuthenticatorAppSecret = _authenticatorSecretProtector.Protect(secret);
+        user.IsAuthenticatorAppEnabled = false;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        var otpauthUri = AuthenticatorSetupUtils.BuildOtpAuthUri(
+            issuer: _jwtOptions.Issuer,
+            accountName: user.Email,
+            base32Secret: secret);
+
+        return new AuthenticatorSetupStartResult
+        {
+            OtpauthUri = otpauthUri,
+            QrPayload = otpauthUri,
+            SecretMasked = AuthenticatorSetupUtils.MaskSecret(secret)
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthenticatorSetupVerifyResult> VerifyAuthenticatorSetupAsync(Guid userId, AuthenticatorSetupVerifyRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException("User account is not active.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
+        {
+            throw new InvalidOperationException("Authenticator setup has not been started.");
+        }
+
+        if (!_authenticatorSecretProtector.TryUnprotect(user.AuthenticatorAppSecret, out var plaintextSecret))
+        {
+            throw new InvalidOperationException("Authenticator setup secret is invalid. Please restart setup.");
+        }
+
+        if (!TotpVerificationUtils.VerifyCode(plaintextSecret, request.Code))
+        {
+            throw new InvalidOperationException("Authenticator code is invalid or expired.");
+        }
+
+        user.IsAuthenticatorAppEnabled = true;
+        user.LoginVerificationChannel = ChallengeChannel.AuthenticatorApp.ToWireValue();
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        return new AuthenticatorSetupVerifyResult
+        {
+            IsAuthenticatorAppEnabled = user.IsAuthenticatorAppEnabled,
+            LoginVerificationChannel = user.LoginVerificationChannel
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> GetAuthenticatorSetupQrCodePngAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException("User account is not active.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
+        {
+            throw new InvalidOperationException("Authenticator setup has not been started.");
+        }
+
+        if (!_authenticatorSecretProtector.TryUnprotect(user.AuthenticatorAppSecret, out var plaintextSecret))
+        {
+            throw new InvalidOperationException("Authenticator setup secret is invalid. Please restart setup.");
+        }
+
+        var otpauthUri = AuthenticatorSetupUtils.BuildOtpAuthUri(
+            issuer: _jwtOptions.Issuer,
+            accountName: user.Email,
+            base32Secret: plaintextSecret);
+
+        using var generator = new QRCodeGenerator();
+        using var qrData = generator.CreateQrCode(otpauthUri, QRCodeGenerator.ECCLevel.Q);
+        var qrCode = new PngByteQRCode(qrData);
+        return qrCode.GetGraphic(20);
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthResponse> VerifyLoginCodeAsync(LoginVerifyCodeRequest request, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var user = await _userRepository.GetActiveByEmailOrAccountNameWithAuthorizationAsync(normalizedEmail, cancellationToken);
+
+        if (user is null || !user.IsEmailVerified)
+        {
+            throw new InvalidOperationException("Invalid login verification request.");
+        }
+
+        if (!user.LoginVerificationChallengeId.HasValue || user.LoginVerificationChallengeId.Value != request.ChallengeId)
+        {
+            throw new InvalidOperationException("Invalid login verification request.");
+        }
+
+        if (!user.LoginVerificationCodeExpiresAtUtc.HasValue || user.LoginVerificationCodeExpiresAtUtc.Value < DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("Login verification code is invalid or expired.");
+        }
+
+        if (user.LoginVerificationCodeAttempts >= LoginVerificationCodeMaxAttempts)
+        {
+            throw new InvalidOperationException("Login verification attempts exceeded. Please restart login.");
+        }
+
+        var challengeChannel = ChallengeChannelExtensions.ParseWireValueOrDefault(
+            user.LoginVerificationChannel,
+            ChallengeChannel.EmailOtp);
+
+        var isCodeValid = challengeChannel switch
+        {
+            ChallengeChannel.AuthenticatorApp => IsAuthenticatorCodeValid(user, request.Code),
+            _ => IsEmailChallengeCodeValid(user, request.Code)
+        };
+
+        if (!isCodeValid)
+        {
+            user.LoginVerificationCodeAttempts += 1;
+            await _userRepository.UpdateAsync(user, cancellationToken);
+            await _userRepository.SaveChangesAsync(cancellationToken);
+            throw new InvalidOperationException("Login verification code is invalid or expired.");
+        }
+
+        user.LoginVerificationChallengeId = null;
+        user.LoginVerificationCodeHash = string.Empty;
+        user.LoginVerificationCodeExpiresAtUtc = null;
+        user.LoginVerificationCodeAttempts = 0;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        return await CreateAuthResponseAsync(user, ipAddress, cancellationToken);
+    }
+
+    private static ChallengeChannel ResolveChallengeChannel(User user, ChallengeChannel requestedChannel)
+    {
+        if (requestedChannel == ChallengeChannel.AuthenticatorApp)
+        {
+            if (!user.IsAuthenticatorAppEnabled || string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
+            {
+                throw new InvalidOperationException("Authenticator app is not enabled for this account.");
+            }
+
+            return ChallengeChannel.AuthenticatorApp;
+        }
+
+        if (requestedChannel == ChallengeChannel.OtpFirst &&
+            user.IsAuthenticatorAppEnabled &&
+            !string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
+        {
+            return ChallengeChannel.AuthenticatorApp;
+        }
+
+        return ChallengeChannel.EmailOtp;
+    }
+
+    private static bool IsEmailChallengeCodeValid(User user, string rawCode)
+    {
+        var providedHash = VerificationUtils.HashVerificationToken(rawCode.Trim());
+        return !string.IsNullOrWhiteSpace(user.LoginVerificationCodeHash)
+               && CryptographicOperations.FixedTimeEquals(
+                   Encoding.UTF8.GetBytes(user.LoginVerificationCodeHash),
+                   Encoding.UTF8.GetBytes(providedHash));
+    }
+
+    private bool IsAuthenticatorCodeValid(User user, string rawCode)
+    {
+        if (!user.IsAuthenticatorAppEnabled || string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
+        {
+            return false;
+        }
+
+        return _authenticatorSecretProtector.TryUnprotect(user.AuthenticatorAppSecret, out var plaintextSecret)
+               && TotpVerificationUtils.VerifyCode(plaintextSecret, rawCode);
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthResponse> LoginWithGoogleAsync(string email, string? displayName, string providerUserId, bool emailVerified, string ipAddress, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(providerUserId))
         {
             throw new InvalidOperationException("Google identity is missing provider subject.");
+        }
+
+        if (!emailVerified)
+        {
+            throw new InvalidOperationException("Google identity email is not verified.");
         }
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -128,7 +432,11 @@ var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellati
                 DisplayName = resolvedDisplayName,
                 PasswordHash = _passwordHasher.HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))),
                 SecurityStamp = Guid.NewGuid().ToString("N"),
-                IsActive = true
+                IsActive = true,
+                IsEmailVerified = true,
+                EmailVerifiedAtUtc = DateTime.UtcNow,
+                EmailVerificationTokenHash = string.Empty,
+                EmailVerificationTokenExpiresAtUtc = null
             };
 
             await _userRepository.AddAsync(user, cancellationToken);
@@ -266,4 +574,5 @@ var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellati
             CreatedByIp = ipAddress
         };
     }
+
 }

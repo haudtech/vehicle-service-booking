@@ -20,7 +20,7 @@ This roadmap defines the implementation phases, tasks, and milestones for buildi
 ### 1.3 Confirm initial provider support
 - local email/password sign-up/login
 - Google social login
-- GitHub social login
+- GitHub social login (optional future extension)
 
 ---
 
@@ -41,10 +41,10 @@ This roadmap defines the implementation phases, tasks, and milestones for buildi
 - `GET /api/v1/.well-known/jwks.json`
 
 ### 2.3 Build social login support
-- `GET /api/v1/auth/google`
+- `GET /api/v1/auth/google/start`
 - `GET /api/v1/auth/google/callback`
-- `GET /api/v1/auth/github`
-- `GET /api/v1/auth/github/callback`
+- optional future: `GET /api/v1/auth/github`
+- optional future: `GET /api/v1/auth/github/callback`
 
 ### 2.4 Implement token issuance
 - issue short-lived JWT access tokens

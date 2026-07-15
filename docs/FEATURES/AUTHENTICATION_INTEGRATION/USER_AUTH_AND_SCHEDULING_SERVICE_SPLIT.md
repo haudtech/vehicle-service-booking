@@ -28,7 +28,7 @@ Split the system into two cooperating services:
 1. **Auth/User Service**
    - manages users, sign-up, login, groups, roles, permissions
    - issues JWTs and refresh tokens
-   - supports social login / OAuth2 providers
+  - supports Google sign-in with verified-email evidence checks
    - central identity provider for multiple services
 
 2. **Vehicle Scheduling Service**
@@ -42,7 +42,7 @@ Split the system into two cooperating services:
 ```
 +----------------------+          +------------------------+
 |  Client Applications  |          |  External IdP / SSO    |
-|                      |          |  (Google, GitHub, ...) |
+|                      |          |      (Google, ...)     |
 | - Web UI            |          +-----------+------------+
 | - Mobile App        |                      |
 +----------+-----------+                      |
@@ -85,8 +85,10 @@ Split the system into two cooperating services:
 
 ### 2.1 Core features
 - user registration / sign-up
-- login with local credentials
-- social login via OAuth2 providers (Google, GitHub, etc.)
+- email verification before local sign-in
+- login with local credentials (challenge start)
+- login challenge code verification (token issuance)
+- social login via OAuth2 provider (Google)
 - group and role assignment
 - permission mapping
 - token issuance and refresh
@@ -149,30 +151,38 @@ Booking service should validate locally:
 ### 4.1 User sign-up workflow
 
 ```
-Client -> Auth/User Service: POST /signup
-Auth/User Service -> Database: create user
-Auth/User Service -> Client: 201 Created / verification
+Client -> Auth/User Service: POST /api/v1/auth/signup
+Auth/User Service -> Database: create pending user + verification token hash/expiry
+Auth/User Service -> Client: 202 Accepted (verification required)
+Client -> Auth/User Service: GET /api/v1/auth/verify-email?email=...&token=...
+Auth/User Service -> Database: mark email verified + clear token fields
+Auth/User Service -> Client: 200 OK
 ```
 
 ### 4.2 User login workflow
 
 ```
-Client -> Auth/User Service: POST /login
+Client -> Auth/User Service: POST /api/v1/auth/login
 Auth/User Service -> Database: validate credentials
-Auth/User Service -> JWT service: create access token
-Auth/User Service -> Client: return access token + refresh token
+Auth/User Service -> Database: persist challenge id + code hash + expiry
+Auth/User Service -> Client: 202 Accepted (challenge required)
+Client -> Auth/User Service: POST /api/v1/auth/login/verify-code
+Auth/User Service -> Database: verify and consume challenge
+Auth/User Service -> JWT service: create access token + refresh token
+Auth/User Service -> Client: 200 OK (tokens)
 ```
 
 ### 4.3 Social login workflow
 
 ```
-Client -> Auth/User Service: GET /auth/google
+Client -> Auth/User Service: GET /api/v1/auth/google/start
 Client -> Google: auth request
 Google -> Client: auth callback
 Client -> Auth/User Service: callback with code
 Auth/User Service -> Google: exchange code for user info
+Auth/User Service: verify provider email evidence
 Auth/User Service -> DB: create or map user
-Auth/User Service -> Client: issue JWT
+Auth/User Service -> Client: issue access token + refresh token
 ```
 
 ### 4.4 Booking API flow with token validation
@@ -258,11 +268,12 @@ Content-Type: application/json
 
 Response:
 ```http
-201 Created
+202 Accepted
 {
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Sign-up successful. Please verify your email before signing in.",
   "email": "alice@example.com",
-  "status": "PendingVerification"
+  "verificationLink": "https://auth.example.com/api/v1/auth/verify-email?email=alice%40example.com&token=...",
+  "verificationTokenExpiresAtUtc": "2026-07-15T08:00:00Z"
 }
 ```
 
@@ -292,6 +303,29 @@ Content-Type: application/json
 
 Response:
 ```http
+202 Accepted
+{
+  "message": "Credentials accepted. Submit the verification code to complete login.",
+  "email": "alice@example.com",
+  "challengeId": "550e8400-e29b-41d4-a716-446655440000",
+  "verificationCodeExpiresAtUtc": "2026-07-14T08:10:00Z"
+}
+```
+
+Follow-up request:
+```http
+POST /api/v1/auth/login/verify-code
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "challengeId": "550e8400-e29b-41d4-a716-446655440000",
+  "code": "123456"
+}
+```
+
+Follow-up response:
+```http
 200 OK
 {
   "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -304,14 +338,14 @@ Response:
 
 Request:
 ```http
-GET /api/v1/auth/google
+GET /api/v1/auth/google/start
 ```
 
 Callback flow:
 1. Client receives redirect to Google
 2. User signs in with Google
 3. Google redirects back
-4. Auth service exchanges code and issues JWT
+4. Auth service exchanges code, validates provider email evidence, and issues local tokens
 
 Response:
 ```http

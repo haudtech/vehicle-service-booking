@@ -173,10 +173,33 @@ public sealed class GoogleEmailSender : IEmailSender
         builder.Append("To: <").Append(message.ToEmail).AppendLine(">\r");
         builder.Append("Subject: ").AppendLine(message.Subject);
         builder.AppendLine("MIME-Version: 1.0");
+
+        if (string.IsNullOrWhiteSpace(message.HtmlContent))
+        {
+            builder.AppendLine("Content-Type: text/plain; charset=utf-8");
+            builder.AppendLine("Content-Transfer-Encoding: 8bit");
+            builder.AppendLine();
+            builder.Append(message.Content ?? string.Empty);
+            return builder.ToString();
+        }
+
+        var boundary = $"alt-{Guid.NewGuid():N}";
+        builder.AppendLine($"Content-Type: multipart/alternative; boundary=\"{boundary}\"");
+        builder.AppendLine();
+
+        builder.AppendLine($"--{boundary}");
         builder.AppendLine("Content-Type: text/plain; charset=utf-8");
         builder.AppendLine("Content-Transfer-Encoding: 8bit");
         builder.AppendLine();
-        builder.Append(message.Content ?? string.Empty);
+        builder.AppendLine(message.Content ?? string.Empty);
+
+        builder.AppendLine($"--{boundary}");
+        builder.AppendLine("Content-Type: text/html; charset=utf-8");
+        builder.AppendLine("Content-Transfer-Encoding: 8bit");
+        builder.AppendLine();
+        builder.AppendLine(message.HtmlContent);
+        builder.AppendLine($"--{boundary}--");
+
         return builder.ToString();
     }
 }

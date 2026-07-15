@@ -2,14 +2,14 @@
 @bookingHost = http://localhost:5280
 // Update this runId for a new test run. Keep it stable while running all requests in sequence.
 @runId = 20260707_google_01
-@appointmentDate = 2026-07-14
+@appointmentDate = 2026-07-21
 @dealershipId = 11111111-1111-1111-1111-000000000001
 @customerId = 11111111-1111-1111-1111-010000000003
 @vehicleId = 11111111-1111-1111-1111-020000000003
 @serviceTypeId = 11111111-1111-1111-1111-030000000001
-@idempotencyKey = appt-google-{{runId}}
-@googleAccessToken =
-@googleRefreshToken =
+@idempotencyKey = appt01-google-{{runId}}
+@googleAccessToken = eyJhbGciOiJSUzI1NiIsImtpZCI6Ijc1ZTc1YTAzOTE0NDRmNmM4NGNiMWYxMjk1YzAyOGJkIiwidHlwIjoiSldUIn0.eyJzdWIiOiJiZTE1MTI3Yi1iODM1LTQ3NWEtOTEwYS1iYWI2ZGMwYjkwYzciLCJlbWFpbCI6ImhhdWQuZmluQGdtYWlsLmNvbSIsImRpc3BsYXlfbmFtZSI6IkhUVFAgV29ya2Zsb3cgVXNlciIsImlhdCI6MTc4NDEyNzkzOSwicm9sZXMiOiJib29raW5nLXVzZXIiLCJwZXJtaXNzaW9ucyI6WyJhcHBvaW50bWVudDpjb21wbGV0ZSIsImFwcG9pbnRtZW50OmNyZWF0ZSIsImFwcG9pbnRtZW50OnZpZXciXSwiZXhwIjoxNzg0MTI5NzQ1LCJpc3MiOiJodHRwczovL2F1dGgudmVoaWNsZS1zZXJ2aWNlLWJvb2tpbmcubG9jYWwiLCJhdWQiOiJ2ZWhpY2xlLWJvb2tpbmctYXBpIn0.ZwWDIn2SNxcViS9jLiYcjHO9LPDTaqm_V94s214Oifi749IhjTU_ws19KnJ0ugJrAwkqOw698LtIjdHdbz1G4PtT27_F7Y2OrhLfZpBzEnPC_QfocR-RkFwPoTK33i0g1l-bx5C75gNTlpbesczU252pzEe8n-GePqVPeN7Zy_yyNY2Bz4fGAsh60aNlg2iqDWg6d4IRaBn4K58lTFXuPd0yuWl95S3om7gi-gSDfz2U9I8KAmbQHDwoX_BNP0Lku1Gt9bca5xnKMYAxhKb0QByQHTo5fVdyb4NJE-AVbyumCnm6rlPnVHczrRV2y5HPsqi7bAjP6LbUqssbJi_T7Q
+@googleRefreshToken = ZU67mTxFeMJEUMV3iVmW5XvHXHhYdE4fB5tRdTEiheH4TSQZRE+FHyby279xB6z9MpMDNf9XccwyqJY7T9ICgQ==
 
 ###
 # End-to-end workflow: google/start -> google/callback -> me -> availability -> appointments -> refresh -> logout

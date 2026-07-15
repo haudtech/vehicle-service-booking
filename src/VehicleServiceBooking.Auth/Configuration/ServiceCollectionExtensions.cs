@@ -1,7 +1,10 @@
 using Azure.Storage.Queues;
+using System.IO;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -33,6 +36,7 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         services.Configure<KeyRotationOptions>(configuration.GetSection("KeyRotation"));
+        services.Configure<DataProtectionKeyManagementOptions>(configuration.GetSection("DataProtection:KeyManagement"));
         services.Configure<GoogleAuthOptions>(configuration.GetSection("Authentication:Google"));
         services.Configure<NotificationOptions>(configuration.GetSection("Notification"));
 
@@ -87,12 +91,52 @@ public static class ServiceCollectionExtensions
             }
         }
 
+        var dataProtectionOptions = new DataProtectionKeyManagementOptions();
+        configuration.GetSection("DataProtection:KeyManagement").Bind(dataProtectionOptions);
+        if (string.IsNullOrWhiteSpace(dataProtectionOptions.ApplicationName))
+        {
+            dataProtectionOptions.ApplicationName = "VehicleServiceBooking.Auth";
+        }
+
+        if (dataProtectionOptions.DefaultKeyLifetimeDays < 7 || dataProtectionOptions.DefaultKeyLifetimeDays > 3650)
+        {
+            throw new InvalidOperationException("DataProtection:KeyManagement:DefaultKeyLifetimeDays must be between 7 and 3650.");
+        }
+
+        var environmentName = configuration["ASPNETCORE_ENVIRONMENT"]
+            ?? configuration["DOTNET_ENVIRONMENT"]
+            ?? string.Empty;
+        var isProduction = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
+        if (isProduction && string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))
+        {
+            throw new InvalidOperationException(
+                "DataProtection key ring path is required in Production. Configure DataProtection:KeyManagement:KeyRingPath to durable shared storage.");
+        }
+
         services.AddSingleton(jwtOptions);
         services.AddSingleton(keyRotationOptions);
+        services.AddSingleton(dataProtectionOptions);
         services.AddSingleton(googleAuthOptions);
         services.AddSingleton(notificationOptions);
+
+        var dataProtectionBuilder = services.AddDataProtection()
+            .SetApplicationName(dataProtectionOptions.ApplicationName)
+            .SetDefaultKeyLifetime(TimeSpan.FromDays(dataProtectionOptions.DefaultKeyLifetimeDays));
+
+        if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))
+        {
+            var keyRingDirectory = new DirectoryInfo(dataProtectionOptions.KeyRingPath);
+            if (!keyRingDirectory.Exists)
+            {
+                keyRingDirectory.Create();
+            }
+
+            dataProtectionBuilder.PersistKeysToFileSystem(keyRingDirectory);
+        }
+
         services.AddSingleton<ISigningKeyProvider, RsaSigningKeyProvider>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton<IAuthenticatorSecretProtector, DataProtectionAuthenticatorSecretProtector>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserRepository, UserRepository>();
@@ -187,9 +231,13 @@ public static class ServiceCollectionExtensions
                     options.SignInScheme = GoogleAuthOptions.ExternalCookieScheme;
                     options.ClientId = googleAuthOptions.ClientId;
                     options.ClientSecret = googleAuthOptions.ClientSecret;
+                    options.SaveTokens = true;
                     options.CallbackPath = string.IsNullOrWhiteSpace(googleAuthOptions.CallbackPath)
                         ? "/signin-google"
                         : googleAuthOptions.CallbackPath;
+
+                    options.ClaimActions.MapJsonKey("email_verified", "email_verified");
+                    options.ClaimActions.MapJsonKey("urn:google:email_verified", "email_verified");
 
                     // Local development in this repository typically runs on HTTP localhost.
                     // Keep correlation cookie aligned with request scheme to avoid correlation-failed callbacks.

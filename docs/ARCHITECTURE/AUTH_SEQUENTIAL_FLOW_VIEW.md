@@ -5,7 +5,7 @@ Status: CURRENT - Reflects implemented flows.
 
 ---
 
-## 1. Sign-up and Login Token Issuance
+## 1. Sign-up Verification and Two-Step Password Login
 
 ```mermaid
 sequenceDiagram
@@ -14,19 +14,35 @@ sequenceDiagram
     participant AuthAPI as Auth Service API
     participant AuthApp as Auth Application Service
     participant AuthDB as Auth Database
+    participant Notify as Notification Queue Publisher
     participant Token as JWT/JWKS Service
 
     Client->>AuthAPI: POST /api/v1/auth/signup
     AuthAPI->>AuthApp: Validate + normalize account identity
-    AuthApp->>AuthDB: Create active user + defaults
+    AuthApp->>AuthDB: Create pending user + verification token hash + expiry
     AuthDB-->>AuthApp: User created
-    AuthApp-->>AuthAPI: 201 Created
-    AuthAPI-->>Client: Signup result
+    AuthAPI->>Notify: Publish Auth.EmailVerification.Requested
+    AuthApp-->>AuthAPI: Verification metadata
+    AuthAPI-->>Client: 202 Accepted (verification required)
+
+    Client->>AuthAPI: GET /api/v1/auth/verify-email?email=...&token=...
+    AuthAPI->>AuthApp: VerifyEmailAsync(email, token)
+    AuthApp->>AuthDB: Validate token hash + expiry; mark verified; clear token fields
+    AuthDB-->>AuthApp: Verification completed
+    AuthAPI-->>Client: 200 OK (email verified)
 
     Client->>AuthAPI: POST /api/v1/auth/login
     AuthAPI->>AuthApp: Validate credentials (accountName/email + password)
     AuthApp->>AuthDB: Read active user + role/group relations
     AuthDB-->>AuthApp: User + auth graph
+    AuthApp->>AuthDB: Persist login challenge id + code hash + expiry + attempts
+    AuthDB-->>AuthApp: Challenge persisted
+    AuthAPI-->>Client: 202 Accepted (challenge required)
+
+    Client->>AuthAPI: POST /api/v1/auth/login/verify-code
+    AuthAPI->>AuthApp: Verify challenge id + code + expiry + attempts
+    AuthApp->>AuthDB: Consume challenge on success
+    AuthDB-->>AuthApp: Challenge consumed
     AuthApp->>Token: Issue access + refresh token
     Token-->>AuthApp: Signed JWT + refresh token
     AuthApp-->>AuthAPI: Auth response
@@ -58,20 +74,27 @@ sequenceDiagram
     GoogleMW-->>Browser: External auth cookie + 302 /api/v1/auth/google/callback
 
     Browser->>AuthAPI: GET /api/v1/auth/google/callback
-    AuthAPI->>AuthApp: LoginWithGoogleAsync(email, displayName, providerSubject, ip)
+    AuthAPI->>AuthAPI: Resolve verified-email evidence from claims and id_token fallback
+    AuthAPI->>AuthApp: LoginWithGoogleAsync(email, displayName, providerSubject, emailVerified, ip)
 
-    alt Existing user by normalized email
-        AuthApp->>AuthDB: Load active user + auth graph
-        AuthDB-->>AuthApp: Existing user
-    else First successful Google login
-        AuthApp->>AuthDB: Create user + assign default role
-        AuthDB-->>AuthApp: User provisioned
+    alt Email not verified by provider evidence
+        AuthApp-->>AuthAPI: InvalidOperationException
+        AuthAPI-->>Browser: 401 Unauthorized
+    else Email verified by provider evidence
+
+        alt Existing user by normalized email
+            AuthApp->>AuthDB: Load active user + auth graph
+            AuthDB-->>AuthApp: Existing user
+        else First successful Google login
+            AuthApp->>AuthDB: Create verified user + assign default role
+            AuthDB-->>AuthApp: User provisioned
+        end
+
+        AuthApp->>Token: Issue access + refresh token
+        Token-->>AuthApp: Signed JWT + refresh token
+        AuthApp-->>AuthAPI: Auth response
+        AuthAPI-->>Browser: 200 OK with local tokens
     end
-
-    AuthApp->>Token: Issue access + refresh token
-    Token-->>AuthApp: Signed JWT + refresh token
-    AuthApp-->>AuthAPI: Auth response
-    AuthAPI-->>Browser: 200 OK with local tokens
 ```
 
 ## 3. Booking Request Authorization with JWKS

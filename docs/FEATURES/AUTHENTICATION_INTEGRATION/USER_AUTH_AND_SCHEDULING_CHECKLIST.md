@@ -4,7 +4,7 @@
 
 ### Phase 1 - Completed Foundation
 - [x] Auth core design, entities, and relationships implemented (Sections 1, 2)
-- [x] Core auth endpoints implemented: signup, login, refresh, logout, me, jwks (Section 3)
+- [x] Core auth endpoints implemented: signup, verify-email (GET/POST), login, login/verify-code, refresh, logout, me, jwks (Section 3)
 - [x] Booking JWT/JWKS integration and authorization policies implemented (Section 4)
 - [x] Token model baseline implemented for booking use case (Section 5)
 - [x] Core security operations implemented (lifetimes, revocation, jwks publishing) (Section 7)
@@ -17,7 +17,7 @@
 - [x] Define shared role/group semantics across services (Section 8)
 
 ### Phase 3 - Next Capabilities
-- [ ] Social login design and implementation (GitHub pending; Google callback + provisioning completed) (Section 6)
+- [ ] Social login expansion beyond Google (GitHub optional future extension) (Section 6)
 - [ ] Admin endpoints for user/group/role management (Section 3)
 - [ ] Expand JWT key rotation runtime matrix coverage beyond current smoke scenarios (Sections 7, 10)
 - [ ] Optional introspection fallback strategy (Section 8)
@@ -48,12 +48,15 @@
 
 ## 3. Auth Service Endpoints
 - [x] POST /api/v1/auth/signup
+- [x] GET /api/v1/auth/verify-email
+- [x] POST /api/v1/auth/verify-email
 - [x] POST /api/v1/auth/login
+- [x] POST /api/v1/auth/login/verify-code
 - [x] POST /api/v1/auth/refresh
 - [x] POST /api/v1/auth/logout
 - [x] GET /api/v1/.well-known/jwks.json
 - [x] GET /api/v1/auth/google/callback (social login)
-- [ ] GET /api/v1/auth/github/callback (social login)
+- [ ] GET /api/v1/auth/github/callback (social login, optional future)
 - [x] GET /api/v1/me
 - [ ] Admin endpoints for user/group/role management
 
@@ -91,7 +94,7 @@
 ## 6. Social Login
 - [x] Select providers to support
   - [x] Google (implemented + tested end-to-end)
-  - [ ] GitHub
+  - [ ] GitHub (optional future)
 - [x] Define OAuth2 callback flow (Google-first)
 - [x] Implement user provisioning from provider claims (Google-first)
 - [x] Map external identity to internal user record (Google email-based mapping baseline)
@@ -153,7 +156,7 @@ JWT key rotation validation coverage references:
 - [x] docs/FEATURES/AUTHENTICATION_INTEGRATION/BOOKING_SERVICE_AUTH_INTEGRATION.md (Section 8.4)
 
 Validation evidence:
-- [x] End-to-end API workflow passed using tests/integration/http/user_workflow_signup_to_appointment_with_auth.http (signup -> login -> me -> availability -> create appointment -> refresh -> logout -> jwks)
+- [x] End-to-end API workflow passed using tests/integration/http/user_workflow_signup_to_appointment_with_auth.http (signup -> verify-email -> login challenge -> login verify-code -> me -> availability -> create appointment -> refresh -> logout -> jwks)
 - [x] JWKS provider unit tests passed: tests/VehicleServiceBooking.Tests/Api/Configuration/JwksSigningKeyProviderTests.cs (3/3)
 - [x] Auth key-ring rotation tests passed: tests/VehicleServiceBooking.Tests/Auth/Services/RsaSigningKeyProviderTests.cs (3/3)
 - [x] Automated Google callback-path tests passed: tests/VehicleServiceBooking.Tests/Auth/Controllers/AuthControllerGoogleTests.cs (controller callback success + failure paths)
@@ -188,7 +191,7 @@ Validation evidence:
   - [x] Retired-key post-overlap rejection validated in deterministic unit tests (`AdjustableTimeProvider` path)
 
 ## 13. Remaining Backlog (Phase 3 Only)
-- [ ] GitHub social login implementation and end-to-end validation
+- [ ] Optional GitHub social login implementation and end-to-end validation
 - [ ] Admin user/group/role management endpoints
 - [ ] Expand key rotation runtime matrix coverage beyond current smoke scenarios
 - [ ] Decide and document optional introspection fallback plan

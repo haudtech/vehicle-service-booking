@@ -20,6 +20,7 @@ This document defines **non-negotiable architectural principles and coding stand
 
 **Related Rulebooks:**
 - Function-service specific standards are documented in `docs/PRINCIPLE_RULES/FUNCTION_SERVICE_PRINCIPLE_RULES.md`.
+- Verification email and auth-verification strict gates are documented in `docs/PRINCIPLE_RULES/VERIFICATION_EMAIL_PRINCIPLE_RULES.md`.
 
 **Compliance:** Code review will verify adherence to all principles. Non-compliant code will NOT be merged.
 

@@ -9,18 +9,13 @@ using VehicleServiceBooking.Observability;
 
 //
 // ============================================================================
-// CONFIGURATION PRECEDENCE (Lowest to Highest Priority)
+// CONFIGURATION PRECEDENCE (Highest to Lowest Priority)
 // ============================================================================
 // 
-// 1. appsettings.json              - Base configuration (always loaded)
-// 2. appsettings.{Environment}.json - Environment overrides
-//    - Development  → appsettings.Development.json
-//    - Staging      → appsettings.Staging.json
-//    - Production   → appsettings.Production.json
-// 3. .env file                     - Local development overrides (highest)
-//    - Loaded by DotNetEnv before CreateBuilder
-//    - Converted to environment variables by the OS
-//    - Environment variables override appsettings files
+// 1. Shell/host environment variables
+// 2. .env fallback values only for missing keys (NoClobber)
+// 3. appsettings.{Environment}.json
+// 4. appsettings.json
 //
 // Usage:
 //   Development:  dotnet run              (uses .env if it exists)
@@ -30,7 +25,7 @@ using VehicleServiceBooking.Observability;
 // ============================================================================
 //
 
-// Load environment variables from .env file (for local development)
+// Load .env for local fallback values only (NoClobber preserves shell/host vars)
 // This must happen BEFORE CreateBuilder so environment variables are set
 // before configuration is read
 var envDirectory = new DirectoryInfo(Directory.GetCurrentDirectory());
@@ -39,7 +34,7 @@ while (envDirectory is not null)
     var envFile = Path.Combine(envDirectory.FullName, ".env");
     if (File.Exists(envFile))
     {
-        Env.Load(envFile);
+        Env.NoClobber().Load(envFile);
         break;
     }
 

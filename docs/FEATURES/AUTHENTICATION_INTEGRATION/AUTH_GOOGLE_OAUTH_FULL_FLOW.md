@@ -23,7 +23,7 @@ It focuses on the runtime path implemented in:
 
 - `GET /api/v1/auth/google/callback`
   - Controller endpoint that reads the external cookie principal.
-  - Extracts `email`, `sub`/`nameidentifier`, and optional display name.
+  - Extracts `email`, `sub`/`nameidentifier`, optional display name, and provider email-verification evidence.
   - Calls `LoginWithGoogleAsync(...)`.
   - Returns local `accessToken` + `refreshToken`.
 
@@ -54,18 +54,25 @@ sequenceDiagram
 
     C->>A: GET /api/v1/auth/google/callback (with external cookie)
     A->>A: Authenticate external cookie scheme
-    A->>S: LoginWithGoogleAsync(email, displayName, providerSubject, ip)
+    A->>A: Resolve email_verified from claims and id_token fallback
+    A->>S: LoginWithGoogleAsync(email, displayName, providerSubject, emailVerified, ip)
 
-    alt Existing user by email
+    alt Email not verified by provider evidence
+      S-->>A: InvalidOperationException
+      A-->>C: 401 Unauthorized
+    else Email verified
+
+      alt Existing user by email
         S->>DB: Load user + auth graph
-    else First login / user not found
+      else First login / user not found
         S->>DB: Create user
         S->>DB: Assign default role booking-user
-    end
+      end
 
-    S->>DB: Persist refresh token
-    S-->>A: AuthResponse(accessToken, refreshToken, expiresAt)
-    A-->>C: 200 OK + token payload
+      S->>DB: Persist refresh token
+      S-->>A: AuthResponse(accessToken, refreshToken, expiresAt)
+      A-->>C: 200 OK + token payload
+    end
 
     A->>A: SignOut external cookie scheme (cleanup)
 ```
@@ -88,8 +95,10 @@ flowchart TD
     H -- No --> H1[401 missing email]
     H -- Yes --> I{sub/nameidentifier present?}
     I -- No --> I1[401 missing provider subject]
-    I -- Yes --> J[Call LoginWithGoogleAsync]
-    J --> K{User exists by normalized email?}
+    I -- Yes --> J[Resolve provider email verification evidence]
+    J --> J2{Provider email verified?}
+    J2 -- No --> J3[401 Google identity email is not verified]
+    J2 -- Yes --> K{User exists by normalized email?}
     K -- Yes --> L[Issue local tokens]
     K -- No --> M[Create user + assign booking-user + issue tokens]
     L --> N[200 AuthResponse]
@@ -133,6 +142,7 @@ In Auth settings:
 - `Authentication:Google:ClientId=<client-id>`
 - `Authentication:Google:ClientSecret=<client-secret>`
 - `Authentication:Google:CallbackPath=/signin-google`
+- Token persistence enabled in Google auth options to allow id_token fallback parsing.
 
 Google Cloud Console OAuth client:
 - Application type: Web application
@@ -234,3 +244,18 @@ If duplicates still appear in runtime:
 1. Verify incoming email normalization and casing.
 2. Check database uniqueness constraints and existing records.
 3. Confirm flow is not hitting a different environment/database than expected.
+
+### 8.7 401 "Google identity email is not verified"
+
+Symptom:
+- Callback returns 401 unauthorized with verified-email failure message.
+
+Likely causes:
+1. Provider did not return verified-email evidence in mapped claims.
+2. id_token fallback unavailable in current callback session.
+3. Email is not verified in provider account.
+
+Fix:
+1. Restart auth service after OAuth configuration updates.
+2. Re-run full browser flow from `/api/v1/auth/google/start`.
+3. Confirm provider account email is verified.

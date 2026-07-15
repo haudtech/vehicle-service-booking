@@ -172,7 +172,6 @@ Fields:
 
 Example providers:
 - `google`
-- `github`
 
 Index:
 - unique on `(ProviderName, ProviderUserId)`
@@ -183,7 +182,7 @@ Optional auditing entity for login events.
 Fields:
 - `Id` (GUID)
 - `UserId` (GUID)
-- `LoginType` (string: `local`, `google`, `github`)
+- `LoginType` (string: `local`, `google`)
 - `Success` (bool)
 - `IpAddress` (string)
 - `UserAgent` (string)
