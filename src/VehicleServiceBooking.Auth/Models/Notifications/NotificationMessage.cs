@@ -1,3 +1,5 @@
+using VehicleServiceBooking.Auth.Common.Enums;
+
 namespace VehicleServiceBooking.Auth.Models.Notifications;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace VehicleServiceBooking.Auth.Models.Notifications;
 /// </summary>
 public sealed class NotificationMessage
 {
+    /// <summary>
+    /// Gets or sets destination channel (email or zalo).
+    /// </summary>
+    public string DestinationChannel { get; set; } = NotificationChannel.Email.ToWireValue();
+
     /// <summary>
     /// Gets or sets event type emitted by the source service.
     /// </summary>
@@ -14,6 +21,11 @@ public sealed class NotificationMessage
     /// Gets or sets destination user email.
     /// </summary>
     public string ToEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets destination zalo user identifier for ZNS delivery.
+    /// </summary>
+    public string ToZaloUserId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets email subject.

@@ -7,7 +7,8 @@ public enum ChallengeChannel
 {
     OtpFirst = 0,
     EmailOtp = 1,
-    AuthenticatorApp = 2
+    AuthenticatorApp = 2,
+    ZaloOtp = 3
 }
 
 /// <summary>
@@ -25,6 +26,7 @@ public static class ChallengeChannelExtensions
             ChallengeChannel.OtpFirst => "otp_first",
             ChallengeChannel.EmailOtp => "email_otp",
             ChallengeChannel.AuthenticatorApp => "authenticator_app",
+            ChallengeChannel.ZaloOtp => "zalo_otp",
             _ => "email_otp"
         };
     }
@@ -40,10 +42,11 @@ public static class ChallengeChannelExtensions
             "otp_first" => ChallengeChannel.OtpFirst,
             "email_otp" => ChallengeChannel.EmailOtp,
             "authenticator_app" => ChallengeChannel.AuthenticatorApp,
+            "zalo_otp" => ChallengeChannel.ZaloOtp,
             _ => ChallengeChannel.EmailOtp
         };
 
-        return normalized is "otp_first" or "email_otp" or "authenticator_app";
+        return normalized is "otp_first" or "email_otp" or "authenticator_app" or "zalo_otp";
     }
 
     /// <summary>

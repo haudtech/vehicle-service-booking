@@ -177,7 +177,7 @@ public sealed class AuthService : IAuthService
         user.LoginVerificationChannel = resolvedChannel.ToWireValue();
 
         var code = string.Empty;
-        if (resolvedChannel == ChallengeChannel.EmailOtp)
+        if (resolvedChannel == ChallengeChannel.EmailOtp || resolvedChannel == ChallengeChannel.ZaloOtp)
         {
             code = VerificationUtils.GenerateLoginVerificationCode();
             user.LoginVerificationCodeHash = VerificationUtils.HashVerificationToken(code);
@@ -196,6 +196,7 @@ public sealed class AuthService : IAuthService
             ChallengeId = challengeId,
             ChallengeChannel = resolvedChannel,
             VerificationCode = code,
+            ZaloUserId = user.ZaloUserId,
             VerificationCodeExpiresAtUtc = user.LoginVerificationCodeExpiresAtUtc.Value
         };
     }
@@ -368,11 +369,29 @@ public sealed class AuthService : IAuthService
             return ChallengeChannel.AuthenticatorApp;
         }
 
+        if (requestedChannel == ChallengeChannel.ZaloOtp)
+        {
+            // TODO: Once Zalo OA integration is ready, return ZaloOtp here and deliver the OTP through the Zalo notification pipeline.
+            // For now, always fall back to EmailOtp until the Zalo sender is ready for production use.
+            if (string.IsNullOrWhiteSpace(user.ZaloUserId))
+            {
+                return ChallengeChannel.EmailOtp;
+            }
+
+            return ChallengeChannel.EmailOtp;
+        }
+
         if (requestedChannel == ChallengeChannel.OtpFirst &&
             user.IsAuthenticatorAppEnabled &&
             !string.IsNullOrWhiteSpace(user.AuthenticatorAppSecret))
         {
             return ChallengeChannel.AuthenticatorApp;
+        }
+
+        if (requestedChannel == ChallengeChannel.OtpFirst &&
+            !string.IsNullOrWhiteSpace(user.ZaloUserId))
+        {
+            return ChallengeChannel.ZaloOtp;
         }
 
         return ChallengeChannel.EmailOtp;

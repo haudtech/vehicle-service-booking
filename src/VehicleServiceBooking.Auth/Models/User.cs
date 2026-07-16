@@ -31,6 +31,8 @@ public class User : AuthBaseEntity
 
     public string AuthenticatorAppSecret { get; set; } = string.Empty;
 
+    public string ZaloUserId { get; set; } = string.Empty;
+
     public string AccountName { get; set; } = string.Empty;
 
     public string PasswordHash { get; set; } = string.Empty;
