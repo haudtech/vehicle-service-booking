@@ -15,5 +15,7 @@ public sealed class LoginChallengeResult
 
     public string VerificationCode { get; set; } = string.Empty;
 
+    public string ZaloUserId { get; set; } = string.Empty;
+
     public DateTime VerificationCodeExpiresAtUtc { get; set; }
 }

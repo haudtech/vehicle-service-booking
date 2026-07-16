@@ -110,6 +110,7 @@ var host = new HostBuilder()
     .ConfigureServices((context, services) =>
     {
         services.Configure<EmailSenderOptions>(context.Configuration.GetSection("EmailSender"));
+        services.AddSingleton<IZaloSender, LoggingZaloSender>();
 
         var provider = context.Configuration["EmailSender:Provider"];
         if (string.Equals(provider, "SendGrid", StringComparison.OrdinalIgnoreCase))

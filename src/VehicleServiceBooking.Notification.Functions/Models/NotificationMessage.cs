@@ -1,3 +1,5 @@
+using VehicleServiceBooking.Notification.Functions.Common.Enums;
+
 namespace VehicleServiceBooking.Notification.Functions.Models;
 
 /// <summary>
@@ -5,8 +7,10 @@ namespace VehicleServiceBooking.Notification.Functions.Models;
 /// </summary>
 public sealed class NotificationMessage
 {
+    public string DestinationChannel { get; set; } = NotificationChannel.Email.ToWireValue();
     public string EventType { get; set; } = string.Empty;
     public string ToEmail { get; set; } = string.Empty;
+    public string ToZaloUserId { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public string? HtmlContent { get; set; }

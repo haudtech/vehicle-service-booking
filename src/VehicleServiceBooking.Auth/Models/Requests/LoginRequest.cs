@@ -10,7 +10,7 @@ public sealed class LoginRequest
 {
     /// <summary>
     /// Requested challenge channel.
-    /// Supported values: otp_first, email_otp, authenticator_app.
+    /// Supported values: otp_first, email_otp, authenticator_app, zalo_otp.
     /// </summary>
     [MaxLength(32)]
     public string ChallengeChannel { get; set; } = Common.Enums.ChallengeChannel.OtpFirst.ToWireValue();

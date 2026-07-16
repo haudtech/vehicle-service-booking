@@ -60,6 +60,8 @@ public class AuthController : ControllerBase
             await PublishNotificationSafeAsync(
                 eventType: "Auth.EmailVerification.Requested",
                 toEmail: request.Email,
+                toZaloUserId: null,
+                destinationChannel: NotificationChannel.Email,
                 subject: "Verify your email address",
                 content: $"Please verify your email address.\n\nOpen this link: {verificationLink}",
                 htmlContent: BuildEmailVerificationHtml(verificationLink),
@@ -100,6 +102,8 @@ public class AuthController : ControllerBase
             await PublishNotificationSafeAsync(
                 eventType: "Auth.EmailVerification.Success",
                 toEmail: email,
+                toZaloUserId: null,
+                destinationChannel: NotificationChannel.Email,
                 subject: "Email verified successfully",
                 content: "Your account email has been verified. You can now sign in.",
                 htmlContent: null,
@@ -129,6 +133,8 @@ public class AuthController : ControllerBase
             await PublishNotificationSafeAsync(
                 eventType: "Auth.EmailVerification.Success",
                 toEmail: request.Email,
+                toZaloUserId: null,
+                destinationChannel: NotificationChannel.Email,
                 subject: "Email verified successfully",
                 content: "Your account email has been verified. You can now sign in.",
                 htmlContent: null,
@@ -159,8 +165,22 @@ public class AuthController : ControllerBase
                 await PublishNotificationSafeAsync(
                     eventType: "Auth.Login.VerificationCode.Requested",
                     toEmail: response.Email,
+                    toZaloUserId: null,
+                    destinationChannel: NotificationChannel.Email,
                     subject: "Your login verification code",
                     content: $"Use this code to complete login: {response.VerificationCode}",
+                    htmlContent: null,
+                    cancellationToken);
+            }
+            else if (response.ChallengeChannel == ChallengeChannel.ZaloOtp)
+            {
+                await PublishNotificationSafeAsync(
+                    eventType: "Auth.Login.VerificationCode.Requested",
+                    toEmail: null,
+                    toZaloUserId: response.ZaloUserId,
+                    destinationChannel: NotificationChannel.Zalo,
+                    subject: "",
+                    content: $"Ma xac thuc dang nhap cua ban: {response.VerificationCode}",
                     htmlContent: null,
                     cancellationToken);
             }
@@ -169,6 +189,8 @@ public class AuthController : ControllerBase
             {
                 message = response.ChallengeChannel == ChallengeChannel.AuthenticatorApp
                     ? "Credentials accepted. Open your authenticator app and submit the current OTP code."
+                    : response.ChallengeChannel == ChallengeChannel.ZaloOtp
+                        ? "Credentials accepted. Submit the verification code sent to your Zalo app."
                     : "Credentials accepted. Submit the verification code sent to your email.",
                 email = response.Email,
                 challengeId = response.ChallengeId,
@@ -201,6 +223,8 @@ public class AuthController : ControllerBase
             await PublishNotificationSafeAsync(
                 eventType: "Auth.Login.Success",
                 toEmail: request.Email,
+                toZaloUserId: null,
+                destinationChannel: NotificationChannel.Email,
                 subject: "New sign-in detected",
                 content: "Your account has signed in successfully.",
                 htmlContent: null,
@@ -373,6 +397,8 @@ public class AuthController : ControllerBase
             await PublishNotificationSafeAsync(
                 eventType: "Auth.GoogleLogin.Success",
                 toEmail: email,
+                toZaloUserId: null,
+                destinationChannel: NotificationChannel.Email,
                 subject: "Google sign-in successful",
                 content: "You have signed in successfully using Google.",
                 htmlContent: null,
@@ -426,6 +452,8 @@ public class AuthController : ControllerBase
     private async Task PublishNotificationSafeAsync(
         string eventType,
         string? toEmail,
+        string? toZaloUserId,
+        NotificationChannel destinationChannel,
         string subject,
         string content,
         string? htmlContent,
@@ -436,7 +464,15 @@ public class AuthController : ControllerBase
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(toEmail))
+        if (destinationChannel == NotificationChannel.Zalo
+            && string.IsNullOrWhiteSpace(toZaloUserId))
+        {
+            _logger.LogWarning("Notification publish skipped for {EventType}: target Zalo user id is missing.", eventType);
+            return;
+        }
+
+        if (destinationChannel == NotificationChannel.Email
+            && string.IsNullOrWhiteSpace(toEmail))
         {
             _logger.LogWarning("Notification publish skipped for {EventType}: target email is missing.", eventType);
             return;
@@ -450,7 +486,9 @@ public class AuthController : ControllerBase
             await _notificationPublisher.PublishAsync(new NotificationMessage
             {
                 EventType = eventType,
-                ToEmail = toEmail.Trim(),
+                DestinationChannel = destinationChannel.ToWireValue(),
+                ToEmail = toEmail?.Trim() ?? string.Empty,
+                ToZaloUserId = toZaloUserId?.Trim() ?? string.Empty,
                 Subject = subject,
                 Content = content,
                 HtmlContent = htmlContent,
@@ -462,14 +500,16 @@ public class AuthController : ControllerBase
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                "Notification publish timed out for {EventType} and email {Email} after {Timeout}.",
+                "Notification publish timed out for {EventType}, channel {Channel}, email {Email}, zaloUserId {ZaloUserId} after {Timeout}.",
                 eventType,
+                destinationChannel.ToWireValue(),
                 toEmail,
+                toZaloUserId,
                 _notificationOptions.PublishTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Notification publish failed for {EventType} and email {Email}.", eventType, toEmail);
+            _logger.LogError(ex, "Notification publish failed for {EventType}, channel {Channel}, email {Email}, zaloUserId {ZaloUserId}.", eventType, destinationChannel.ToWireValue(), toEmail, toZaloUserId);
         }
     }
 
