@@ -7,6 +7,11 @@ namespace VehicleServiceBooking.Domain.Entities;
 public class Customer : BaseEntity
 {
     /// <summary>
+    /// Auth service user identifier used for cross-service identity mapping.
+    /// </summary>
+    public Guid AuthUserId { get; set; }
+
+    /// <summary>
     /// Customer's first name (max 100 characters)
     /// </summary>
     public string FirstName { get; set; } = string.Empty;

@@ -1,4 +1,6 @@
 using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +40,7 @@ public class AppointmentsController : ControllerBase
     private readonly IAppointmentService _appointmentService;
     private readonly IIdempotencyService _idempotencyService;
     private readonly IIdempotencyRequestCoordinator _idempotencyRequestCoordinator;
+    private readonly ICustomerIdentityService _customerIdentityService;
     private readonly ILogger<AppointmentsController> _logger;
 
     /// <summary>
@@ -48,12 +51,14 @@ public class AppointmentsController : ControllerBase
         IAppointmentService appointmentService,
         IIdempotencyService idempotencyService,
         IIdempotencyRequestCoordinator idempotencyRequestCoordinator,
+        ICustomerIdentityService customerIdentityService,
         ILogger<AppointmentsController> logger)
     {
         _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
         _appointmentService = appointmentService ?? throw new ArgumentNullException(nameof(appointmentService));
         _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
         _idempotencyRequestCoordinator = idempotencyRequestCoordinator ?? throw new ArgumentNullException(nameof(idempotencyRequestCoordinator));
+        _customerIdentityService = customerIdentityService ?? throw new ArgumentNullException(nameof(customerIdentityService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -133,6 +138,13 @@ public class AppointmentsController : ControllerBase
 
         try
         {
+            var resolveCustomerResult = await TryResolveCustomerIdIfMissingAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+            if (resolveCustomerResult is not null)
+            {
+                return resolveCustomerResult;
+            }
+
             // Validate request
             await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
 
@@ -248,6 +260,43 @@ public class AppointmentsController : ControllerBase
 
             throw;  // Let middleware handle it
         }
+    }
+
+    private async Task<ActionResult<CreateAppointmentResponse>?> TryResolveCustomerIdIfMissingAsync(
+        CreateAppointmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.CustomerId != Guid.Empty)
+        {
+            return null;
+        }
+
+        var authUserIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (!Guid.TryParse(authUserIdClaim, out var authUserId))
+        {
+            return Unauthorized(new ErrorResponse
+            {
+                Message = "Authenticated user id claim is missing or invalid.",
+                ErrorCode = "INVALID_AUTH_USER_ID",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        var customer = await _customerIdentityService
+            .GetOrCreateCustomerByAuthUserIdAsync(authUserId, cancellationToken)
+            .ConfigureAwait(false);
+
+        request.CustomerId = customer.Id;
+
+        _logger.LogInformation(
+            "Resolved missing customerId from auth user: authUserId={AuthUserId}, customerId={CustomerId}",
+            authUserId,
+            customer.Id);
+
+        return null;
     }
 
     /// <summary>

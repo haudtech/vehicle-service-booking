@@ -76,11 +76,16 @@ public sealed class AuthService : IAuthService
         }
 
         var verificationToken = VerificationUtils.GenerateVerificationToken();
+        var normalizedPhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? string.Empty
+            : request.PhoneNumber.Trim();
+
         var user = new User
         {
             Email = normalizedEmail,
             AccountName = normalizedAccountName,
             DisplayName = request.DisplayName.Trim(),
+            PhoneNumber = normalizedPhoneNumber,
             PasswordHash = _passwordHasher.HashPassword(request.Password),
             SecurityStamp = Guid.NewGuid().ToString("N"),
             IsActive = true,
@@ -449,6 +454,7 @@ public sealed class AuthService : IAuthService
                 Email = normalizedEmail,
                 AccountName = normalizedAccountName,
                 DisplayName = resolvedDisplayName,
+                PhoneNumber = string.Empty,
                 PasswordHash = _passwordHasher.HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))),
                 SecurityStamp = Guid.NewGuid().ToString("N"),
                 IsActive = true,
@@ -508,6 +514,27 @@ public sealed class AuthService : IAuthService
         storedToken.RevokedAt = DateTime.UtcNow;
         await _refreshTokenRepository.UpdateAsync(storedToken, cancellationToken);
         await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<UserCoreProfileResponse?> GetUserCoreProfileByIdAsync(Guid authUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(authUserId, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        return new UserCoreProfileResponse
+        {
+            AuthUserId = user.Id,
+            Email = user.Email,
+            DisplayName = user.DisplayName,
+            PhoneNumber = user.PhoneNumber,
+            IsEmailVerified = user.IsEmailVerified,
+            IsActive = user.IsActive,
+            UpdatedAtUtc = user.UpdatedAt
+        };
     }
 
     private async Task<AuthResponse> CreateAuthResponseAsync(User user, string ipAddress, CancellationToken cancellationToken)

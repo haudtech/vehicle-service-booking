@@ -1,5 +1,7 @@
+using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using VehicleServiceBooking.Application.Configuration;
 using VehicleServiceBooking.Application.Configuration.Interfaces;
 
@@ -46,9 +48,41 @@ public static class ApplicationOptionsExtensions
         services.Configure<IdempotencyOptions>(
             configuration.GetSection(IdempotencyOptions.SectionName));
 
+        services
+            .AddOptions<AuthUserProfileOptions>()
+            .Bind(configuration.GetSection(AuthUserProfileOptions.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(
+                HasValidAuthUserProfileEndpoint,
+                $"{AuthUserProfileOptions.SectionName} must configure either a valid absolute BaseUrl or Host (with optional Scheme/Port/BasePath).")
+            .Validate(
+                options => (options.CoreProfilePathTemplate ?? string.Empty).Contains("{authUserId}", StringComparison.OrdinalIgnoreCase),
+                $"{AuthUserProfileOptions.SectionName}:CoreProfilePathTemplate must contain {{authUserId}} placeholder.")
+            .ValidateOnStart();
+
         // Register in-process cache provider
         services.AddMemoryCache();
 
         return services;
+    }
+
+    private static bool HasValidAuthUserProfileEndpoint(AuthUserProfileOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+        {
+            return Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out _);
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Host))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.Scheme) && !Uri.CheckSchemeName(options.Scheme))
+        {
+            return false;
+        }
+
+        return !options.Port.HasValue || (options.Port.Value >= 1 && options.Port.Value <= 65535);
     }
 }

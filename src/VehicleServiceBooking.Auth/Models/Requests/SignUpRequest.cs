@@ -23,4 +23,7 @@ public sealed class SignUpRequest
     [Required]
     [MaxLength(100)]
     public string DisplayName { get; set; } = string.Empty;
+
+    [MaxLength(20)]
+    public string PhoneNumber { get; set; } = string.Empty;
 }

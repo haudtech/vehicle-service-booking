@@ -50,12 +50,14 @@ public class AppointmentsControllerTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new IdempotencyCoordinatorResult());
 
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -116,12 +118,14 @@ public class AppointmentsControllerTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -160,12 +164,14 @@ public class AppointmentsControllerTests
 
         var idempotencyService = new Mock<IIdempotencyService>();
         var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         var actionResult = await controller.CancelAppointment(appointmentId, CancellationToken.None);
@@ -196,12 +202,14 @@ public class AppointmentsControllerTests
             .Setup(c => c.ValidateAndBeginCreateAppointmentAsync(It.IsAny<HttpRequest>(), request, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new IdempotencyCoordinatorResult { RecordId = Guid.NewGuid() });
 
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -245,12 +253,14 @@ public class AppointmentsControllerTests
                 })
             });
 
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -303,12 +313,14 @@ public class AppointmentsControllerTests
                 }
             });
 
+        var customerIdentityService = new Mock<ICustomerIdentityService>();
         var logger = new Mock<ILogger<AppointmentsController>>();
         var controller = new AppointmentsController(
             validator.Object,
             appointmentService.Object,
             idempotencyService.Object,
             idempotencyCoordinator.Object,
+            customerIdentityService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext

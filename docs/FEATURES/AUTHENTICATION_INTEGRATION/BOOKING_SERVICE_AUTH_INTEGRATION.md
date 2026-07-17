@@ -245,3 +245,217 @@ Example:
 - [ ] protect booking controller endpoints
 - [ ] add tests for auth and authorization flows
 - [ ] document integration in booking service README or architecture docs
+
+---
+
+## 11. Customer bootstrap via Auth profile lookup (updated direction)
+
+This section defines the updated integration direction:
+- Auth service does not push customer data to Booking API.
+- Booking API lazily provisions `Customer` by querying Auth service when needed.
+- Client may call customer endpoints proactively for UX, but Booking business APIs must remain self-sufficient.
+
+### 11.1 Target outcomes
+- Single source of truth for identity core fields remains Auth service.
+- Booking API owns `Customer` lifecycle for booking domain data.
+- No cross-database foreign keys are required.
+- Provisioning is idempotent and safe under concurrent requests.
+
+### 11.2 Data contract alignment
+
+Booking `Customer` table should include:
+- `AuthUserId` (`Guid`, required, unique)
+- `Email` (copied snapshot from Auth profile)
+- `DisplayName` (copied snapshot from Auth profile)
+- `PhoneNumber` (copied snapshot from Auth profile, optional/nullable if Auth does not provide)
+- Existing booking-specific profile fields (first name, last name, etc.)
+
+Constraint requirements:
+- Unique index: `UX_Customers_AuthUserId`
+- Optional unique index on `Email` only if business allows strict 1:1 email identity in booking domain
+
+### 11.3 Auth service API contract (internal)
+
+Endpoint:
+```http
+GET /api/v1/internal/users/{authUserId}/core-profile
+```
+
+Purpose:
+- Return minimal identity fields required by Booking API to bootstrap local `Customer`.
+
+Authentication/authorization:
+- Service-to-service authentication only (not end-user bearer token).
+- Require internal scope/permission, for example: `internal:user.read`.
+- Restrict caller to Booking API service identity.
+
+Successful response (`200`):
+```json
+{
+  "authUserId": "11111111-1111-1111-1111-111111111111",
+  "email": "user@example.com",
+  "displayName": "Jane Doe",
+  "phoneNumber": "+84901234567",
+  "isEmailVerified": true,
+  "isActive": true,
+  "updatedAtUtc": "2026-07-17T08:30:00Z"
+}
+```
+
+Error responses:
+- `404 Not Found`: user does not exist
+- `409 Conflict`: user exists but not eligible for booking bootstrap (`isEmailVerified=false` or `isActive=false`)
+- `401/403`: service identity invalid or unauthorized
+
+### 11.4 Booking API contract (public + internal behavior)
+
+Public endpoint for client UX and app bootstrap:
+```http
+GET /api/v1/customers/me
+Authorization: Bearer <end-user-access-token>
+```
+
+Behavior:
+1. Extract `authUserId` from token `sub` claim.
+2. Try load customer by `AuthUserId`.
+3. If found, return existing customer.
+4. If not found, call Auth internal API (`core-profile`).
+5. Create customer using returned core fields.
+6. Return created customer.
+
+Optional admin/internal lookup endpoints:
+```http
+GET /api/v1/customers/{customerId}
+GET /api/v1/internal/customers/by-auth-user/{authUserId}
+```
+
+Successful response (`200`):
+```json
+{
+  "customerId": "22222222-2222-2222-2222-222222222222",
+  "authUserId": "11111111-1111-1111-1111-111111111111",
+  "email": "user@example.com",
+  "displayName": "Jane Doe",
+  "phoneNumber": "+84901234567",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "createdAtUtc": "2026-07-17T08:31:10Z",
+  "updatedAtUtc": "2026-07-17T08:31:10Z"
+}
+```
+
+### 11.5 Idempotency and race-condition handling
+
+For concurrent first-time requests:
+- Always enforce unique constraint on `AuthUserId` at DB level.
+- Use create-then-handle-unique-violation fallback:
+  - attempt insert
+  - if unique violation occurs, re-query by `AuthUserId` and return existing row
+
+This guarantees deterministic behavior without distributed locks.
+
+### 11.6 Booking business API rule
+
+For user-scoped business endpoints (for example appointment creation):
+- Do not trust client-supplied `CustomerId` as identity source.
+- Resolve customer from token `sub` (`AuthUserId`) through `GetOrCreateCustomerByAuthUserId`.
+- If admin/staff workflows require acting on behalf of another customer, expose separate endpoints/policies.
+
+### 11.7 Recommended sequence flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant BookingAPI as Booking API
+    participant BookingDB as Booking DB
+    participant AuthAPI as Auth Service
+
+    Client->>BookingAPI: GET /api/v1/customers/me (Bearer token)
+    BookingAPI->>BookingAPI: read sub claim as authUserId
+    BookingAPI->>BookingDB: find customer by AuthUserId
+    alt customer exists
+        BookingDB-->>BookingAPI: customer row
+        BookingAPI-->>Client: 200 customer payload
+    else customer missing
+        BookingAPI->>AuthAPI: GET /api/v1/internal/users/{authUserId}/core-profile
+        AuthAPI-->>BookingAPI: core profile
+        BookingAPI->>BookingDB: insert customer(AuthUserId, Email, DisplayName, Phone)
+        BookingDB-->>BookingAPI: inserted row
+        BookingAPI-->>Client: 200 customer payload
+    end
+```
+
+### 11.8 Resilience requirements
+
+Booking API -> Auth API client should apply:
+- timeout (for example 1-2 seconds)
+- bounded retry (for transient failures only)
+- circuit breaker
+- structured logs with correlation id
+
+Fallback behavior:
+- If Auth API is unavailable and customer is missing, return `503 Service Unavailable` with retryable error code (for example `CUSTOMER_BOOTSTRAP_UNAVAILABLE`).
+
+### 11.9 Updated checklist for this direction
+- [ ] add `AuthUserId` to booking `Customer` entity
+- [ ] add unique index `UX_Customers_AuthUserId`
+- [ ] add Auth internal endpoint for user core profile by id
+- [ ] add Booking endpoint `GET /api/v1/customers/me`
+- [ ] implement `GetOrCreateCustomerByAuthUserId` service in Booking
+- [ ] integrate customer resolution into user-scoped booking flows
+- [ ] add contract tests for Auth <-> Booking internal API
+- [ ] add concurrency tests for first-time lazy provisioning
+
+### 11.10 Deployment configuration examples (hostname-first)
+
+Booking API now supports a hostname-first endpoint configuration for Auth profile lookup, with backward compatibility for `BaseUrl`.
+
+Preferred keys:
+- `AuthUserProfile:Scheme`
+- `AuthUserProfile:Host`
+- `AuthUserProfile:Port` (optional)
+- `AuthUserProfile:BasePath` (optional)
+- `AuthUserProfile:CoreProfilePathTemplate`
+- `AuthUserProfile:TimeoutSeconds`
+
+Fallback key (legacy):
+- `AuthUserProfile:BaseUrl`
+
+Production example (public DNS + HTTPS):
+```json
+{
+  "AuthUserProfile": {
+    "Scheme": "https",
+    "Host": "auth.company.com",
+    "CoreProfilePathTemplate": "/api/v1/internal/users/{authUserId}/core-profile",
+    "TimeoutSeconds": 2
+  }
+}
+```
+
+Production example (internal service DNS + custom base path):
+```json
+{
+  "AuthUserProfile": {
+    "Scheme": "https",
+    "Host": "auth.identity.svc.cluster.local",
+    "Port": 8443,
+    "BasePath": "/auth",
+    "CoreProfilePathTemplate": "/api/v1/internal/users/{authUserId}/core-profile",
+    "TimeoutSeconds": 2
+  }
+}
+```
+
+Environment variable mapping example:
+```bash
+AuthUserProfile__Scheme=https
+AuthUserProfile__Host=auth.company.com
+AuthUserProfile__CoreProfilePathTemplate=/api/v1/internal/users/{authUserId}/core-profile
+AuthUserProfile__TimeoutSeconds=2
+```
+
+Notes:
+- If `BaseUrl` is provided, it takes precedence over `Scheme`/`Host`/`Port`/`BasePath`.
+- Startup validation should fail fast if neither a valid absolute `BaseUrl` nor valid `Host`-based settings are provided.

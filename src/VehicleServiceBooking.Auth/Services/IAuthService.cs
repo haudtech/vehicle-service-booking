@@ -57,4 +57,9 @@ public interface IAuthService
     /// Revokes a refresh token.
     /// </summary>
     Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns internal core profile for a user id.
+    /// </summary>
+    Task<UserCoreProfileResponse?> GetUserCoreProfileByIdAsync(Guid authUserId, CancellationToken cancellationToken = default);
 }
