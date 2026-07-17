@@ -3,6 +3,7 @@
 // Update this runId for a new test run. Keep it stable while running all requests in sequence. 
 @runId = 20260707_01
 @email = haud.fin@gmail.com
+@phoneNumber = 
 @accountName = workflow11_{{runId}}
 @password = Test1234!
 @appointmentDate = 2026-07-21
@@ -14,13 +15,13 @@
 @serviceBayId = 11111111-1111-1111-1111-050000000001
 @estimatedStartTimeSlotId = 00000000-0000-0000-0000-000000000007
 @estimatedEndTimeSlotId = 00000000-0000-0000-0000-000000000008
-@idempotencyKey = appt11-{{runId}}
+@idempotencyKey = appt12-{{runId}}
 // challengeChannel: otp_first | email_otp | authenticator_app
 @bootstrapChallengeChannel = email_otp
 @authenticatorChallengeChannel = authenticator_app
 @emailLoginVerificationCode = 551251
 @authenticatorSetupCode = 418935
-@authenticatorLoginCode = 858921
+@authenticatorLoginCode = 362939
 
 ###
 # End-to-end workflow:
@@ -35,6 +36,7 @@ Content-Type: application/json
 
 {
   "email": "{{email}}",
+  "phoneNumber": "{{phoneNumber}}",
   "accountName": "{{accountName}}",
   "password": "{{password}}",
   "displayName": "HTTP Workflow User"
@@ -177,7 +179,6 @@ Idempotency-Key: {{idempotencyKey}}
 
 {
   "dealershipId": "{{dealershipId}}",
-  "customerId": "{{customerId}}",
   "vehicleId": "{{vehicleId}}",
   "appointmentDate": "{{appointmentDate}}",
   "serviceTypeId": "{{serviceTypeId}}",

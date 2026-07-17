@@ -1,4 +1,6 @@
+using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using VehicleServiceBooking.Api.Services;
 using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
@@ -25,6 +27,15 @@ public static class ApplicationServicesExtensions
     public static IServiceCollection AddApplicationServices(
         this IServiceCollection services)
     {
+        services.AddHttpContextAccessor();
+
+        services.AddHttpClient<IAuthUserProfileClient, AuthUserProfileClient>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<AuthUserProfileOptions>>().Value;
+            client.BaseAddress = options.GetBaseAddress();
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
         // Register DbContext abstraction
         services.AddScoped<IApplicationDbContext>(sp =>
             sp.GetRequiredService<ApplicationDbContext>());
@@ -81,6 +92,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
         services.AddScoped<IIdempotencyService, IdempotencyService>();
         services.AddScoped<IIdempotencyRequestCoordinator, IdempotencyRequestCoordinator>();
     }

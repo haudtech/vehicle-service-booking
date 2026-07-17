@@ -33,6 +33,8 @@ public class User : AuthBaseEntity
 
     public string ZaloUserId { get; set; } = string.Empty;
 
+    public string PhoneNumber { get; set; } = string.Empty;
+
     public string AccountName { get; set; } = string.Empty;
 
     public string PasswordHash { get; set; } = string.Empty;

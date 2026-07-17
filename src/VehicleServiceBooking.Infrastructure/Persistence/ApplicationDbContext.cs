@@ -447,6 +447,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
         // Customer property constraints
         modelBuilder.Entity<Customer>()
+            .Property(x => x.AuthUserId)
+            .IsRequired();
+        modelBuilder.Entity<Customer>()
             .Property(x => x.FirstName)
             .HasMaxLength(100)
             .IsRequired();
@@ -462,6 +465,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(x => x.PhoneNumber)
             .HasMaxLength(20)
             .IsRequired();
+
+        modelBuilder.Entity<Customer>()
+            .HasIndex(x => x.AuthUserId)
+            .IsUnique()
+            .HasDatabaseName("UX_Customers_AuthUserId");
 
         // Customer -> Vehicle (One-to-Many)
         modelBuilder.Entity<Vehicle>()

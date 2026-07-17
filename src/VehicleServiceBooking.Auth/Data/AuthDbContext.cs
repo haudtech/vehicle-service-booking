@@ -117,6 +117,7 @@ public class AuthDbContext : DbContext
             builder.Property(x => x.IsAuthenticatorAppEnabled).IsRequired().HasDefaultValue(false);
             builder.Property(x => x.AuthenticatorAppSecret).IsRequired().HasMaxLength(256).HasDefaultValue(string.Empty);
             builder.Property(x => x.ZaloUserId).IsRequired().HasMaxLength(128).HasDefaultValue(string.Empty);
+            builder.Property(x => x.PhoneNumber).IsRequired().HasMaxLength(20).HasDefaultValue(string.Empty);
             builder.Property(x => x.AccountName).IsRequired().HasMaxLength(50);
             builder.Property(x => x.PasswordHash).IsRequired();
             builder.Property(x => x.SecurityStamp).IsRequired().HasMaxLength(50);

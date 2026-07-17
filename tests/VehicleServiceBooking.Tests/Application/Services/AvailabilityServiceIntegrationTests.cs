@@ -1,5 +1,4 @@
 using FluentAssertions;
-using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
@@ -23,7 +22,6 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
 {
     private ApplicationDbContext _dbContext = null!;
     private IAvailabilityService _availabilityService = null!;
-    private ISchedulingConfiguration _schedulingConfiguration = null!;
     private IAvailabilityRepository _availabilityRepository = null!;
 
     public async Task InitializeAsync()
@@ -334,10 +332,3 @@ public class AvailabilityServiceIntegrationTests : IAsyncLifetime
     #endregion
 }
 
-/// <summary>
-/// Scheduling configuration for tests
-/// </summary>
-public class SchedulingConfiguration : ISchedulingConfiguration
-{
-    public int SlotLengthMinutes => 30;
-}
