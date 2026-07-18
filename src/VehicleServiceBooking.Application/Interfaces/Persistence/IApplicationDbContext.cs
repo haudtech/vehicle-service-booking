@@ -43,6 +43,24 @@ public interface IApplicationDbContext
 
     DbSet<TimeSlot> TimeSlots { get; }
 
+    DbSet<Order> Orders { get; }
+
+    DbSet<ServiceTypeOrder> ServiceTypeOrders { get; }
+
+    DbSet<CurrencyLookup> CurrencyLookups { get; }
+
+    DbSet<ServiceTypePrice> ServiceTypePrices { get; }
+
+    DbSet<PaymentProviderLookup> PaymentProviderLookups { get; }
+
+    DbSet<PaymentTransactionStatusLookup> PaymentTransactionStatusLookups { get; }
+
+    DbSet<PaymentTransaction> PaymentTransactions { get; }
+
+    DbSet<PaymentOrder> PaymentOrders { get; }
+
+    DbSet<OrderAppointment> OrderAppointments { get; }
+
     // ==================== VIEW DbSETS (READ-ONLY) ====================
 
     /// <summary>

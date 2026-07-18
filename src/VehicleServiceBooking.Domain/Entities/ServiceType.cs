@@ -36,4 +36,16 @@ public class ServiceType : BaseEntity
     /// </summary>
     public ICollection<Service> Services { get; set; }
         = new List<Service>();
+
+    /// <summary>
+    /// Supported currency-specific prices for this service type.
+    /// </summary>
+    public ICollection<ServiceTypePrice> ServiceTypePrices { get; set; }
+        = new List<ServiceTypePrice>();
+
+    /// <summary>
+    /// Orders that include this service type.
+    /// </summary>
+    public ICollection<ServiceTypeOrder> ServiceTypeOrders { get; set; }
+        = new List<ServiceTypeOrder>();
 }

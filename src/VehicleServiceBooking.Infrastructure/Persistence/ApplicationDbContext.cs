@@ -34,6 +34,15 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<IdempotencyRequest> IdempotencyRequests => Set<IdempotencyRequest>();
     public DbSet<IdempotencyRequestStatusLookup> IdempotencyRequestStatusLookups => Set<IdempotencyRequestStatusLookup>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<ServiceTypeOrder> ServiceTypeOrders => Set<ServiceTypeOrder>();
+    public DbSet<CurrencyLookup> CurrencyLookups => Set<CurrencyLookup>();
+    public DbSet<ServiceTypePrice> ServiceTypePrices => Set<ServiceTypePrice>();
+    public DbSet<PaymentProviderLookup> PaymentProviderLookups => Set<PaymentProviderLookup>();
+    public DbSet<PaymentTransactionStatusLookup> PaymentTransactionStatusLookups => Set<PaymentTransactionStatusLookup>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
+    public DbSet<OrderAppointment> OrderAppointments => Set<OrderAppointment>();
 
     // ==================== VIEW DbSETS (READ-ONLY) ====================
     
@@ -571,6 +580,471 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ServiceType>()
             .ToTable(t => t.HasCheckConstraint("CK_ServiceType_Price_NonNegative",
                 "\"Price\" >= 0"));
+
+        // ==================== PAYMENT CURRENCY CONFIGURATION ====================
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .HasKey(x => x.Id)
+            .HasName("PK_CurrencyLookups");
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .Property(x => x.Code)
+            .HasMaxLength(3)
+            .IsRequired();
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .Property(x => x.Name)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .Property(x => x.Symbol)
+            .HasMaxLength(8)
+            .IsRequired();
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .Property(x => x.DecimalPlaces)
+            .IsRequired();
+
+        modelBuilder.Entity<CurrencyLookup>()
+            .HasIndex(x => x.Code)
+            .IsUnique()
+            .HasDatabaseName("IX_CurrencyLookup_Code_Unique");
+
+        modelBuilder.Entity<CurrencyLookup>().HasData(
+            new CurrencyLookup
+            {
+                Id = new Guid("00000000-0000-0000-0004-000000000001"),
+                Code = "VND",
+                Name = "Vietnamese Dong",
+                Symbol = "VND",
+                DecimalPlaces = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new CurrencyLookup
+            {
+                Id = new Guid("00000000-0000-0000-0004-000000000002"),
+                Code = "USD",
+                Name = "US Dollar",
+                Symbol = "USD",
+                DecimalPlaces = 2,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        );
+
+        // ==================== SERVICE TYPE PRICE (MULTI-CURRENCY) CONFIGURATION ====================
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .HasKey(x => x.Id)
+            .HasName("PK_ServiceTypePrices");
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .Property(x => x.ServiceTypeId)
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .Property(x => x.CurrencyId)
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .Property(x => x.Price)
+            .HasColumnType("numeric(10,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .ToTable(t => t.HasCheckConstraint("CK_ServiceTypePrice_Price_NonNegative",
+                "\"Price\" >= 0"));
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .HasIndex(x => new { x.ServiceTypeId, x.CurrencyId })
+            .IsUnique()
+            .HasDatabaseName("IX_ServiceTypePrice_Unique_ServiceType_Currency");
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .HasOne(x => x.ServiceType)
+            .WithMany(x => x.ServiceTypePrices)
+            .HasForeignKey(x => x.ServiceTypeId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("FK_ServiceTypePrice_ServiceType");
+
+        modelBuilder.Entity<ServiceTypePrice>()
+            .HasOne(x => x.Currency)
+            .WithMany(x => x.ServiceTypePrices)
+            .HasForeignKey(x => x.CurrencyId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_ServiceTypePrice_Currency");
+
+        // ==================== ORDER CONFIGURATION ====================
+
+        modelBuilder.Entity<Order>()
+            .HasKey(x => x.Id)
+            .HasName("PK_Orders");
+
+        modelBuilder.Entity<Order>()
+            .Property(x => x.OrderCode)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(x => x.OrderCode)
+            .IsUnique()
+            .HasDatabaseName("IX_Order_OrderCode_Unique");
+
+        // ==================== SERVICE TYPE ORDER JUNCTION CONFIGURATION ====================
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .HasKey(x => x.Id)
+            .HasName("PK_ServiceTypeOrders");
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .Property(x => x.OrderId)
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .Property(x => x.ServiceTypeId)
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .Property(x => x.Quantity)
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .ToTable(t => t.HasCheckConstraint("CK_ServiceTypeOrder_Quantity_Positive",
+                "\"Quantity\" > 0"));
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .HasIndex(x => new { x.OrderId, x.ServiceTypeId })
+            .IsUnique()
+            .HasDatabaseName("IX_ServiceTypeOrder_Unique_Order_ServiceType");
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.ServiceTypeOrders)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("FK_ServiceTypeOrder_Order");
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .HasOne(x => x.ServiceType)
+            .WithMany(x => x.ServiceTypeOrders)
+            .HasForeignKey(x => x.ServiceTypeId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_ServiceTypeOrder_ServiceType");
+
+        // ==================== PAYMENT PROVIDER LOOKUP CONFIGURATION ====================
+
+        modelBuilder.Entity<PaymentProviderLookup>()
+            .HasKey(x => x.Id)
+            .HasName("PK_PaymentProviderLookups");
+
+        modelBuilder.Entity<PaymentProviderLookup>()
+            .Property(x => x.Provider)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentProviderLookup>()
+            .Property(x => x.Name)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentProviderLookup>()
+            .Property(x => x.Description)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentProviderLookup>()
+            .HasIndex(x => x.Provider)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentProviderLookup_Provider_Unique");
+
+        modelBuilder.Entity<PaymentProviderLookup>().HasData(
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000001"),
+                Provider = PaymentProviderType.ZaloPay,
+                Name = "Zalo Pay",
+                Description = "Zalo Pay e-wallet and gateway",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000002"),
+                Provider = PaymentProviderType.Momo,
+                Name = "Momo",
+                Description = "Momo wallet payments",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000003"),
+                Provider = PaymentProviderType.ApplePay,
+                Name = "Apple Pay",
+                Description = "Apple Pay card tokenization gateway",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000004"),
+                Provider = PaymentProviderType.Visa,
+                Name = "Visa",
+                Description = "Visa card network",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000005"),
+                Provider = PaymentProviderType.MasterCard,
+                Name = "Master Card",
+                Description = "MasterCard card network",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000006"),
+                Provider = PaymentProviderType.VnPay,
+                Name = "VNPay",
+                Description = "VNPay online payment gateway",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000007"),
+                Provider = PaymentProviderType.AtmTransfer,
+                Name = "ATM Transfer",
+                Description = "Domestic ATM transfer",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentProviderLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000008"),
+                Provider = PaymentProviderType.InternalWallet,
+                Name = "Internal Wallet",
+                Description = "Internal system wallet balance",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        );
+
+        // ==================== PAYMENT TRANSACTION STATUS LOOKUP CONFIGURATION ====================
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>()
+            .HasKey(x => x.Id)
+            .HasName("PK_PaymentTransactionStatusLookups");
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>()
+            .Property(x => x.Status)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>()
+            .Property(x => x.Name)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>()
+            .Property(x => x.Description)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>()
+            .HasIndex(x => x.Status)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentTransactionStatusLookup_Status_Unique");
+
+        modelBuilder.Entity<PaymentTransactionStatusLookup>().HasData(
+            new PaymentTransactionStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0005-000000000001"),
+                Status = PaymentTransactionStatus.Pending,
+                Name = "Pending",
+                Description = "Transaction is created and waiting for processing",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentTransactionStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0005-000000000002"),
+                Status = PaymentTransactionStatus.InProgress,
+                Name = "In Progress",
+                Description = "Transaction is being processed",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new PaymentTransactionStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0005-000000000003"),
+                Status = PaymentTransactionStatus.Completed,
+                Name = "Completed",
+                Description = "Transaction has been completed successfully",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        );
+
+        // ==================== PAYMENT TRANSACTION CONFIGURATION ====================
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasKey(PaymentTransaction => PaymentTransaction.Id)
+            .HasName("PK_PaymentTransactions");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.TransactionCode)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.FromAccount)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.ToAccount)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.Direction)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.Amount)
+            .HasColumnType("numeric(18,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.CurrencyId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.StatusId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.TransactionAtUtc)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .ToTable(t => t.HasCheckConstraint("CK_PaymentTransaction_Amount_NonNegative",
+                "\"Amount\" >= 0"));
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(PaymentTransaction => PaymentTransaction.TransactionCode)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentTransaction_TransactionCode_Unique");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(PaymentTransaction => PaymentTransaction.Currency)
+            .WithMany(Currency => Currency.PaymentTransactions)
+            .HasForeignKey(PaymentTransaction => PaymentTransaction.CurrencyId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentTransaction_Currency");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(PaymentTransaction => PaymentTransaction.Status)
+            .WithMany(PaymentTransactionStatusLookup => PaymentTransactionStatusLookup.PaymentTransactions)
+            .HasForeignKey(PaymentTransaction => PaymentTransaction.StatusId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentTransaction_StatusLookup");
+
+        // ==================== PAYMENT ORDER CONFIGURATION ====================
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasKey(x => x.Id)
+            .HasName("PK_PaymentOrders");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.OrderId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.PaymentTransactionId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.OrderedAtUtc)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasIndex(x => x.PaymentTransactionId)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentOrder_TransactionId_Unique");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasIndex(x => x.OrderId)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentOrder_OrderId");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasOne(PaymentOrder => PaymentOrder.PaymentTransaction)
+            .WithOne(PaymentTransaction => PaymentTransaction.PaymentOrder)
+            .HasForeignKey<PaymentOrder>(PaymentOrder => PaymentOrder.PaymentTransactionId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentOrder_PaymentTransaction");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasOne(x => x.Order)
+            .WithOne(x => x.PaymentOrder)
+            .HasForeignKey<PaymentOrder>(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentOrder_Order");
+
+        // ==================== ORDER APPOINTMENT JUNCTION CONFIGURATION ====================
+
+        modelBuilder.Entity<OrderAppointment>()
+            .HasKey(x => x.Id)
+            .HasName("PK_OrderAppointments");
+
+        modelBuilder.Entity<OrderAppointment>()
+            .Property(x => x.OrderId)
+            .IsRequired();
+
+        modelBuilder.Entity<OrderAppointment>()
+            .Property(x => x.AppointmentId)
+            .IsRequired();
+
+        modelBuilder.Entity<OrderAppointment>()
+            .HasIndex(x => new { x.OrderId, x.AppointmentId })
+            .IsUnique()
+            .HasDatabaseName("IX_OrderAppointment_Unique_Order_Appointment");
+
+        modelBuilder.Entity<OrderAppointment>()
+            .HasIndex(x => x.AppointmentId)
+            .IsUnique()
+            .HasDatabaseName("IX_OrderAppointment_Appointment_Unique");
+
+        modelBuilder.Entity<OrderAppointment>()
+            .HasOne(x => x.Order)
+            .WithMany(x => x.OrderAppointments)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("FK_OrderAppointment_Order");
+
+        modelBuilder.Entity<OrderAppointment>()
+            .HasOne(x => x.Appointment)
+            .WithOne(x => x.OrderAppointment)
+            .HasForeignKey<OrderAppointment>(x => x.AppointmentId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_OrderAppointment_Appointment");
 
         // ==================== TECHNICIAN CONFIGURATION ====================
         
