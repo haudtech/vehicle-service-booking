@@ -118,6 +118,10 @@ public class AppointmentServiceTests
     {
         var request = new CreateAppointmentRequestBuilder().Build();
 
+        _mockTimeSlotRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildTimeSlotsForRequest(request));
+
         _mockAvailabilityService
             .Setup(s => s.GetAvailableSlotsAsync(
                 request.DealershipId,
@@ -309,11 +313,14 @@ public class AppointmentServiceTests
 
         if (hasMatchingSlot)
         {
+            var slotStart = request.AppointmentDate.ToDateTime(new TimeOnly(8, 0));
+            var slotEnd = request.AppointmentDate.ToDateTime(new TimeOnly(9, 0));
+
             options.Add(
                 AvailabilityOptionBuilder.CreateValid()
                     .WithTimeSlot(
                         AppTimeSlotBuilder.CreateValid()
-                            .WithTimes(new TimeOnly(8, 0), new TimeOnly(9, 0))
+                            .WithDateTimeRange(slotStart, slotEnd)
                             .Build())
                     .WithTechnicianId(request.TechnicianId)
                     .WithServiceBayId(request.ServiceBayId)

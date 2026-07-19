@@ -99,15 +99,14 @@ public class AppointmentService : IAppointmentService
                 throw new InvalidOperationException("Estimated end time slot must be after or equal to estimated start time slot.");
             }
 
-            var requestedSlotStart = request.AppointmentDate.ToDateTime(selectedStartSlot.SlotStartTime);
-            var requestedSlotEnd = request.AppointmentDate.ToDateTime(selectedEndSlot.SlotEndTime);
-
             // BUSINESS LOGIC 3: Validate requested slot is in available slots
             var requestedSlotAvailable = availabilityOptions.Any(slot =>
                 slot.TechnicianId == request.TechnicianId &&
                 slot.ServiceBayId == request.ServiceBayId &&
-                slot.DateTimeSlot.Start == requestedSlotStart &&
-                slot.DateTimeSlot.End == requestedSlotEnd);
+                                ((slot.TimeSlotId == request.EstimatedStartTimeSlotId &&
+                                    slot.EndTimeSlotId == request.EstimatedEndTimeSlotId) ||
+                                 (slot.DateTimeSlot.Start.TimeOfDay == selectedStartSlot.SlotStartTime.ToTimeSpan() &&
+                                    slot.DateTimeSlot.End.TimeOfDay == selectedEndSlot.SlotEndTime.ToTimeSpan())));
 
             if (!requestedSlotAvailable)
             {

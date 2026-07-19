@@ -83,7 +83,7 @@ public class OrdersControllerTests
         var validator = new Mock<IValidator<CreateOrderRequest>>();
         validator
             .Setup(v => v.ValidateAsync(
-                It.Is<CreateOrderRequest>(r => !string.IsNullOrWhiteSpace(r.OrderCode)),
+                It.Is<ValidationContext<CreateOrderRequest>>(ctx => !string.IsNullOrWhiteSpace(ctx.InstanceToValidate.OrderCode)),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
 
@@ -117,7 +117,7 @@ public class OrdersControllerTests
 
         actionResult.Result.Should().BeOfType<CreatedResult>();
         validator.Verify(v => v.ValidateAsync(
-            It.Is<CreateOrderRequest>(r => !string.IsNullOrWhiteSpace(r.OrderCode)),
+            It.Is<ValidationContext<CreateOrderRequest>>(ctx => !string.IsNullOrWhiteSpace(ctx.InstanceToValidate.OrderCode)),
             It.IsAny<CancellationToken>()), Times.Once);
         orderService.Verify(s => s.CreateOrderAsync(
             It.Is<CreateOrderRequest>(r => !string.IsNullOrWhiteSpace(r.OrderCode)),
@@ -131,7 +131,7 @@ public class OrdersControllerTests
 
         var validator = new Mock<IValidator<CreateOrderRequest>>();
         validator
-            .Setup(v => v.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .Setup(v => v.ValidateAsync(It.IsAny<ValidationContext<CreateOrderRequest>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult());
 
         var orderService = new Mock<IOrderService>();

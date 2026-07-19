@@ -223,7 +223,9 @@ public class AppointmentsControllerTests
         var error = conflictResult.Value.Should().BeOfType<ErrorResponse>().Subject;
 
         error.ErrorCode.Should().Be("BOOKING_CONFLICT");
-        error.Message.Should().Be("The selected slot is no longer available. Please check availability again.");
+        error.Message.Should().Contain(request.TechnicianId.ToString());
+        error.Message.Should().Contain(request.ServiceBayId.ToString());
+        error.Message.Should().Contain("Query /api/v1/availability and retry with an available option.");
     }
 
     [Fact]
