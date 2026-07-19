@@ -20,10 +20,11 @@ public class ServiceType : BaseEntity
     public int DurationMinutes { get; set; }
 
     /// <summary>
-    /// Base price for this service type.
-    /// Stored as a monetary amount in the system default currency.
+    /// Supported currency-specific prices for this service type.
+    /// ServiceTypePrice is the canonical source of truth for commercial pricing.
     /// </summary>
-    public decimal Price { get; set; }
+    public ICollection<ServiceTypePrice> ServiceTypePrices { get; set; }
+        = new List<ServiceTypePrice>();
 
     /// <summary>
     /// Technicians who can perform this service
@@ -36,12 +37,6 @@ public class ServiceType : BaseEntity
     /// </summary>
     public ICollection<Service> Services { get; set; }
         = new List<Service>();
-
-    /// <summary>
-    /// Supported currency-specific prices for this service type.
-    /// </summary>
-    public ICollection<ServiceTypePrice> ServiceTypePrices { get; set; }
-        = new List<ServiceTypePrice>();
 
     /// <summary>
     /// Orders that include this service type.

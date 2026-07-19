@@ -171,18 +171,21 @@ public class AuthServiceMfaEncryptionTests
             .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var roleRepository = new Mock<IRoleRepository>();
-        roleRepository
-            .Setup(x => x.GetRoleIdByNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        var groupRepository = new Mock<IGroupRepository>();
+        groupRepository
+            .Setup(x => x.GetGroupIdByNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var userRoleRepository = new Mock<IUserRoleRepository>();
-        userRoleRepository
+        var userGroupRepository = new Mock<IUserGroupRepository>();
+        userGroupRepository
             .Setup(x => x.GetRoleNamesByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { "booking-user" });
-        userRoleRepository
+        userGroupRepository
             .Setup(x => x.ExistsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        userGroupRepository
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         var rolePermissionRepository = new Mock<IRolePermissionRepository>();
         rolePermissionRepository
@@ -205,8 +208,8 @@ public class AuthServiceMfaEncryptionTests
         return new AuthService(
             userRepository.Object,
             refreshTokenRepository.Object,
-            roleRepository.Object,
-            userRoleRepository.Object,
+            groupRepository.Object,
+            userGroupRepository.Object,
             rolePermissionRepository.Object,
             passwordHasher.Object,
             jwtTokenGenerator.Object,
@@ -217,6 +220,10 @@ public class AuthServiceMfaEncryptionTests
                 Audience = "vehicle-booking-api",
                 AccessTokenLifetimeMinutes = 30,
                 RefreshTokenLifetimeDays = 30
+            },
+            new AuthDefaultGroupsOptions
+            {
+                DefaultSignupGroupNames = new List<string> { "user" }
             });
     }
 }

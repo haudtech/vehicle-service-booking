@@ -22,7 +22,7 @@ public sealed class RolePermissionRepository : GenericRepository<RolePermission>
     public async Task<IReadOnlyCollection<string>> GetPermissionNamesByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await GetQueryable()
-            .Where(x => x.Role.UserRoles.Any(ur => ur.UserId == userId))
+            .Where(x => x.Role.GroupRoles.Any(gr => gr.Group.UserGroups.Any(ug => ug.UserId == userId)))
             .Select(x => x.Permission.Name)
             .Distinct()
             .ToListAsync(cancellationToken);

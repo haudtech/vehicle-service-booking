@@ -18,19 +18,19 @@ namespace VehicleServiceBooking.Auth.Services;
 /// </summary>
 public sealed class AuthService : IAuthService
 {
-    private const string DefaultSignupRoleName = "booking-user";
     private static readonly TimeSpan EmailVerificationTokenLifetime = TimeSpan.FromHours(24);
     private static readonly TimeSpan LoginVerificationCodeLifetime = TimeSpan.FromMinutes(10);
     private const int LoginVerificationCodeMaxAttempts = 5;
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
-    private readonly IRoleRepository _roleRepository;
-    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly IUserGroupRepository _userGroupRepository;
     private readonly IRolePermissionRepository _rolePermissionRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IAuthenticatorSecretProtector _authenticatorSecretProtector;
     private readonly JwtOptions _jwtOptions;
+    private readonly IReadOnlyList<string> _defaultSignupGroupNames;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthService"/> class.
@@ -38,23 +38,34 @@ public sealed class AuthService : IAuthService
     public AuthService(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
-        IRoleRepository roleRepository,
-        IUserRoleRepository userRoleRepository,
+        IGroupRepository groupRepository,
+        IUserGroupRepository userGroupRepository,
         IRolePermissionRepository rolePermissionRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         IAuthenticatorSecretProtector authenticatorSecretProtector,
-        JwtOptions jwtOptions)
+        JwtOptions jwtOptions,
+        AuthDefaultGroupsOptions authDefaultRolesOptions)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
-        _roleRepository = roleRepository;
-        _userRoleRepository = userRoleRepository;
+        _groupRepository = groupRepository;
+        _userGroupRepository = userGroupRepository;
         _rolePermissionRepository = rolePermissionRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
         _authenticatorSecretProtector = authenticatorSecretProtector;
         _jwtOptions = jwtOptions;
+        _defaultSignupGroupNames = authDefaultRolesOptions.DefaultSignupGroupNames
+            .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
+            .Select(groupName => groupName.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (_defaultSignupGroupNames.Count == 0)
+        {
+            throw new InvalidOperationException("AuthDefaultGroups:DefaultSignupGroupNames must contain at least one group.");
+        }
     }
 
     /// <inheritdoc />
@@ -104,7 +115,7 @@ public sealed class AuthService : IAuthService
             throw new InvalidOperationException("A user with that email address or account name already exists.");
         }
 
-        await EnsureDefaultRoleAssignedAsync(user, cancellationToken);
+        await EnsureDefaultGroupAssignedAsync(user, cancellationToken);
 
         return new SignUpResult
         {
@@ -467,7 +478,7 @@ public sealed class AuthService : IAuthService
             await _userRepository.AddAsync(user, cancellationToken);
             await _userRepository.SaveChangesAsync(cancellationToken);
 
-            await EnsureDefaultRoleAssignedAsync(user, cancellationToken);
+            await EnsureDefaultGroupAssignedAsync(user, cancellationToken);
         }
 
         if (!user.IsActive)
@@ -539,7 +550,7 @@ public sealed class AuthService : IAuthService
 
     private async Task<AuthResponse> CreateAuthResponseAsync(User user, string ipAddress, CancellationToken cancellationToken)
     {
-        var roles = await _userRoleRepository.GetRoleNamesByUserIdAsync(user.Id, cancellationToken);
+        var roles = await _userGroupRepository.GetRoleNamesByUserIdAsync(user.Id, cancellationToken);
         var permissions = await _rolePermissionRepository.GetPermissionNamesByUserIdAsync(user.Id, cancellationToken);
 
         var token = _jwtTokenGenerator.GenerateAccessToken(user, roles, permissions);
@@ -556,25 +567,28 @@ public sealed class AuthService : IAuthService
         };
     }
 
-    private async Task EnsureDefaultRoleAssignedAsync(User user, CancellationToken cancellationToken)
+    private async Task EnsureDefaultGroupAssignedAsync(User user, CancellationToken cancellationToken)
     {
-        var roleId = await _roleRepository.GetRoleIdByNameAsync(DefaultSignupRoleName, cancellationToken);
-        if (roleId is null)
+        foreach (var groupName in _defaultSignupGroupNames)
         {
-            throw new InvalidOperationException($"Role '{DefaultSignupRoleName}' is not configured.");
-        }
-
-        var hasRole = await _userRoleRepository.ExistsAsync(user.Id, roleId.Value, cancellationToken);
-        if (!hasRole)
-        {
-            await _userRoleRepository.AddAsync(new UserRole
+            var groupId = await _groupRepository.GetGroupIdByNameAsync(groupName, cancellationToken);
+            if (groupId is null)
             {
-                UserId = user.Id,
-                RoleId = roleId.Value
-            }, cancellationToken);
+                throw new InvalidOperationException($"Group '{groupName}' is not configured.");
+            }
 
-            await _userRoleRepository.SaveChangesAsync(cancellationToken);
+            var hasGroup = await _userGroupRepository.ExistsAsync(user.Id, groupId.Value, cancellationToken);
+            if (!hasGroup)
+            {
+                await _userGroupRepository.AddAsync(new UserGroup
+                {
+                    UserId = user.Id,
+                    GroupId = groupId.Value
+                }, cancellationToken);
+            }
         }
+
+        await _userGroupRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<string> GenerateUniqueAccountNameAsync(string normalizedEmail, CancellationToken cancellationToken)

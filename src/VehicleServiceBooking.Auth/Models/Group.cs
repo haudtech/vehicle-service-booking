@@ -10,4 +10,5 @@ public class Group : AuthBaseEntity
     public string? Description { get; set; }
 
     public ICollection<UserGroup> UserGroups { get; set; } = new List<UserGroup>();
+    public ICollection<GroupRole> GroupRoles { get; set; } = new List<GroupRole>();
 }

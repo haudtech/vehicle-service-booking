@@ -12,6 +12,10 @@ public class ServiceTypeOrder : BaseEntity
 
     public int Quantity { get; set; } = 1;
 
+    public decimal UnitPrice { get; set; }
+
+    public decimal LineTotal { get; set; }
+
     public Order Order { get; set; } = null!;
 
     public ServiceType ServiceType { get; set; } = null!;

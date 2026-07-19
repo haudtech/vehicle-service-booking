@@ -59,9 +59,11 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
         services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
         services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
 
         // Register generic entity repositories for all domain entities
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICurrencyLookupRepository, CurrencyLookupRepository>();
         services.AddScoped<IDealershipRepository, DealershipRepository>();
         services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
         services.AddScoped<ITechnicianRepository, TechnicianRepository>();
@@ -92,6 +94,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
         services.AddScoped<IIdempotencyService, IdempotencyService>();
         services.AddScoped<IIdempotencyRequestCoordinator, IdempotencyRequestCoordinator>();

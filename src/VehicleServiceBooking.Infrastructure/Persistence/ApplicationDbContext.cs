@@ -144,13 +144,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         var completedId = Guid.Parse("00000000-0000-0000-0000-000000000003");
         var cancelledId = Guid.Parse("00000000-0000-0000-0000-000000000004");
         var partiallyCompletedId = Guid.Parse("00000000-0000-0000-0000-000000000005");
+        var appointmentStatusSeedTimestamp = new DateTime(2026, 7, 18, 10, 59, 32, 894, DateTimeKind.Utc).AddTicks(7550);
 
         modelBuilder.Entity<AppointmentStatusLookup>().HasData(
-            new AppointmentStatusLookup { Id = bookedId, Status = AppointmentStatus.Booked, Name = "Booked", Description = "Appointment is scheduled" },
-            new AppointmentStatusLookup { Id = inProgressId, Status = AppointmentStatus.InProgress, Name = "In Progress", Description = "Service is currently being performed" },
-            new AppointmentStatusLookup { Id = completedId, Status = AppointmentStatus.Completed, Name = "Completed", Description = "Service has been completed" },
-            new AppointmentStatusLookup { Id = cancelledId, Status = AppointmentStatus.Cancelled, Name = "Cancelled", Description = "Appointment has been cancelled" },
-            new AppointmentStatusLookup { Id = partiallyCompletedId, Status = AppointmentStatus.PartiallyCompleted, Name = "Partially Completed", Description = "Some services completed, others rescheduled" }
+            new AppointmentStatusLookup { Id = bookedId, Status = AppointmentStatus.Booked, Name = "Booked", Description = "Appointment is scheduled", IsActive = true, CreatedAt = appointmentStatusSeedTimestamp, UpdatedAt = appointmentStatusSeedTimestamp },
+            new AppointmentStatusLookup { Id = inProgressId, Status = AppointmentStatus.InProgress, Name = "In Progress", Description = "Service is currently being performed", IsActive = true, CreatedAt = appointmentStatusSeedTimestamp, UpdatedAt = appointmentStatusSeedTimestamp },
+            new AppointmentStatusLookup { Id = completedId, Status = AppointmentStatus.Completed, Name = "Completed", Description = "Service has been completed", IsActive = true, CreatedAt = appointmentStatusSeedTimestamp, UpdatedAt = appointmentStatusSeedTimestamp },
+            new AppointmentStatusLookup { Id = cancelledId, Status = AppointmentStatus.Cancelled, Name = "Cancelled", Description = "Appointment has been cancelled", IsActive = true, CreatedAt = appointmentStatusSeedTimestamp, UpdatedAt = appointmentStatusSeedTimestamp },
+            new AppointmentStatusLookup { Id = partiallyCompletedId, Status = AppointmentStatus.PartiallyCompleted, Name = "Partially Completed", Description = "Some services completed, others rescheduled", IsActive = true, CreatedAt = appointmentStatusSeedTimestamp, UpdatedAt = appointmentStatusSeedTimestamp }
         );
 
         // ==================== APPOINTMENT RELATIONSHIPS ====================
@@ -237,20 +238,28 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsUnique()
             .HasDatabaseName("IX_IdempotencyRequestStatusLookup_Status_Unique");
 
+        var idempotencyStatusSeedTimestamp = new DateTime(2026, 7, 18, 10, 59, 32, 895, DateTimeKind.Utc).AddTicks(3260);
+
         modelBuilder.Entity<IdempotencyRequestStatusLookup>().HasData(
             new IdempotencyRequestStatusLookup
             {
                 Id = new Guid("00000000-0000-0000-0002-000000000001"),
                 Status = IdempotencyRequestStatus.InProgress,
                 Name = "In Progress",
-                Description = "Request processing started and not yet completed"
+                Description = "Request processing started and not yet completed",
+                IsActive = true,
+                CreatedAt = idempotencyStatusSeedTimestamp,
+                UpdatedAt = idempotencyStatusSeedTimestamp
             },
             new IdempotencyRequestStatusLookup
             {
                 Id = new Guid("00000000-0000-0000-0002-000000000002"),
                 Status = IdempotencyRequestStatus.Completed,
                 Name = "Completed",
-                Description = "Request completed and response persisted for replay"
+                Description = "Request completed and response persisted for replay",
+                IsActive = true,
+                CreatedAt = idempotencyStatusSeedTimestamp,
+                UpdatedAt = idempotencyStatusSeedTimestamp
             }
         );
 
@@ -332,13 +341,14 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         var serviceStatusCompletedId = Guid.Parse("00000000-0000-0000-0001-000000000003");
         var serviceStatusSkippedId = Guid.Parse("00000000-0000-0000-0001-000000000004");
         var serviceStatusRescheduledId = Guid.Parse("00000000-0000-0000-0001-000000000005");
+        var serviceStatusSeedTimestamp = new DateTime(2026, 7, 18, 10, 59, 32, 895, DateTimeKind.Utc).AddTicks(5190);
 
         modelBuilder.Entity<ServiceStatusLookup>().HasData(
-            new ServiceStatusLookup { Id = serviceStatusPendingId, Status = ServiceStatus.Pending, Name = "Pending", Description = "Service scheduled but not started" },
-            new ServiceStatusLookup { Id = serviceStatusInProgressId, Status = ServiceStatus.InProgress, Name = "In Progress", Description = "Service is currently being performed" },
-            new ServiceStatusLookup { Id = serviceStatusCompletedId, Status = ServiceStatus.Completed, Name = "Completed", Description = "Service has been completed successfully" },
-            new ServiceStatusLookup { Id = serviceStatusSkippedId, Status = ServiceStatus.Skipped, Name = "Skipped", Description = "Service was cancelled or declined" },
-            new ServiceStatusLookup { Id = serviceStatusRescheduledId, Status = ServiceStatus.Rescheduled, Name = "Rescheduled", Description = "Service moved to a different appointment" }
+            new ServiceStatusLookup { Id = serviceStatusPendingId, Status = ServiceStatus.Pending, Name = "Pending", Description = "Service scheduled but not started", IsActive = true, CreatedAt = serviceStatusSeedTimestamp, UpdatedAt = serviceStatusSeedTimestamp },
+            new ServiceStatusLookup { Id = serviceStatusInProgressId, Status = ServiceStatus.InProgress, Name = "In Progress", Description = "Service is currently being performed", IsActive = true, CreatedAt = serviceStatusSeedTimestamp, UpdatedAt = serviceStatusSeedTimestamp },
+            new ServiceStatusLookup { Id = serviceStatusCompletedId, Status = ServiceStatus.Completed, Name = "Completed", Description = "Service has been completed successfully", IsActive = true, CreatedAt = serviceStatusSeedTimestamp, UpdatedAt = serviceStatusSeedTimestamp },
+            new ServiceStatusLookup { Id = serviceStatusSkippedId, Status = ServiceStatus.Skipped, Name = "Skipped", Description = "Service was cancelled or declined", IsActive = true, CreatedAt = serviceStatusSeedTimestamp, UpdatedAt = serviceStatusSeedTimestamp },
+            new ServiceStatusLookup { Id = serviceStatusRescheduledId, Status = ServiceStatus.Rescheduled, Name = "Rescheduled", Description = "Service moved to a different appointment", IsActive = true, CreatedAt = serviceStatusSeedTimestamp, UpdatedAt = serviceStatusSeedTimestamp }
         );
 
         // ==================== SERVICE CONFIGURATION ====================
@@ -568,18 +578,45 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<ServiceType>()
             .Property(x => x.DurationMinutes)
             .IsRequired();
-        modelBuilder.Entity<ServiceType>()
-            .Property(x => x.Price)
-            .HasColumnType("numeric(10,2)")
-            .HasDefaultValue(0m)
-            .IsRequired();
         // DurationMinutes must be between 30 and 480 minutes (per original entity constraint)
         modelBuilder.Entity<ServiceType>()
             .ToTable(t => t.HasCheckConstraint("CK_ServiceType_DurationMinutes_Range",
                 "\"DurationMinutes\" >= 30 AND \"DurationMinutes\" <= 480"));
-        modelBuilder.Entity<ServiceType>()
-            .ToTable(t => t.HasCheckConstraint("CK_ServiceType_Price_NonNegative",
-                "\"Price\" >= 0"));
+
+        var oilChangeServiceTypeId = new Guid("11111111-1111-1111-1111-030000000001");
+        var brakeInspectionServiceTypeId = new Guid("11111111-1111-1111-1111-030000000002");
+        var majorServiceTypeId = new Guid("11111111-1111-1111-1111-030000000003");
+        var serviceTypeSeedTimestamp = new DateTime(2026, 7, 18, 10, 52, 34, 110, DateTimeKind.Utc).AddTicks(7100);
+
+        modelBuilder.Entity<ServiceType>().HasData(
+            new ServiceType
+            {
+                Id = oilChangeServiceTypeId,
+                Name = "Oil Change",
+                DurationMinutes = 60,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceType
+            {
+                Id = brakeInspectionServiceTypeId,
+                Name = "Brake Inspection",
+                DurationMinutes = 90,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceType
+            {
+                Id = majorServiceTypeId,
+                Name = "Major Service",
+                DurationMinutes = 240,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            }
+        );
 
         // ==================== PAYMENT CURRENCY CONFIGURATION ====================
 
@@ -611,6 +648,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsUnique()
             .HasDatabaseName("IX_CurrencyLookup_Code_Unique");
 
+        var currencySeedTimestamp = new DateTime(2026, 7, 18, 10, 52, 34, 110, DateTimeKind.Utc).AddTicks(7100);
+
         modelBuilder.Entity<CurrencyLookup>().HasData(
             new CurrencyLookup
             {
@@ -620,8 +659,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Symbol = "VND",
                 DecimalPlaces = 0,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = currencySeedTimestamp,
+                UpdatedAt = currencySeedTimestamp
             },
             new CurrencyLookup
             {
@@ -631,8 +670,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Symbol = "USD",
                 DecimalPlaces = 2,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = currencySeedTimestamp,
+                UpdatedAt = currencySeedTimestamp
             }
         );
 
@@ -678,6 +717,69 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("FK_ServiceTypePrice_Currency");
 
+        modelBuilder.Entity<ServiceTypePrice>().HasData(
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000001"),
+                ServiceTypeId = oilChangeServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000001"),
+                Price = 500000m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000002"),
+                ServiceTypeId = brakeInspectionServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000001"),
+                Price = 750000m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000003"),
+                ServiceTypeId = majorServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000001"),
+                Price = 2200000m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000004"),
+                ServiceTypeId = oilChangeServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000002"),
+                Price = 19.99m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000005"),
+                ServiceTypeId = brakeInspectionServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000002"),
+                Price = 29.99m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            },
+            new ServiceTypePrice
+            {
+                Id = new Guid("11111111-1111-1111-1111-031000000006"),
+                ServiceTypeId = majorServiceTypeId,
+                CurrencyId = new Guid("00000000-0000-0000-0004-000000000002"),
+                Price = 89.99m,
+                IsActive = true,
+                CreatedAt = serviceTypeSeedTimestamp,
+                UpdatedAt = serviceTypeSeedTimestamp
+            }
+        );
+
         // ==================== ORDER CONFIGURATION ====================
 
         modelBuilder.Entity<Order>()
@@ -690,9 +792,29 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired();
 
         modelBuilder.Entity<Order>()
+            .Property(x => x.CurrencyId)
+            .IsRequired();
+
+        modelBuilder.Entity<Order>()
+            .Property(x => x.TotalAmount)
+            .HasColumnType("numeric(18,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<Order>()
+            .ToTable(t => t.HasCheckConstraint("CK_Order_TotalAmount_NonNegative",
+                "\"TotalAmount\" >= 0"));
+
+        modelBuilder.Entity<Order>()
             .HasIndex(x => x.OrderCode)
             .IsUnique()
             .HasDatabaseName("IX_Order_OrderCode_Unique");
+
+        modelBuilder.Entity<Order>()
+            .HasOne(x => x.Currency)
+            .WithMany(x => x.Orders)
+            .HasForeignKey(x => x.CurrencyId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_Order_Currency");
 
         // ==================== SERVICE TYPE ORDER JUNCTION CONFIGURATION ====================
 
@@ -713,8 +835,26 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired();
 
         modelBuilder.Entity<ServiceTypeOrder>()
+            .Property(x => x.UnitPrice)
+            .HasColumnType("numeric(18,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .Property(x => x.LineTotal)
+            .HasColumnType("numeric(18,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<ServiceTypeOrder>()
             .ToTable(t => t.HasCheckConstraint("CK_ServiceTypeOrder_Quantity_Positive",
                 "\"Quantity\" > 0"));
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .ToTable(t => t.HasCheckConstraint("CK_ServiceTypeOrder_UnitPrice_NonNegative",
+                "\"UnitPrice\" >= 0"));
+
+        modelBuilder.Entity<ServiceTypeOrder>()
+            .ToTable(t => t.HasCheckConstraint("CK_ServiceTypeOrder_LineTotal_NonNegative",
+                "\"LineTotal\" >= 0"));
 
         modelBuilder.Entity<ServiceTypeOrder>()
             .HasIndex(x => new { x.OrderId, x.ServiceTypeId })
@@ -760,6 +900,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsUnique()
             .HasDatabaseName("IX_PaymentProviderLookup_Provider_Unique");
 
+        var paymentSeedTimestamp = new DateTime(2026, 7, 18, 10, 59, 32, 900, DateTimeKind.Utc).AddTicks(5000);
+
         modelBuilder.Entity<PaymentProviderLookup>().HasData(
             new PaymentProviderLookup
             {
@@ -768,8 +910,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Zalo Pay",
                 Description = "Zalo Pay e-wallet and gateway",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -778,8 +920,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Momo",
                 Description = "Momo wallet payments",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -788,8 +930,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Apple Pay",
                 Description = "Apple Pay card tokenization gateway",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -798,8 +940,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Visa",
                 Description = "Visa card network",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -808,8 +950,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Master Card",
                 Description = "MasterCard card network",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -818,8 +960,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "VNPay",
                 Description = "VNPay online payment gateway",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -828,8 +970,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "ATM Transfer",
                 Description = "Domestic ATM transfer",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentProviderLookup
             {
@@ -838,8 +980,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Internal Wallet",
                 Description = "Internal system wallet balance",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             }
         );
 
@@ -876,8 +1018,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Pending",
                 Description = "Transaction is created and waiting for processing",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentTransactionStatusLookup
             {
@@ -886,8 +1028,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "In Progress",
                 Description = "Transaction is being processed",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             },
             new PaymentTransactionStatusLookup
             {
@@ -896,8 +1038,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 Name = "Completed",
                 Description = "Transaction has been completed successfully",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             }
         );
 
@@ -1298,8 +1440,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 SlotStartTime = currentSlotTime,
                 SlotEndTime = slotEnd,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
             });
 
             currentSlotTime = slotEnd;

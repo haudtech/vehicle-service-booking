@@ -80,6 +80,16 @@ public static class JwtAuthenticationExtensions
                 policy.RequireClaim("permissions", "appointment:complete"));
             options.AddPolicy("AppointmentReadPolicy", policy =>
                 policy.RequireClaim("permissions", "appointment:view"));
+            options.AddPolicy("OrderCreatePolicy", policy =>
+                policy.RequireClaim("permissions", "order:create"));
+            options.AddPolicy("OrderViewPolicy", policy =>
+                policy.RequireClaim("permissions", "order:view"));
+            options.AddPolicy("OrderEditPolicy", policy =>
+                policy.RequireClaim("permissions", "order:edit"));
+            options.AddPolicy("OrderCancelPolicy", policy =>
+                policy.RequireClaim("permissions", "order:cancel"));
+            options.AddPolicy("OrderCompletePolicy", policy =>
+                policy.RequireClaim("permissions", "order:complete"));
         });
 
         return services;

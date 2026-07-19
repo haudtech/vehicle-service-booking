@@ -49,8 +49,8 @@ public class AuthServiceMfaEncryptionPersistenceTests
         var sut = new AuthService(
             userRepository,
             Mock.Of<IRefreshTokenRepository>(),
-            Mock.Of<IRoleRepository>(),
-            Mock.Of<IUserRoleRepository>(),
+            Mock.Of<IGroupRepository>(),
+            Mock.Of<IUserGroupRepository>(),
             Mock.Of<IRolePermissionRepository>(),
             Mock.Of<IPasswordHasher>(),
             Mock.Of<IJwtTokenGenerator>(),
@@ -61,6 +61,10 @@ public class AuthServiceMfaEncryptionPersistenceTests
                 Audience = "vehicle-booking-api",
                 AccessTokenLifetimeMinutes = 30,
                 RefreshTokenLifetimeDays = 30
+            },
+            new AuthDefaultGroupsOptions
+            {
+                DefaultSignupGroupNames = new List<string> { "user" }
             });
 
         _ = await sut.StartAuthenticatorSetupAsync(userId, CancellationToken.None);

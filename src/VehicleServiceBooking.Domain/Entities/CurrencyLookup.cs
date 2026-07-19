@@ -27,5 +27,7 @@ public class CurrencyLookup : BaseEntity
 
     public ICollection<ServiceTypePrice> ServiceTypePrices { get; set; } = new List<ServiceTypePrice>();
 
+    public ICollection<Order> Orders { get; set; } = new List<Order>();
+
     public ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 }
