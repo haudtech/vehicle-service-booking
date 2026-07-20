@@ -11,6 +11,8 @@ public class PaymentTransaction : BaseEntity
 
     public Guid PaymentProviderId { get; set; }
 
+    public Guid PaymentMethodId { get; set; }
+
     public string FromAccount { get; set; } = string.Empty;
 
     public string ToAccount { get; set; } = string.Empty;
@@ -42,6 +44,8 @@ public class PaymentTransaction : BaseEntity
     public CurrencyLookup Currency { get; set; } = null!;
 
     public PaymentProviderLookup PaymentProvider { get; set; } = null!;
+
+    public PaymentMethodLookup PaymentMethod { get; set; } = null!;
 
     public PaymentTransactionStatusLookup Status { get; set; } = null!;
 

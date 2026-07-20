@@ -53,6 +53,8 @@ public interface IApplicationDbContext
 
     DbSet<PaymentProviderLookup> PaymentProviderLookups { get; }
 
+    DbSet<PaymentMethodLookup> PaymentMethodLookups { get; }
+
     DbSet<OrderPaymentStatusLookup> OrderPaymentStatusLookups { get; }
 
     DbSet<PaymentIntentStatusLookup> PaymentIntentStatusLookups { get; }

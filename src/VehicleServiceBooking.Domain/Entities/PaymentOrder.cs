@@ -9,6 +9,8 @@ public class PaymentOrder : BaseEntity
 
     public Guid PaymentProviderId { get; set; }
 
+    public Guid PaymentMethodId { get; set; }
+
     public Guid StatusId { get; set; }
 
     public PaymentIntentStatusLookup Status { get; set; } = null!;
@@ -30,6 +32,8 @@ public class PaymentOrder : BaseEntity
     public Order Order { get; set; } = null!;
 
     public PaymentProviderLookup PaymentProvider { get; set; } = null!;
+
+    public PaymentMethodLookup PaymentMethod { get; set; } = null!;
 
     public PaymentTransaction? PaymentTransaction { get; set; }
 }
