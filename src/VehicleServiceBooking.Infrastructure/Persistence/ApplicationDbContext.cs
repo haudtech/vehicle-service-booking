@@ -39,9 +39,13 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<CurrencyLookup> CurrencyLookups => Set<CurrencyLookup>();
     public DbSet<ServiceTypePrice> ServiceTypePrices => Set<ServiceTypePrice>();
     public DbSet<PaymentProviderLookup> PaymentProviderLookups => Set<PaymentProviderLookup>();
+    public DbSet<OrderPaymentStatusLookup> OrderPaymentStatusLookups => Set<OrderPaymentStatusLookup>();
+    public DbSet<PaymentIntentStatusLookup> PaymentIntentStatusLookups => Set<PaymentIntentStatusLookup>();
+    public DbSet<PaymentWebhookProcessStatusLookup> PaymentWebhookProcessStatusLookups => Set<PaymentWebhookProcessStatusLookup>();
     public DbSet<PaymentTransactionStatusLookup> PaymentTransactionStatusLookups => Set<PaymentTransactionStatusLookup>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<PaymentOrder> PaymentOrders => Set<PaymentOrder>();
+    public DbSet<PaymentWebhookInbox> PaymentWebhookInboxes => Set<PaymentWebhookInbox>();
     public DbSet<OrderAppointment> OrderAppointments => Set<OrderAppointment>();
 
     // ==================== VIEW DbSETS (READ-ONLY) ====================
@@ -875,6 +879,38 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("FK_ServiceTypeOrder_ServiceType");
 
+        // ==================== ORDER CONFIGURATION ====================
+
+        modelBuilder.Entity<Order>()
+            .Property(x => x.PaymentStatusId)
+            .IsRequired();
+
+        modelBuilder.Entity<Order>()
+            .Property(x => x.AmountPaid)
+            .HasColumnType("numeric(18,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<Order>()
+            .Property(x => x.PaidAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(x => x.PaymentStatusId)
+            .HasDatabaseName("IX_Order_PaymentStatusId");
+
+        modelBuilder.Entity<Order>()
+            .HasOne(x => x.PaymentStatus)
+            .WithMany(x => x.Orders)
+            .HasForeignKey(x => x.PaymentStatusId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_Order_PaymentStatusLookup");
+
+        modelBuilder.Entity<Order>()
+            .ToTable(t => t.HasCheckConstraint("CK_Order_AmountPaid_NonNegative", "\"AmountPaid\" >= 0"));
+
+        modelBuilder.Entity<Order>()
+            .ToTable(t => t.HasCheckConstraint("CK_Order_AmountPaid_Lte_TotalAmount", "\"AmountPaid\" <= \"TotalAmount\""));
+
         // ==================== PAYMENT PROVIDER LOOKUP CONFIGURATION ====================
 
         modelBuilder.Entity<PaymentProviderLookup>()
@@ -901,6 +937,92 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasDatabaseName("IX_PaymentProviderLookup_Provider_Unique");
 
         var paymentSeedTimestamp = new DateTime(2026, 7, 18, 10, 59, 32, 900, DateTimeKind.Utc).AddTicks(5000);
+
+        // ==================== ORDER PAYMENT STATUS LOOKUP CONFIGURATION ====================
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>()
+            .HasKey(x => x.Id)
+            .HasName("PK_OrderPaymentStatusLookups");
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>()
+            .Property(x => x.Status)
+            .IsRequired();
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>()
+            .Property(x => x.Name)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>()
+            .Property(x => x.Description)
+            .HasMaxLength(200);
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>()
+            .HasIndex(x => x.Status)
+            .IsUnique()
+            .HasDatabaseName("IX_OrderPaymentStatusLookup_Status_Unique");
+
+        modelBuilder.Entity<OrderPaymentStatusLookup>().HasData(
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000101"),
+                Status = OrderPaymentStatus.Pending,
+                Name = "Pending",
+                Description = "Order payment has not been completed yet",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            },
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000102"),
+                Status = OrderPaymentStatus.Paid,
+                Name = "Paid",
+                Description = "Order payment has been completed successfully",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            },
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000103"),
+                Status = OrderPaymentStatus.Failed,
+                Name = "Failed",
+                Description = "Order payment attempt failed",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            },
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000104"),
+                Status = OrderPaymentStatus.Expired,
+                Name = "Expired",
+                Description = "Order payment expired before completion",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            },
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000105"),
+                Status = OrderPaymentStatus.Cancelled,
+                Name = "Cancelled",
+                Description = "Order payment was cancelled",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            },
+            new OrderPaymentStatusLookup
+            {
+                Id = new Guid("00000000-0000-0000-0003-000000000106"),
+                Status = OrderPaymentStatus.Refunded,
+                Name = "Refunded",
+                Description = "Order payment was refunded",
+                IsActive = true,
+                CreatedAt = paymentSeedTimestamp,
+                UpdatedAt = paymentSeedTimestamp
+            });
 
         modelBuilder.Entity<PaymentProviderLookup>().HasData(
             new PaymentProviderLookup
@@ -1055,6 +1177,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired();
 
         modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.PaymentProviderId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentTransaction>()
             .Property(PaymentTransaction => PaymentTransaction.FromAccount)
             .HasMaxLength(120)
             .IsRequired();
@@ -1082,6 +1208,34 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired();
 
         modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.ProviderTransactionId)
+            .HasMaxLength(120);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.ProviderEventId)
+            .HasMaxLength(120);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.RawProviderPayload)
+            .HasColumnType("text");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.CompletedAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.FailedAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.FailureCode)
+            .HasMaxLength(60);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(PaymentTransaction => PaymentTransaction.FailureMessage)
+            .HasMaxLength(500);
+
+        modelBuilder.Entity<PaymentTransaction>()
             .Property(PaymentTransaction => PaymentTransaction.TransactionAtUtc)
             .IsRequired();
 
@@ -1093,6 +1247,22 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasIndex(PaymentTransaction => PaymentTransaction.TransactionCode)
             .IsUnique()
             .HasDatabaseName("IX_PaymentTransaction_TransactionCode_Unique");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(PaymentTransaction => PaymentTransaction.PaymentProviderId)
+            .HasDatabaseName("IX_PaymentTransaction_PaymentProviderId");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(PaymentTransaction => new { PaymentTransaction.PaymentProviderId, PaymentTransaction.ProviderEventId })
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentTransaction_Provider_Event_Unique");
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(PaymentTransaction => PaymentTransaction.PaymentProvider)
+            .WithMany()
+            .HasForeignKey(PaymentTransaction => PaymentTransaction.PaymentProviderId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentTransaction_PaymentProvider");
 
         modelBuilder.Entity<PaymentTransaction>()
             .HasOne(PaymentTransaction => PaymentTransaction.Currency)
@@ -1119,12 +1289,61 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .IsRequired();
 
         modelBuilder.Entity<PaymentOrder>()
-            .Property(x => x.PaymentTransactionId)
+            .Property(x => x.PaymentProviderId)
             .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.StatusId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.IntentCode)
+            .HasMaxLength(80)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.CheckoutUrl)
+            .HasColumnType("text");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.ExpiresAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.LastProviderEventId)
+            .HasMaxLength(120);
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.LastProviderEventAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<PaymentOrder>()
+            .Property(x => x.PaymentTransactionId)
+            .IsRequired(false);
 
         modelBuilder.Entity<PaymentOrder>()
             .Property(x => x.OrderedAtUtc)
             .IsRequired();
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasIndex(x => x.PaymentProviderId)
+            .HasDatabaseName("IX_PaymentOrder_PaymentProviderId");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasIndex(x => x.StatusId)
+            .HasDatabaseName("IX_PaymentOrder_StatusId");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasOne(x => x.Status)
+            .WithMany(x => x.PaymentOrders)
+            .HasForeignKey(x => x.StatusId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentOrder_StatusLookup");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasIndex(x => x.IntentCode)
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentOrder_IntentCode_Unique");
 
         modelBuilder.Entity<PaymentOrder>()
             .HasIndex(x => x.PaymentTransactionId)
@@ -1135,6 +1354,13 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasIndex(x => x.OrderId)
             .IsUnique()
             .HasDatabaseName("IX_PaymentOrder_OrderId");
+
+        modelBuilder.Entity<PaymentOrder>()
+            .HasOne(x => x.PaymentProvider)
+            .WithMany()
+            .HasForeignKey(x => x.PaymentProviderId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentOrder_PaymentProvider");
 
         modelBuilder.Entity<PaymentOrder>()
             .HasOne(PaymentOrder => PaymentOrder.PaymentTransaction)
@@ -1149,6 +1375,70 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasForeignKey<PaymentOrder>(x => x.OrderId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("FK_PaymentOrder_Order");
+
+        // ==================== PAYMENT WEBHOOK INBOX CONFIGURATION ====================
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .HasKey(x => x.Id)
+            .HasName("PK_PaymentWebhookInboxes");
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.PaymentProviderId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.EventId)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.SignatureHash)
+            .HasMaxLength(128)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.Payload)
+            .HasColumnType("text")
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.ProcessStatusId)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.ReceivedAtUtc)
+            .IsRequired();
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.ProcessedAtUtc)
+            .IsRequired(false);
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .Property(x => x.ErrorMessage)
+            .HasMaxLength(500);
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .HasIndex(x => x.ProcessStatusId)
+            .HasDatabaseName("IX_PaymentWebhookInbox_ProcessStatusId");
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .HasIndex(x => new { x.PaymentProviderId, x.EventId })
+            .IsUnique()
+            .HasDatabaseName("IX_PaymentWebhookInbox_Provider_Event_Unique");
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .HasOne(x => x.PaymentProvider)
+            .WithMany()
+            .HasForeignKey(x => x.PaymentProviderId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentWebhookInbox_PaymentProvider");
+
+        modelBuilder.Entity<PaymentWebhookInbox>()
+            .HasOne(x => x.ProcessStatus)
+            .WithMany(x => x.PaymentWebhookInboxes)
+            .HasForeignKey(x => x.ProcessStatusId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PaymentWebhookInbox_ProcessStatusLookup");
 
         // ==================== ORDER APPOINTMENT JUNCTION CONFIGURATION ====================
 
