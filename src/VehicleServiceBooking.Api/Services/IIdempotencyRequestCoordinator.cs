@@ -19,6 +19,14 @@ public interface IIdempotencyRequestCoordinator
         HttpRequest httpRequest,
         CreateAppointmentRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Validates idempotency header requirements and starts idempotent processing for order creation.
+    /// </summary>
+    Task<IdempotencyCoordinatorResult> ValidateAndBeginCreateOrderAsync(
+        HttpRequest httpRequest,
+        CreateOrderRequest request,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

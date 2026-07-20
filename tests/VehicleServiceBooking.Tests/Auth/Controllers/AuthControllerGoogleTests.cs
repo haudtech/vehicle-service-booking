@@ -3,7 +3,10 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -149,7 +152,7 @@ public class AuthControllerGoogleTests
     }
 
     [Fact]
-    public async Task SignUp_WhenNotificationPublishTimesOut_ReturnsCreatedResponse()
+    public async Task SignUp_WhenNotificationPublishTimesOut_ReturnsAcceptedResponse()
     {
         var expected = new SignUpResult
         {
@@ -179,6 +182,20 @@ public class AuthControllerGoogleTests
             notificationPublisher.Object,
             NullLogger<AuthController>.Instance);
         sut.ControllerContext = BuildControllerContext();
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper
+            .SetupGet(x => x.ActionContext)
+            .Returns(new ActionContext
+            {
+                HttpContext = new DefaultHttpContext(),
+                RouteData = new RouteData(),
+                ActionDescriptor = new ActionDescriptor()
+            });
+        urlHelper
+            .Setup(x => x.Action(It.IsAny<UrlActionContext>()))
+            .Returns("http://localhost:5158/api/v1/auth/verify-email?email=signup.user@example.com&token=verification-token");
+        sut.Url = urlHelper.Object;
 
         var result = await sut.SignUp(new SignUpRequest
         {

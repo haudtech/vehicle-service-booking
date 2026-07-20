@@ -1,12 +1,10 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using VehicleServiceBooking.Api.Common.Utils;
 using VehicleServiceBooking.Application.Configuration;
 using VehicleServiceBooking.Application.DTOs;
 using VehicleServiceBooking.Application.Interfaces.Services;
@@ -79,7 +77,7 @@ public sealed class IdempotencyRequestCoordinator : IIdempotencyRequestCoordinat
         }
 
         var requestPath = $"POST:{httpRequest.Path.Value ?? "/api/v1/appointments"}";
-        var requestHash = ComputeRequestHash(request);
+        var requestHash = EncodeUtils.ComputeRequestHash(request);
 
         var beginResult = await _idempotencyService
             .BeginRequestAsync(idempotencyKey, requestPath, requestHash, cancellationToken)
@@ -132,10 +130,102 @@ public sealed class IdempotencyRequestCoordinator : IIdempotencyRequestCoordinat
         };
     }
 
-    private static string ComputeRequestHash(CreateAppointmentRequest request)
+    /// <inheritdoc />
+    public async Task<IdempotencyCoordinatorResult> ValidateAndBeginCreateOrderAsync(
+        HttpRequest httpRequest,
+        CreateOrderRequest request,
+        CancellationToken cancellationToken)
     {
-        var canonicalJson = JsonSerializer.Serialize(request);
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(canonicalJson));
-        return Convert.ToHexString(hashBytes);
+        if (!_idempotencyOptions.Enabled)
+        {
+            return new IdempotencyCoordinatorResult();
+        }
+
+        if (!httpRequest.Headers.TryGetValue(IdempotencyKeyHeaderName, out var idempotencyHeaderValues) ||
+            string.IsNullOrWhiteSpace(idempotencyHeaderValues.ToString()))
+        {
+            if (_idempotencyOptions.RequireHeader)
+            {
+                return new IdempotencyCoordinatorResult
+                {
+                    EarlyResponse = new BadRequestObjectResult(new ErrorResponse
+                    {
+                        Message = $"Missing required header '{IdempotencyKeyHeaderName}'.",
+                        ErrorCode = "IDEMPOTENCY_KEY_REQUIRED",
+                        Timestamp = DateTime.UtcNow
+                    })
+                };
+            }
+
+            return new IdempotencyCoordinatorResult();
+        }
+
+        var idempotencyKey = idempotencyHeaderValues.ToString().Trim();
+        if (idempotencyKey.Length > _idempotencyOptions.KeyMaxLength)
+        {
+            return new IdempotencyCoordinatorResult
+            {
+                EarlyResponse = new BadRequestObjectResult(new ErrorResponse
+                {
+                    Message = $"Header '{IdempotencyKeyHeaderName}' exceeds max length {_idempotencyOptions.KeyMaxLength}.",
+                    ErrorCode = "IDEMPOTENCY_KEY_INVALID",
+                    Timestamp = DateTime.UtcNow
+                })
+            };
+        }
+
+        var requestPath = $"POST:{httpRequest.Path.Value ?? "/api/v1/orders"}";
+        var requestHash = EncodeUtils.ComputeRequestHash(request);
+
+        var beginResult = await _idempotencyService
+            .BeginRequestAsync(idempotencyKey, requestPath, requestHash, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (beginResult.Outcome == IdempotencyBeginOutcome.KeyReusedWithDifferentPayload)
+        {
+            return new IdempotencyCoordinatorResult
+            {
+                EarlyResponse = new ConflictObjectResult(new ErrorResponse
+                {
+                    Message = "The provided idempotency key was already used with a different request payload.",
+                    ErrorCode = "IDEMPOTENCY_KEY_REUSED",
+                    Timestamp = DateTime.UtcNow
+                })
+            };
+        }
+
+        if (beginResult.Outcome == IdempotencyBeginOutcome.RequestInProgress)
+        {
+            return new IdempotencyCoordinatorResult
+            {
+                EarlyResponse = new ConflictObjectResult(new ErrorResponse
+                {
+                    Message = "A request with this idempotency key is already in progress.",
+                    ErrorCode = "IDEMPOTENCY_IN_PROGRESS",
+                    Timestamp = DateTime.UtcNow
+                })
+            };
+        }
+
+        if (beginResult.Outcome == IdempotencyBeginOutcome.ReplayStoredResponse &&
+            beginResult.ResponseStatusCode.HasValue &&
+            !string.IsNullOrWhiteSpace(beginResult.ResponseBody))
+        {
+            return new IdempotencyCoordinatorResult
+            {
+                EarlyResponse = new ContentResult
+                {
+                    StatusCode = beginResult.ResponseStatusCode,
+                    ContentType = "application/json",
+                    Content = beginResult.ResponseBody
+                }
+            };
+        }
+
+        return new IdempotencyCoordinatorResult
+        {
+            RecordId = beginResult.RecordId
+        };
     }
+
 }

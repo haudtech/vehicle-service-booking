@@ -29,6 +29,7 @@ public static class ControllerAndValidationExtensions
         // Register FluentValidation validators
         services.AddScoped<IValidator<GetAvailabilityRequest>, GetAvailabilityRequestValidator>();
         services.AddScoped<IValidator<CreateAppointmentRequest>, CreateAppointmentRequestValidator>();
+        services.AddScoped<IValidator<CreateOrderRequest>, CreateOrderRequestValidator>();
 
         // Configure API behavior
         services.Configure<ApiBehaviorOptions>(options =>

@@ -63,4 +63,10 @@ public class Appointment : BaseEntity
     /// Navigation property to the services included in this appointment
     /// </summary>
     public ICollection<Service> Services { get; set; } = new List<Service>();
+
+    /// <summary>
+    /// Navigation property to the order link for this appointment.
+    /// An appointment can belong to at most one order.
+    /// </summary>
+    public OrderAppointment? OrderAppointment { get; set; }
 }

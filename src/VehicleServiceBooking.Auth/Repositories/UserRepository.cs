@@ -34,10 +34,12 @@ public sealed class UserRepository : GenericRepository<User>, IUserRepository
     public Task<User?> GetActiveByEmailWithAuthorizationAsync(string normalizedEmail, CancellationToken cancellationToken = default)
     {
         return GetQueryable()
-            .Include(x => x.UserRoles)
-                .ThenInclude(x => x.Role)
-                    .ThenInclude(x => x.RolePermissions)
-                        .ThenInclude(x => x.Permission)
+            .Include(x => x.UserGroups)
+                .ThenInclude(x => x.Group)
+                    .ThenInclude(x => x.GroupRoles)
+                        .ThenInclude(x => x.Role)
+                            .ThenInclude(x => x.RolePermissions)
+                                .ThenInclude(x => x.Permission)
             .FirstOrDefaultAsync(x => x.Email == normalizedEmail, cancellationToken);
     }
 
@@ -45,10 +47,12 @@ public sealed class UserRepository : GenericRepository<User>, IUserRepository
     public Task<User?> GetActiveByEmailOrAccountNameWithAuthorizationAsync(string normalizedIdentifier, CancellationToken cancellationToken = default)
     {
         return GetQueryable()
-            .Include(x => x.UserRoles)
-                .ThenInclude(x => x.Role)
-                    .ThenInclude(x => x.RolePermissions)
-                        .ThenInclude(x => x.Permission)
+            .Include(x => x.UserGroups)
+                .ThenInclude(x => x.Group)
+                    .ThenInclude(x => x.GroupRoles)
+                        .ThenInclude(x => x.Role)
+                            .ThenInclude(x => x.RolePermissions)
+                                .ThenInclude(x => x.Permission)
             .FirstOrDefaultAsync(
                 x => x.Email == normalizedIdentifier || x.AccountName == normalizedIdentifier,
                 cancellationToken);

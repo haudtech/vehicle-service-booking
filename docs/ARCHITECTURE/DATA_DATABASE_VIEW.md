@@ -94,6 +94,12 @@ The platform now operates with separate persistence boundaries for identity and 
 - Enforces overlap protection and slot invariants using PostgreSQL exclusion constraints.
 - Remains independent from identity table ownership; consumes identity only through validated JWT claims.
 
+### Order Ownership Decision
+- `Order` is **not customer-owned**.
+- `Order` intentionally does not store a direct `CustomerId` foreign key.
+- Customer context must be resolved through `OrderAppointment -> Appointment -> CustomerId` linkage when needed.
+- This keeps payment/order aggregation boundaries business-scoped and avoids duplicating ownership state across aggregates.
+
 ### Cross-Database Contract
 - No direct relational foreign keys between Auth DB and Booking DB.
 - Service-to-service trust is based on JWT + JWKS verification rather than shared identity tables.

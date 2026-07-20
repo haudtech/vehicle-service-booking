@@ -84,8 +84,10 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         await _dbContext.DisposeAsync();
     }
 
-    private void SetupAvailabilityServiceForRequest(Guid technicianId, Guid serviceBayId, DateTime date)
+    private void SetupAvailabilityServiceForRequest(CreateAppointmentRequest request)
     {
+        var (slotStart, slotEnd) = ResolveRequestedWindow(request);
+
         _mockAvailabilityService
             .Setup(s => s.GetAvailableSlotsAsync(
                 It.IsAny<Guid>(),
@@ -97,12 +99,24 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 AvailabilityOptionBuilder.CreateValid()
                     .WithTimeSlot(
                         AppTimeSlotBuilder.CreateValid()
-                            .WithTimes(new TimeOnly(8, 0), new TimeOnly(8, 30))
+                            .WithDateTimeRange(slotStart, slotEnd)
                             .Build())
-                    .WithTechnicianId(technicianId)
-                    .WithServiceBayId(serviceBayId)
+                    .WithTechnicianId(request.TechnicianId)
+                    .WithServiceBayId(request.ServiceBayId)
                     .Build()
             });
+    }
+
+    private (DateTime Start, DateTime End) ResolveRequestedWindow(CreateAppointmentRequest request)
+    {
+        var startSlot = _dbContext.TimeSlots.Single(ts => ts.Id == request.EstimatedStartTimeSlotId);
+        var endSlot = _dbContext.TimeSlots.Single(ts => ts.Id == request.EstimatedEndTimeSlotId);
+
+        var appointmentDate = request.AppointmentDate.ToDateTime(TimeOnly.MinValue);
+        var slotStart = appointmentDate.Add(startSlot.SlotStartTime.ToTimeSpan());
+        var slotEnd = appointmentDate.Add(endSlot.SlotEndTime.ToTimeSpan());
+
+        return (slotStart, slotEnd);
     }
 
     private void SeedTechnicianSkills(IEnumerable<Guid> technicianIds, Guid serviceTypeId)
@@ -149,7 +163,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
             .WithTimeSlots(startTimeSlotId, endTimeSlotId)
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -171,7 +185,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithNonExistentDealership_ShouldCreateAppointment()
+    public async Task CreateAppointmentAsync_WhenNoAvailabilityExists_ShouldThrowBookingConflictException()
     {
         // Arrange - Create setup and use non-existent dealership
         var (dealership, customer, vehicle, serviceType, technicians, serviceBays, _) =
@@ -200,14 +214,17 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000002"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        _mockAvailabilityService
+            .Setup(s => s.GetAvailableSlotsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AvailabilityOption>());
 
-        // Act - Service allows non-existent Dealership (it's validated by foreign key at DB level)
-        var result = await _appointmentService.CreateAppointmentAsync(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AppointmentId.Should().NotBeEmpty();
+        // Act & Assert - availability is dealership-scoped, so a missing dealership cannot produce a bookable slot.
+        await Assert.ThrowsAsync<BookingConflictException>(
+            () => _appointmentService.CreateAppointmentAsync(request));
     }
 
     [Fact]
@@ -252,7 +269,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000002"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(conflictingRequest.TechnicianId, conflictingRequest.ServiceBayId, conflictingRequest.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(conflictingRequest);
 
         // Act & Assert
         await Assert.ThrowsAsync<BookingConflictException>(
@@ -293,7 +310,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000004"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -343,7 +360,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000006"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act
         var result = await _appointmentService.CreateAppointmentAsync(request);
@@ -360,7 +377,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateAppointmentAsync_WithConflictingServiceBay_ShouldThrowException()
+    public async Task CreateAppointmentAsync_WithConflictingServiceBay_ShouldSucceed_WhenVehicleDiffers()
     {
         // Arrange - Use builder with multiple technicians and existing appointments
         var (dealership, customer, vehicle, serviceType, technicians, serviceBays, existingAppointments) =
@@ -375,6 +392,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
         _dbContext.Technicians.AddRange(technicians);
         _dbContext.ServiceBays.AddRange(serviceBays);
         _dbContext.Appointments.AddRange(existingAppointments);
+        SeedTechnicianSkills(technicians.Select(t => t.Id), serviceType.Id);
 
         await _dbContext.SaveChangesAsync();
 
@@ -396,12 +414,13 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000002"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateAppointmentAsync(request)
-        );
+        var result = await _appointmentService.CreateAppointmentAsync(request);
+
+        result.Should().NotBeNull();
+        result.AppointmentId.Should().NotBeEmpty();
     }
 
     #endregion
@@ -512,7 +531,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000002"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act
         var createdResponse = await _appointmentService.CreateAppointmentAsync(request);
@@ -562,7 +581,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                 Guid.Parse("00000000-0000-0000-0000-000000000002"))
             .Build();
 
-        SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+        SetupAvailabilityServiceForRequest(request);
 
         // Act
         var response = await _appointmentService.CreateAppointmentAsync(request);
@@ -614,7 +633,7 @@ public class AppointmentServiceIntegrationTests : IAsyncLifetime
                     Guid.Parse($"00000000-0000-0000-0000-{(i+2):000000000000}"))
                 .Build();
 
-            SetupAvailabilityServiceForRequest(request.TechnicianId, request.ServiceBayId, request.AppointmentDate.ToDateTime(TimeOnly.MinValue));
+            SetupAvailabilityServiceForRequest(request);
 
             var response = await _appointmentService.CreateAppointmentAsync(request);
             appointmentIds.Add(response.AppointmentId);

@@ -42,22 +42,23 @@ public class AuthServiceGoogleLoginTests
             .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var roleRepository = new Mock<IRoleRepository>();
-        roleRepository
-            .Setup(x => x.GetRoleIdByNameAsync("booking-user", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Guid.NewGuid());
+        var groupId = Guid.NewGuid();
+        var groupRepository = new Mock<IGroupRepository>();
+        groupRepository
+            .Setup(x => x.GetGroupIdByNameAsync("user", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(groupId);
 
-        var userRoleRepository = new Mock<IUserRoleRepository>();
-        userRoleRepository
-            .Setup(x => x.ExistsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        var userGroupRepository = new Mock<IUserGroupRepository>();
+        userGroupRepository
+            .Setup(x => x.ExistsAsync(It.IsAny<Guid>(), groupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        userRoleRepository
-            .Setup(x => x.AddAsync(It.IsAny<UserRole>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserRole role, CancellationToken _) => role);
-        userRoleRepository
+        userGroupRepository
+            .Setup(x => x.AddAsync(It.IsAny<UserGroup>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserGroup mapping, CancellationToken _) => mapping);
+        userGroupRepository
             .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
-        userRoleRepository
+        userGroupRepository
             .Setup(x => x.GetRoleNamesByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { "booking-user" });
 
@@ -91,8 +92,8 @@ public class AuthServiceGoogleLoginTests
         var sut = new AuthService(
             userRepository.Object,
             refreshTokenRepository.Object,
-            roleRepository.Object,
-            userRoleRepository.Object,
+            groupRepository.Object,
+            userGroupRepository.Object,
             rolePermissionRepository.Object,
             passwordHasher.Object,
             jwtTokenGenerator.Object,
@@ -103,6 +104,10 @@ public class AuthServiceGoogleLoginTests
                 Audience = "vehicle-booking-api",
                 AccessTokenLifetimeMinutes = 30,
                 RefreshTokenLifetimeDays = 30
+            },
+            new AuthDefaultGroupsOptions
+            {
+                DefaultSignupGroupNames = new List<string> { "user" }
             });
 
         var first = await sut.LoginWithGoogleAsync(

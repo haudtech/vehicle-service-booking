@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.Configure<DataProtectionKeyManagementOptions>(configuration.GetSection("DataProtection:KeyManagement"));
         services.Configure<GoogleAuthOptions>(configuration.GetSection("Authentication:Google"));
         services.Configure<NotificationOptions>(configuration.GetSection("Notification"));
+        services.Configure<AuthDefaultGroupsOptions>(configuration.GetSection(AuthDefaultGroupsOptions.SectionName));
 
         var jwtOptions = new JwtOptions();
         configuration.GetSection("Jwt").Bind(jwtOptions);
@@ -91,6 +92,19 @@ public static class ServiceCollectionExtensions
             }
         }
 
+        var authDefaultGroupsOptions = new AuthDefaultGroupsOptions();
+        configuration.GetSection(AuthDefaultGroupsOptions.SectionName).Bind(authDefaultGroupsOptions);
+        authDefaultGroupsOptions.DefaultSignupGroupNames = authDefaultGroupsOptions.DefaultSignupGroupNames
+            .Where(groupName => !string.IsNullOrWhiteSpace(groupName))
+            .Select(groupName => groupName.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (authDefaultGroupsOptions.DefaultSignupGroupNames.Count == 0)
+        {
+            throw new InvalidOperationException("AuthDefaultGroups:DefaultSignupGroupNames must contain at least one group.");
+        }
+
         var dataProtectionOptions = new DataProtectionKeyManagementOptions();
         configuration.GetSection("DataProtection:KeyManagement").Bind(dataProtectionOptions);
         if (string.IsNullOrWhiteSpace(dataProtectionOptions.ApplicationName))
@@ -118,6 +132,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(dataProtectionOptions);
         services.AddSingleton(googleAuthOptions);
         services.AddSingleton(notificationOptions);
+        services.AddSingleton(authDefaultGroupsOptions);
 
         var dataProtectionBuilder = services.AddDataProtection()
             .SetApplicationName(dataProtectionOptions.ApplicationName)
@@ -141,8 +156,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+        services.AddScoped<IUserGroupRepository, UserGroupRepository>();
         services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
 
         if (notificationOptions.Enabled)

@@ -3,7 +3,7 @@ namespace VehicleServiceBooking.Auth.Models;
 /// <summary>
 /// Join entity for role-to-permission assignments.
 /// </summary>
-public class RolePermission
+public class RolePermission : AuthBaseEntity
 {
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = null!;

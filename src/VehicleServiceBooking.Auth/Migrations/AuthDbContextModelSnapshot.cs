@@ -58,6 +58,146 @@ namespace VehicleServiceBooking.Auth.Migrations
                         .IsUnique();
 
                     b.ToTable("Groups");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c001"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Default group for standard end users",
+                            IsActive = true,
+                            Name = "user",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c002"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Administrative group",
+                            IsActive = true,
+                            Name = "admin",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c003"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Super administrator group with full role coverage",
+                            IsActive = true,
+                            Name = "superadmin",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("VehicleServiceBooking.Auth.Models.GroupRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("GroupId", "RoleId")
+                        .IsUnique();
+
+                    b.ToTable("GroupRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d001"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c001"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d002"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c001"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d003"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c002"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d004"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c002"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d005"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c003"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d006"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c003"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d007"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c003"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5d008"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            GroupId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5c003"),
+                            IsActive = true,
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.Permission", b =>
@@ -123,6 +263,51 @@ namespace VehicleServiceBooking.Auth.Migrations
                             Description = "Complete appointments",
                             IsActive = true,
                             Name = "appointment:complete",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a005"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Create orders",
+                            IsActive = true,
+                            Name = "order:create",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a006"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "View orders",
+                            IsActive = true,
+                            Name = "order:view",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a007"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Edit orders",
+                            IsActive = true,
+                            Name = "order:edit",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a008"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Cancel orders",
+                            IsActive = true,
+                            Name = "order:cancel",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a009"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Complete orders",
+                            IsActive = true,
+                            Name = "order:complete",
                             UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
@@ -213,44 +398,222 @@ namespace VehicleServiceBooking.Auth.Migrations
                     b.HasData(
                         new
                         {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Administrator role for booking resource operations",
+                            IsActive = true,
+                            Name = "booking-admin",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
                             Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
                             CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Default role for booking service API access",
+                            Description = "Default role for booking resource operations",
                             IsActive = true,
                             Name = "booking-user",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Administrator role for order resource operations",
+                            IsActive = true,
+                            Name = "order-admin",
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Default role for order resource operations",
+                            IsActive = true,
+                            Name = "order-user",
                             UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.RolePermission", b =>
                 {
-                    b.Property<Guid>("RoleId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<Guid>("PermissionId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("RoleId", "PermissionId");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("PermissionId");
+
+                    b.HasIndex("RoleId", "PermissionId")
+                        .IsUnique();
 
                     b.ToTable("RolePermissions");
 
                     b.HasData(
                         new
                         {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b001"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a002"),
                             RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
-                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a002")
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b002"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a003"),
                             RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
-                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a003")
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b003"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a004"),
                             RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a001"),
-                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a004")
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b005"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a005"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b006"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a006"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b007"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a007"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b008"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a008"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b009"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a009"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a010"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b011"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a002"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b012"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a003"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b013"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a004"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a011"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b014"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a005"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b015"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a006"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b016"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a007"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b017"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a008"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5b018"),
+                            CreatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            PermissionId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a009"),
+                            RoleId = new Guid("2d7b6113-2351-4b60-848f-8c3d28f5a012"),
+                            UpdatedAt = new DateTime(2026, 7, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
 
@@ -381,32 +744,58 @@ namespace VehicleServiceBooking.Auth.Migrations
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.UserGroup", b =>
                 {
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("UserId", "GroupId");
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("GroupId");
+
+                    b.HasIndex("UserId", "GroupId")
+                        .IsUnique();
 
                     b.ToTable("UserGroups");
                 });
 
-            modelBuilder.Entity("VehicleServiceBooking.Auth.Models.UserRole", b =>
+            modelBuilder.Entity("VehicleServiceBooking.Auth.Models.GroupRole", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.HasOne("VehicleServiceBooking.Auth.Models.Group", "Group")
+                        .WithMany("GroupRoles")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
+                    b.HasOne("VehicleServiceBooking.Auth.Models.Role", "Role")
+                        .WithMany("GroupRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasKey("UserId", "RoleId");
+                    b.Navigation("Group");
 
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("UserRoles");
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.RefreshToken", b =>
@@ -458,27 +847,10 @@ namespace VehicleServiceBooking.Auth.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VehicleServiceBooking.Auth.Models.UserRole", b =>
-                {
-                    b.HasOne("VehicleServiceBooking.Auth.Models.Role", "Role")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("VehicleServiceBooking.Auth.Models.User", "User")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.Group", b =>
                 {
+                    b.Navigation("GroupRoles");
+
                     b.Navigation("UserGroups");
                 });
 
@@ -489,9 +861,9 @@ namespace VehicleServiceBooking.Auth.Migrations
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.Role", b =>
                 {
-                    b.Navigation("RolePermissions");
+                    b.Navigation("GroupRoles");
 
-                    b.Navigation("UserRoles");
+                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("VehicleServiceBooking.Auth.Models.User", b =>
@@ -499,8 +871,6 @@ namespace VehicleServiceBooking.Auth.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("UserGroups");
-
-                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

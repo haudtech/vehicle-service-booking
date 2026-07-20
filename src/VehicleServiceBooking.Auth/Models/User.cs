@@ -43,7 +43,6 @@ public class User : AuthBaseEntity
 
     public string DisplayName { get; set; } = string.Empty;
 
-    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<UserGroup> UserGroups { get; set; } = new List<UserGroup>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
