@@ -117,8 +117,11 @@ public sealed class OrdersController : ControllerBase
     public async Task<ActionResult<CreatePaymentIntentResponse>> CreatePaymentIntent(
         [FromRoute] Guid orderId,
         [FromBody] CreatePaymentIntentRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {
+        Guid? idempotencyRecordId = null;
+
         try
         {
             if (orderId == Guid.Empty)
@@ -135,9 +138,32 @@ public sealed class OrdersController : ControllerBase
                 .ValidateAndThrowAsync(request, cancellationToken)
                 .ConfigureAwait(false);
 
+            var idempotencyHandling = await _idempotencyRequestCoordinator
+                .ValidateAndBeginCreatePaymentIntentAsync(Request, orderId, request, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (idempotencyHandling.EarlyResponse != null)
+            {
+                return idempotencyHandling.EarlyResponse;
+            }
+
+            idempotencyRecordId = idempotencyHandling.RecordId;
+
             var response = await _paymentIntentService
                 .CreatePaymentIntentAsync(orderId, request, cancellationToken)
                 .ConfigureAwait(false);
+
+            var statusCode = response.IsExistingIntent
+                ? StatusCodes.Status200OK
+                : StatusCodes.Status201Created;
+
+            if (idempotencyRecordId.HasValue)
+            {
+                var body = JsonSerializer.Serialize(response, ReplayJsonOptions);
+                await _idempotencyService
+                    .CompleteRequestAsync(idempotencyRecordId.Value, statusCode, body, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             if (response.IsExistingIntent)
             {
@@ -160,6 +186,14 @@ public sealed class OrdersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error in CreatePaymentIntent: orderId={OrderId}", orderId);
+
+            if (idempotencyRecordId.HasValue)
+            {
+                await _idempotencyService
+                    .ReleaseRequestAsync(idempotencyRecordId.Value, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             throw;
         }
     }
