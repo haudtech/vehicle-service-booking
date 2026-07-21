@@ -1646,9 +1646,21 @@ public abstract class GenericRepository<TEntity>
     // ⚠️ Change tracking is REQUIRED for write operations
 
     /// <summary>
-    /// Adds single entity to database context (not saved until SaveChangesAsync).
+    /// Adds single entity and saves immediately.
     /// </summary>
     public virtual async Task<TEntity> AddAsync(
+        TEntity entity, CancellationToken cancellationToken = default)
+    {
+        await AddWithoutSaveAsync(entity, cancellationToken);
+        await SaveChangesAsync(cancellationToken);
+        return entity;
+    }
+
+    /// <summary>
+    /// Adds single entity to the change tracker without saving.
+    /// Use this in multi-entity transactional flows.
+    /// </summary>
+    public virtual async Task<TEntity> AddWithoutSaveAsync(
         TEntity entity, CancellationToken cancellationToken = default)
     {
         await DbContext.DbContext.Set<TEntity>().AddAsync(entity, cancellationToken);
@@ -1656,24 +1668,27 @@ public abstract class GenericRepository<TEntity>
     }
 
     /// <summary>
-    /// Adds multiple entities to database context (not saved until SaveChangesAsync).
-    /// Use for bulk inserts when creating multiple related entities.
+    /// Adds multiple entities and saves immediately.
     /// </summary>
-    public virtual async Task AddRangeAsync(
+    public virtual async Task<IEnumerable<TEntity>> AddRangeAsync(
         IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
-        await DbContext.DbContext.Set<TEntity>().AddRangeAsync(entities, cancellationToken);
+        var entityList = entities.ToList();
+        await DbContext.DbContext.Set<TEntity>().AddRangeAsync(entityList, cancellationToken);
+        await SaveChangesAsync(cancellationToken);
+        return entityList;
     }
 
     /// <summary>
     /// Updates entity (must be already tracked or attached).
     /// Typically called after querying and modifying entity properties.
     /// </summary>
-    public virtual Task<TEntity> UpdateAsync(
+    public virtual async Task<TEntity> UpdateAsync(
         TEntity entity, CancellationToken cancellationToken = default)
     {
         DbContext.DbContext.Set<TEntity>().Update(entity);
-        return Task.FromResult(entity);
+        await SaveChangesAsync(cancellationToken);
+        return entity;
     }
 
     /// <summary>
@@ -1684,7 +1699,7 @@ public abstract class GenericRepository<TEntity>
         TEntity entity, CancellationToken cancellationToken = default)
     {
         DbContext.DbContext.Set<TEntity>().Remove(entity);
-        await Task.CompletedTask;
+        await SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -1698,18 +1713,17 @@ public abstract class GenericRepository<TEntity>
         if (entity != null)
         {
             DbContext.DbContext.Set<TEntity>().Remove(entity);
+            await SaveChangesAsync(cancellationToken);
         }
     }
 
     /// <summary>
     /// Saves all pending changes to database.
-    /// Call after Add/Update/Delete operations to persist changes.
-    /// Returns number of entities affected.
     /// </summary>
-    public virtual async Task<int> SaveChangesAsync(
+    public virtual async Task SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
-        return await DbContext.SaveChangesAsync(cancellationToken);
+        await DbContext.SaveChangesAsync(cancellationToken);
     }
 }
 ```
@@ -1804,7 +1818,7 @@ public class AppointmentRepository :
     public async Task<Appointment> CreateAppointmentWithServicesAsync(
         Appointment appointment, CancellationToken cancellationToken)
     {
-        await AddAsync(appointment, cancellationToken);  // ← Inherited from base
+        await AddWithoutSaveAsync(appointment, cancellationToken);  // ← Inherited from base
         await SaveChangesAsync(cancellationToken);  // ← Inherited from base
         return appointment;
     }
@@ -1819,6 +1833,7 @@ public class AppointmentRepository :
 
 **GenericRepository<TEntity> Handles:**
 - ✅ Common CRUD operations (Add, Update, Delete)
+- ✅ Explicit add-without-save operation for transactional orchestration
 - ✅ Standard read operations (GetById, FirstOrDefault, Any, GetAll)
 - ✅ Paging and pagination logic
 - ✅ SaveChangesAsync coordination

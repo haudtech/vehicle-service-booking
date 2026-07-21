@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Domain.Entities;
@@ -97,6 +98,59 @@ public sealed class PaymentWebhookRepository : GenericRepository<PaymentWebhookI
 
     public async Task AddWebhookInboxAsync(PaymentWebhookInbox webhookInbox, CancellationToken cancellationToken)
     {
-        await AddAsync(webhookInbox, cancellationToken).ConfigureAwait(false);
+        await AddWithoutSaveAsync(webhookInbox, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken)
+    {
+        var providerName = DbContext.DbContext.Database.ProviderName;
+        // EF InMemory does not support real transactions; return a no-op transaction
+        // so the service flow can keep a single transaction code path in tests.
+        if (providerName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return new NoopDbContextTransaction();
+        }
+
+        // Relational providers use a real database transaction boundary.
+        return await DbContext.DbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public void ClearChangeTracker()
+    {
+        DbContext.DbContext.ChangeTracker.Clear();
+    }
+
+    // Minimal IDbContextTransaction implementation used only when the provider
+    // cannot open transactions (for example EF InMemory in integration tests).
+    private sealed class NoopDbContextTransaction : IDbContextTransaction
+    {
+        public Guid TransactionId { get; } = Guid.NewGuid();
+
+        public void Commit()
+        {
+        }
+
+        public Task CommitAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public void Rollback()
+        {
+        }
+
+        public Task RollbackAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 }

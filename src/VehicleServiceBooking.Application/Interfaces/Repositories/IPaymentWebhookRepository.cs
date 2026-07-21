@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Storage;
 using VehicleServiceBooking.Domain.Entities;
 using VehicleServiceBooking.Domain.Enums;
 
@@ -42,6 +43,10 @@ public interface IPaymentWebhookRepository
         CancellationToken cancellationToken);
 
     Task AddWebhookInboxAsync(PaymentWebhookInbox webhookInbox, CancellationToken cancellationToken);
+
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
+
+    void ClearChangeTracker();
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

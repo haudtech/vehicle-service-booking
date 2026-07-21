@@ -12,6 +12,8 @@ public interface IWriteRepository<TEntity> : IRepository<TEntity> where TEntity 
 {
     Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken);
 
+    Task<TEntity> AddWithoutSaveAsync(TEntity entity, CancellationToken cancellationToken);
+
     Task<IEnumerable<TEntity>> AddRangeAsync(
         IEnumerable<TEntity> entities,
         CancellationToken cancellationToken);

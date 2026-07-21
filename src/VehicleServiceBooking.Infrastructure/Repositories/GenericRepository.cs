@@ -174,8 +174,23 @@ public abstract class GenericRepository<TEntity> : IReadRepository<TEntity>, IWr
         TEntity entity,
         CancellationToken cancellationToken)
     {
-        DbContext.DbContext.Set<TEntity>().Add(entity);
+        await AddWithoutSaveAsync(entity, cancellationToken);
         await SaveChangesAsync(cancellationToken);
+        return entity;
+    }
+
+    /// <summary>
+    /// Adds a new entity to the change tracker without saving to the database.
+    /// Use this for multi-entity transactional workflows that persist once at the end.
+    /// </summary>
+    /// <param name="entity">The entity to add</param>
+    /// <param name="cancellationToken">Cancellation token for async operations</param>
+    /// <returns>The tracked entity</returns>
+    public virtual async Task<TEntity> AddWithoutSaveAsync(
+        TEntity entity,
+        CancellationToken cancellationToken)
+    {
+        await DbContext.DbContext.Set<TEntity>().AddAsync(entity, cancellationToken);
         return entity;
     }
 
