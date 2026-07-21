@@ -13,6 +13,14 @@ public class Order : BaseEntity
 
     public decimal TotalAmount { get; set; }
 
+    public Guid PaymentStatusId { get; set; }
+
+    public OrderPaymentStatusLookup PaymentStatus { get; set; } = null!;
+
+    public decimal AmountPaid { get; set; }
+
+    public DateTime? PaidAtUtc { get; set; }
+
     public CurrencyLookup Currency { get; set; } = null!;
 
     public ICollection<ServiceTypeOrder> ServiceTypeOrders { get; set; } = new List<ServiceTypeOrder>();

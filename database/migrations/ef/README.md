@@ -11,20 +11,20 @@ Generated artifacts:
 
 Current status:
 
-- EF migration files: 15
-- Mirrored step SQL files: 15
+- EF migration files: 16
+- Mirrored step SQL files: 16
 
 ## Regenerate
 
 Run from repository root:
 
 ```bash
-mkdir -p scripts/migrations/ef
+mkdir -p database/migrations/ef
 
 dotnet ef migrations script --idempotent \
   --project src/VehicleServiceBooking.Infrastructure/VehicleServiceBooking.Infrastructure.csproj \
   --startup-project src/VehicleServiceBooking.Api/VehicleServiceBooking.Api.csproj \
-  --output scripts/migrations/ef/ALL_MIGRATIONS_IDEMPOTENT.sql
+  --output database/migrations/ef/ALL_MIGRATIONS_IDEMPOTENT.sql
 
 migrations=($(ls src/VehicleServiceBooking.Infrastructure/Migrations/*.cs \
   | xargs -n1 basename \
@@ -39,6 +39,6 @@ for ((i=1; i<=${#migrations}; i++)); do
   dotnet ef migrations script "$from" "$to" \
     --project src/VehicleServiceBooking.Infrastructure/VehicleServiceBooking.Infrastructure.csproj \
     --startup-project src/VehicleServiceBooking.Api/VehicleServiceBooking.Api.csproj \
-    --output "scripts/migrations/ef/${to}.sql"
+    --output "database/migrations/ef/${to}.sql"
 done
 ```

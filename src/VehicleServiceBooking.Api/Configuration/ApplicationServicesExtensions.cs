@@ -60,6 +60,9 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IServiceBayRepository, ServiceBayRepository>();
         services.AddScoped<IAvailabilityRepository, AvailabilityRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IPaymentIntentRepository, PaymentIntentRepository>();
+        services.AddScoped<IPaymentStatusQueryRepository, PaymentStatusQueryRepository>();
+        services.AddScoped<IPaymentWebhookRepository, PaymentWebhookRepository>();
 
         // Register generic entity repositories for all domain entities
         services.AddScoped<ICustomerRepository, CustomerRepository>();
@@ -95,6 +98,10 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IPaymentIntentService, PaymentIntentService>();
+        services.AddScoped<IPaymentStatusQueryService, PaymentStatusQueryService>();
+        services.AddScoped<IPaymentWebhookService, PaymentWebhookService>();
+        services.AddScoped<IPaymentProviderGateway, DevelopmentPaymentProviderGateway>();
         services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
         services.AddScoped<IIdempotencyService, IdempotencyService>();
         services.AddScoped<IIdempotencyRequestCoordinator, IdempotencyRequestCoordinator>();

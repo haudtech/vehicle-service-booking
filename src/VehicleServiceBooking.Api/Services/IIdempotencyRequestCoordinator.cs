@@ -27,6 +27,15 @@ public interface IIdempotencyRequestCoordinator
         HttpRequest httpRequest,
         CreateOrderRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Validates idempotency header requirements and starts idempotent processing for payment intent creation.
+    /// </summary>
+    Task<IdempotencyCoordinatorResult> ValidateAndBeginCreatePaymentIntentAsync(
+        HttpRequest httpRequest,
+        Guid orderId,
+        CreatePaymentIntentRequest request,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

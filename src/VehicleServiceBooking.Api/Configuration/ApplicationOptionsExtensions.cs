@@ -61,6 +61,14 @@ public static class ApplicationOptionsExtensions
             .ValidateOnStart();
 
         // Register in-process cache provider
+
+        services
+            .AddOptions<PaymentWebhookSecurityOptions>()
+            .Bind(configuration.GetSection(PaymentWebhookSecurityOptions.SectionName))
+            .Validate(
+                options => !options.Enabled || !options.RequireSignature || !string.IsNullOrWhiteSpace(options.SharedSecret),
+                $"{PaymentWebhookSecurityOptions.SectionName}:SharedSecret must be configured when signature validation is enabled.")
+            .ValidateOnStart();
         services.AddMemoryCache();
 
         return services;

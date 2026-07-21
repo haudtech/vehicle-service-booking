@@ -16,6 +16,298 @@ namespace VehicleServiceBooking.Tests.Api.Controllers;
 public class OrdersControllerTests
 {
     [Fact]
+    public async Task CreatePaymentIntent_WhenServiceCreatesNewIntent_ReturnsCreated()
+    {
+        var orderId = Guid.NewGuid();
+        var request = new CreatePaymentIntentRequest
+        {
+            PaymentProviderId = Guid.NewGuid(),
+            PaymentMethodId = Guid.NewGuid()
+        };
+
+        var validator = new Mock<IValidator<CreateOrderRequest>>();
+        var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        idempotencyCoordinator
+            .Setup(c => c.ValidateAndBeginCreatePaymentIntentAsync(
+                It.IsAny<HttpRequest>(),
+                orderId,
+                request,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyCoordinatorResult());
+
+        var paymentIntentValidator = new Mock<IValidator<CreatePaymentIntentRequest>>();
+        paymentIntentValidator
+            .Setup(v => v.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+
+        var paymentIntentService = new Mock<IPaymentIntentService>();
+        paymentIntentService
+            .Setup(s => s.CreatePaymentIntentAsync(orderId, request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreatePaymentIntentResponse(isExistingIntent: false));
+
+        var controller = CreateController(
+            validator.Object,
+            Mock.Of<IOrderService>(),
+            Mock.Of<IIdempotencyService>(),
+            idempotencyCoordinator.Object,
+            Mock.Of<ILogger<OrdersController>>(),
+            paymentIntentValidator.Object,
+            paymentIntentService.Object,
+            Mock.Of<IPaymentStatusQueryService>());
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var actionResult = await controller.CreatePaymentIntent(orderId, request, CancellationToken.None, null);
+
+        var createdResult = actionResult.Result.Should().BeOfType<CreatedResult>().Subject;
+        createdResult.Value.Should().BeOfType<CreatePaymentIntentResponse>();
+    }
+
+    [Fact]
+    public async Task CreatePaymentIntent_WhenServiceReusesExistingIntent_ReturnsOk()
+    {
+        var orderId = Guid.NewGuid();
+        var request = new CreatePaymentIntentRequest
+        {
+            PaymentProviderId = Guid.NewGuid(),
+            PaymentMethodId = Guid.NewGuid()
+        };
+
+        var validator = new Mock<IValidator<CreateOrderRequest>>();
+        var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        idempotencyCoordinator
+            .Setup(c => c.ValidateAndBeginCreatePaymentIntentAsync(
+                It.IsAny<HttpRequest>(),
+                orderId,
+                request,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyCoordinatorResult());
+
+        var paymentIntentValidator = new Mock<IValidator<CreatePaymentIntentRequest>>();
+        paymentIntentValidator
+            .Setup(v => v.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+
+        var paymentIntentService = new Mock<IPaymentIntentService>();
+        paymentIntentService
+            .Setup(s => s.CreatePaymentIntentAsync(orderId, request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreatePaymentIntentResponse(isExistingIntent: true));
+
+        var controller = CreateController(
+            validator.Object,
+            Mock.Of<IOrderService>(),
+            Mock.Of<IIdempotencyService>(),
+            idempotencyCoordinator.Object,
+            Mock.Of<ILogger<OrdersController>>(),
+            paymentIntentValidator.Object,
+            paymentIntentService.Object,
+            Mock.Of<IPaymentStatusQueryService>());
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var actionResult = await controller.CreatePaymentIntent(orderId, request, CancellationToken.None, null);
+
+        var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeOfType<CreatePaymentIntentResponse>();
+    }
+
+    [Fact]
+    public async Task CreatePaymentIntent_WhenIdempotencyHeaderPresent_CompletesTrackingRecord()
+    {
+        var orderId = Guid.NewGuid();
+        var request = new CreatePaymentIntentRequest
+        {
+            PaymentProviderId = Guid.NewGuid(),
+            PaymentMethodId = Guid.NewGuid()
+        };
+
+        var recordId = Guid.NewGuid();
+        var validator = new Mock<IValidator<CreateOrderRequest>>();
+        var paymentIntentValidator = new Mock<IValidator<CreatePaymentIntentRequest>>();
+        paymentIntentValidator
+            .Setup(v => v.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+
+        var idempotencyService = new Mock<IIdempotencyService>();
+        idempotencyService
+            .Setup(s => s.CompleteRequestAsync(
+                recordId,
+                StatusCodes.Status201Created,
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        idempotencyCoordinator
+            .Setup(c => c.ValidateAndBeginCreatePaymentIntentAsync(
+                It.Is<HttpRequest>(r => r.Headers.ContainsKey("Idempotency-Key")),
+                orderId,
+                request,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyCoordinatorResult { RecordId = recordId });
+
+        var paymentIntentService = new Mock<IPaymentIntentService>();
+        paymentIntentService
+            .Setup(s => s.CreatePaymentIntentAsync(orderId, request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreatePaymentIntentResponse(isExistingIntent: false));
+
+        var controller = CreateController(
+            validator.Object,
+            Mock.Of<IOrderService>(),
+            idempotencyService.Object,
+            idempotencyCoordinator.Object,
+            Mock.Of<ILogger<OrdersController>>(),
+            paymentIntentValidator.Object,
+            paymentIntentService.Object,
+            Mock.Of<IPaymentStatusQueryService>());
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        controller.ControllerContext.HttpContext.Request.Headers["Idempotency-Key"] = "payment-intent-test-key";
+
+        var actionResult = await controller.CreatePaymentIntent(orderId, request, CancellationToken.None, "payment-intent-test-key");
+
+        actionResult.Result.Should().BeOfType<CreatedResult>();
+        idempotencyService.Verify(
+            s => s.CompleteRequestAsync(
+                recordId,
+                StatusCodes.Status201Created,
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreatePaymentIntent_WhenIdempotencyKeyReusedWithDifferentPayload_ReturnsConflictAndSkipsService()
+    {
+        var orderId = Guid.NewGuid();
+        var request = new CreatePaymentIntentRequest
+        {
+            PaymentProviderId = Guid.NewGuid(),
+            PaymentMethodId = Guid.NewGuid()
+        };
+
+        var validator = new Mock<IValidator<CreateOrderRequest>>();
+        var paymentIntentValidator = new Mock<IValidator<CreatePaymentIntentRequest>>();
+        paymentIntentValidator
+            .Setup(v => v.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ValidationResult());
+
+        var paymentIntentService = new Mock<IPaymentIntentService>();
+        var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
+        idempotencyCoordinator
+            .Setup(c => c.ValidateAndBeginCreatePaymentIntentAsync(
+                It.IsAny<HttpRequest>(),
+                orderId,
+                request,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyCoordinatorResult
+            {
+                EarlyResponse = new ConflictObjectResult(new ErrorResponse
+                {
+                    Message = "The provided idempotency key was already used with a different request payload.",
+                    ErrorCode = "IDEMPOTENCY_KEY_REUSED",
+                    Timestamp = DateTime.UtcNow
+                })
+            });
+
+        var controller = CreateController(
+            validator.Object,
+            Mock.Of<IOrderService>(),
+            Mock.Of<IIdempotencyService>(),
+            idempotencyCoordinator.Object,
+            Mock.Of<ILogger<OrdersController>>(),
+            paymentIntentValidator.Object,
+            paymentIntentService.Object,
+            Mock.Of<IPaymentStatusQueryService>());
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        controller.ControllerContext.HttpContext.Request.Headers["Idempotency-Key"] = "duplicate-payment-intent-key";
+
+        var actionResult = await controller.CreatePaymentIntent(orderId, request, CancellationToken.None, null);
+
+        var conflictResult = actionResult.Result.Should().BeOfType<ConflictObjectResult>().Subject;
+        var error = conflictResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+
+        error.ErrorCode.Should().Be("IDEMPOTENCY_KEY_REUSED");
+        paymentIntentService.Verify(
+            s => s.CreatePaymentIntentAsync(It.IsAny<Guid>(), It.IsAny<CreatePaymentIntentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetPaymentStatus_WhenOrderExists_ReturnsOk()
+    {
+        var orderId = Guid.NewGuid();
+        var paymentStatusResponse = new GetPaymentStatusResponse
+        {
+            OrderId = orderId,
+            PaymentStatusId = Guid.NewGuid(),
+            OrderPaymentStatus = "Pending",
+            TotalAmount = 500000m,
+            AmountPaid = 0m
+        };
+
+        var paymentStatusService = new Mock<IPaymentStatusQueryService>();
+        paymentStatusService
+            .Setup(s => s.GetByOrderIdAsync(orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(paymentStatusResponse);
+
+        var controller = CreateController(
+            Mock.Of<IValidator<CreateOrderRequest>>(),
+            Mock.Of<IOrderService>(),
+            Mock.Of<IIdempotencyService>(),
+            Mock.Of<IIdempotencyRequestCoordinator>(),
+            Mock.Of<ILogger<OrdersController>>(),
+            Mock.Of<IValidator<CreatePaymentIntentRequest>>(),
+            Mock.Of<IPaymentIntentService>(),
+            paymentStatusService.Object);
+
+        var actionResult = await controller.GetPaymentStatus(orderId, CancellationToken.None);
+
+        var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.Value.Should().BeEquivalentTo(paymentStatusResponse);
+    }
+
+    [Fact]
+    public async Task GetPaymentStatus_WhenOrderNotFound_ReturnsNotFound()
+    {
+        var orderId = Guid.NewGuid();
+
+        var paymentStatusService = new Mock<IPaymentStatusQueryService>();
+        paymentStatusService
+            .Setup(s => s.GetByOrderIdAsync(orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GetPaymentStatusResponse?)null);
+
+        var controller = CreateController(
+            Mock.Of<IValidator<CreateOrderRequest>>(),
+            Mock.Of<IOrderService>(),
+            Mock.Of<IIdempotencyService>(),
+            Mock.Of<IIdempotencyRequestCoordinator>(),
+            Mock.Of<ILogger<OrdersController>>(),
+            Mock.Of<IValidator<CreatePaymentIntentRequest>>(),
+            Mock.Of<IPaymentIntentService>(),
+            paymentStatusService.Object);
+
+        var actionResult = await controller.GetPaymentStatus(orderId, CancellationToken.None);
+
+        var notFoundResult = actionResult.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
+        var error = notFoundResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+        error.ErrorCode.Should().Be("ORDER_NOT_FOUND");
+    }
+
+    [Fact]
     public async Task GetOrderById_WhenOrderExists_ReturnsOk()
     {
         var orderId = Guid.NewGuid();
@@ -31,7 +323,7 @@ public class OrdersControllerTests
         var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
         var logger = new Mock<ILogger<OrdersController>>();
 
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -59,7 +351,7 @@ public class OrdersControllerTests
         var idempotencyCoordinator = new Mock<IIdempotencyRequestCoordinator>();
         var logger = new Mock<ILogger<OrdersController>>();
 
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -101,7 +393,7 @@ public class OrdersControllerTests
             .ReturnsAsync(new IdempotencyCoordinatorResult());
 
         var logger = new Mock<ILogger<OrdersController>>();
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -150,7 +442,7 @@ public class OrdersControllerTests
             .ReturnsAsync(new IdempotencyCoordinatorResult());
 
         var logger = new Mock<ILogger<OrdersController>>();
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -207,7 +499,7 @@ public class OrdersControllerTests
             });
 
         var logger = new Mock<ILogger<OrdersController>>();
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -259,7 +551,7 @@ public class OrdersControllerTests
             });
 
         var logger = new Mock<ILogger<OrdersController>>();
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -312,7 +604,7 @@ public class OrdersControllerTests
             .ReturnsAsync(new IdempotencyCoordinatorResult { RecordId = recordId });
 
         var logger = new Mock<ILogger<OrdersController>>();
-        var controller = new OrdersController(
+        var controller = CreateController(
             validator.Object,
             orderService.Object,
             idempotencyService.Object,
@@ -370,6 +662,46 @@ public class OrdersControllerTests
                 }
             ],
             AppointmentIds = [Guid.NewGuid()]
+        };
+    }
+
+    private static OrdersController CreateController(
+        IValidator<CreateOrderRequest> createOrderValidator,
+        IOrderService orderService,
+        IIdempotencyService idempotencyService,
+        IIdempotencyRequestCoordinator idempotencyCoordinator,
+        ILogger<OrdersController> logger,
+        IValidator<CreatePaymentIntentRequest>? createPaymentIntentValidator = null,
+        IPaymentIntentService? paymentIntentService = null,
+        IPaymentStatusQueryService? paymentStatusQueryService = null)
+    {
+        return new OrdersController(
+            createOrderValidator,
+            createPaymentIntentValidator ?? Mock.Of<IValidator<CreatePaymentIntentRequest>>(),
+            orderService,
+            paymentIntentService ?? Mock.Of<IPaymentIntentService>(),
+            paymentStatusQueryService ?? Mock.Of<IPaymentStatusQueryService>(),
+            idempotencyService,
+            idempotencyCoordinator,
+            logger);
+    }
+
+    private static CreatePaymentIntentResponse CreatePaymentIntentResponse(bool isExistingIntent)
+    {
+        return new CreatePaymentIntentResponse
+        {
+            OrderId = Guid.NewGuid(),
+            PaymentOrderId = Guid.NewGuid(),
+            PaymentTransactionId = Guid.NewGuid(),
+            PaymentProviderId = Guid.NewGuid(),
+            PaymentMethodId = Guid.NewGuid(),
+            IntentCode = "PI-TEST-001",
+            CheckoutUrl = "https://payments.local/checkout/PI-TEST-001",
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15),
+            OrderPaymentStatus = "Pending",
+            PaymentIntentStatus = "Redirected",
+            PaymentTransactionStatus = "Pending",
+            IsExistingIntent = isExistingIntent
         };
     }
 }
