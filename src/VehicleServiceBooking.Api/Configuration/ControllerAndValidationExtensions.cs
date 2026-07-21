@@ -30,6 +30,8 @@ public static class ControllerAndValidationExtensions
         services.AddScoped<IValidator<GetAvailabilityRequest>, GetAvailabilityRequestValidator>();
         services.AddScoped<IValidator<CreateAppointmentRequest>, CreateAppointmentRequestValidator>();
         services.AddScoped<IValidator<CreateOrderRequest>, CreateOrderRequestValidator>();
+        services.AddScoped<IValidator<CreatePaymentIntentRequest>, CreatePaymentIntentRequestValidator>();
+        services.AddScoped<IValidator<ProcessPaymentWebhookRequest>, ProcessPaymentWebhookRequestValidator>();
 
         // Configure API behavior
         services.Configure<ApiBehaviorOptions>(options =>

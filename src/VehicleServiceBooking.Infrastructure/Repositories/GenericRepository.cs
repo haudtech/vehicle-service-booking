@@ -33,13 +33,37 @@ public abstract class GenericRepository<TEntity> : IReadRepository<TEntity>, IWr
     }
 
     /// <summary>
-    /// Gets a queryable collection with AsNoTracking() applied by default.
-    /// Use this as the base for all read queries to ensure consistent configuration.
+    /// Gets a queryable collection with optional AsNoTracking() behavior.
+    /// Use this as the base for repository queries to ensure consistent configuration.
     /// </summary>
+    /// <param name="asNoTracking">True to disable change tracking; false to keep tracking enabled.</param>
     /// <returns>An IQueryable collection with change tracking disabled</returns>
-    protected IQueryable<TEntity> GetQueryable()
+    protected IQueryable<TEntity> GetQueryable(bool asNoTracking = true)
     {
-        return DbContext.DbContext.Set<TEntity>().AsNoTracking();
+        var query = DbContext.DbContext.Set<TEntity>().AsQueryable();
+        return asNoTracking ? query.AsNoTracking() : query;
+    }
+
+    /// <summary>
+    /// Gets a queryable collection for another entity type with optional AsNoTracking() behavior.
+    /// Useful for aggregate-oriented repositories that need to query related lookup tables.
+    /// </summary>
+    /// <typeparam name="TQueryEntity">The entity type to query.</typeparam>
+    /// <param name="asNoTracking">True to disable change tracking; false to keep tracking enabled.</param>
+    protected IQueryable<TQueryEntity> GetQueryable<TQueryEntity>(bool asNoTracking = true)
+        where TQueryEntity : class
+    {
+        var query = DbContext.DbContext.Set<TQueryEntity>().AsQueryable();
+        return asNoTracking ? query.AsNoTracking() : query;
+    }
+
+    /// <summary>
+    /// Adds an entity of any type to the current unit of work.
+    /// </summary>
+    protected void AddEntity<TAddEntity>(TAddEntity entity)
+        where TAddEntity : class
+    {
+        DbContext.DbContext.Set<TAddEntity>().Add(entity);
     }
 
     /// <summary>

@@ -27,20 +27,29 @@ public sealed class OrdersController : ControllerBase
     private static readonly JsonSerializerOptions ReplayJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IValidator<CreateOrderRequest> _createValidator;
+    private readonly IValidator<CreatePaymentIntentRequest> _createPaymentIntentValidator;
     private readonly IOrderService _orderService;
+    private readonly IPaymentIntentService _paymentIntentService;
+    private readonly IPaymentStatusQueryService _paymentStatusQueryService;
     private readonly IIdempotencyService _idempotencyService;
     private readonly IIdempotencyRequestCoordinator _idempotencyRequestCoordinator;
     private readonly ILogger<OrdersController> _logger;
 
     public OrdersController(
         IValidator<CreateOrderRequest> createValidator,
+        IValidator<CreatePaymentIntentRequest> createPaymentIntentValidator,
         IOrderService orderService,
+        IPaymentIntentService paymentIntentService,
+        IPaymentStatusQueryService paymentStatusQueryService,
         IIdempotencyService idempotencyService,
         IIdempotencyRequestCoordinator idempotencyRequestCoordinator,
         ILogger<OrdersController> logger)
     {
         _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
+        _createPaymentIntentValidator = createPaymentIntentValidator ?? throw new ArgumentNullException(nameof(createPaymentIntentValidator));
         _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
+        _paymentIntentService = paymentIntentService ?? throw new ArgumentNullException(nameof(paymentIntentService));
+        _paymentStatusQueryService = paymentStatusQueryService ?? throw new ArgumentNullException(nameof(paymentStatusQueryService));
         _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
         _idempotencyRequestCoordinator = idempotencyRequestCoordinator ?? throw new ArgumentNullException(nameof(idempotencyRequestCoordinator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -91,6 +100,126 @@ public sealed class OrdersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error in GetOrderById: orderId={OrderId}", orderId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates or reuses a payment intent for an existing order.
+    /// </summary>
+    [HttpPost("orders/{orderId:guid}/payments/intent")]
+    [Authorize(Policy = "OrderEditPolicy")]
+    [ProducesResponseType(typeof(CreatePaymentIntentResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(CreatePaymentIntentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<CreatePaymentIntentResponse>> CreatePaymentIntent(
+        [FromRoute] Guid orderId,
+        [FromBody] CreatePaymentIntentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (orderId == Guid.Empty)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Message = "Order ID cannot be empty",
+                    ErrorCode = "INVALID_ORDER_ID",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            await _createPaymentIntentValidator
+                .ValidateAndThrowAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+
+            var response = await _paymentIntentService
+                .CreatePaymentIntentAsync(orderId, request, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (response.IsExistingIntent)
+            {
+                return Ok(response);
+            }
+
+            return Created($"/api/v1/orders/{orderId}/payments/status", response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation in CreatePaymentIntent: orderId={OrderId}", orderId);
+
+            return BadRequest(new ErrorResponse
+            {
+                Message = ex.Message,
+                ErrorCode = "INVALID_OPERATION",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in CreatePaymentIntent: orderId={OrderId}", orderId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns aggregated payment status for the specified order.
+    /// </summary>
+    [HttpGet("orders/{orderId:guid}/payments/status")]
+    [Authorize(Policy = "OrderViewPolicy")]
+    [ProducesResponseType(typeof(GetPaymentStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<GetPaymentStatusResponse>> GetPaymentStatus(
+        [FromRoute] Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (orderId == Guid.Empty)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Message = "Order ID cannot be empty",
+                    ErrorCode = "INVALID_ORDER_ID",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            var response = await _paymentStatusQueryService
+                .GetByOrderIdAsync(orderId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (response == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Message = $"Order with ID {orderId} not found",
+                    ErrorCode = "ORDER_NOT_FOUND",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation in GetPaymentStatus: orderId={OrderId}", orderId);
+
+            return BadRequest(new ErrorResponse
+            {
+                Message = ex.Message,
+                ErrorCode = "INVALID_OPERATION",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in GetPaymentStatus: orderId={OrderId}", orderId);
             throw;
         }
     }

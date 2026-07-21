@@ -1,0 +1,136 @@
+@authHost = http://localhost:5158
+@bookingHost = http://localhost:5280
+
+# Keep runId stable for one test run.
+@runId = 20260719_01
+@email = haud.fin@gmail.com
+@accountName = workflow11_{{runId}}
+@password = Test1234!
+
+# challengeChannel: otp_first | email_otp | authenticator_app
+@authenticatorChallengeChannel = authenticator_app
+@authenticatorLoginCode = 539211
+@orderIdOriginal = 391afe18-405d-4d1c-a46d-4dda177c59a8
+
+# Existing order Location path from create-order workflow.
+# Example: /api/v1/orders/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+@orderLocation = /api/v1/orders/{{orderIdOriginal}}
+
+# Payment lookup IDs seeded in database.
+@paymentProviderId = 00000000-0000-0000-0003-000000000001
+@paymentMethodId = 00000000-0000-0000-0008-000000000001
+@paymentProviderType = ZaloPay
+
+###
+# Payment flow with development gateway:
+# 1) Login challenge (authenticator)
+# 2) Verify login challenge (get JWT)
+# 3) Read existing order by Location
+# 4) Create payment intent
+# 5) Check initial payment status
+# 6) Simulate provider completion through mock checkout callback
+# 7) Verify final payment status is paid
+
+### 1) Login with authenticator challenge (does not return JWT)
+# @name authenticatorLoginChallenge
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{accountName}}",
+  "email": "{{email}}",
+  "challengeChannel": "{{authenticatorChallengeChannel}}",
+  "password": "{{password}}"
+}
+
+###
+@authenticatorChallengeId = {{authenticatorLoginChallenge.response.body.$.challengeId}}
+
+### 2) Verify login challenge with authenticator TOTP (returns tokens)
+# @name authenticatorLoginVerifyCode
+POST {{authHost}}/api/v1/auth/login/verify-code
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "challengeId": "{{authenticatorChallengeId}}",
+  "code": "{{authenticatorLoginCode}}"
+}
+
+###
+@loginAccessToken = {{authenticatorLoginVerifyCode.response.body.$.accessToken}}
+@loginRefreshToken = {{authenticatorLoginVerifyCode.response.body.$.refreshToken}}
+
+### 3) Read existing order by URI from Location header
+# @name getOrderByLocation
+GET {{bookingHost}}{{orderLocation}}
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderId = {{getOrderByLocation.response.body.$.orderId}}
+@orderCode = {{getOrderByLocation.response.body.$.orderCode}}
+@orderTotalAmount = {{getOrderByLocation.response.body.$.totalAmount}}
+
+### 4) Create payment intent for existing order
+# @name createPaymentIntent
+POST {{bookingHost}}/api/v1/orders/{{orderId}}/payments/intent
+Content-Type: application/json
+Authorization: Bearer {{loginAccessToken}}
+
+{
+  "paymentProviderId": "{{paymentProviderId}}",
+  "paymentMethodId": "{{paymentMethodId}}"
+}
+
+###
+@paymentOrderId = {{createPaymentIntent.response.body.$.paymentOrderId}}
+@paymentTransactionId = {{createPaymentIntent.response.body.$.paymentTransactionId}}
+@intentCode = {{createPaymentIntent.response.body.$.intentCode}}
+@checkoutUrl = {{createPaymentIntent.response.body.$.checkoutUrl}}
+@intentExpiresAtUtc = {{createPaymentIntent.response.body.$.expiresAtUtc}}
+
+### 5) Check payment status after intent creation (expected pending/redirected)
+# @name getPaymentStatusAfterIntent
+GET {{bookingHost}}/api/v1/orders/{{orderId}}/payments/status
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderPaymentStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.orderPaymentStatus}}
+@paymentIntentStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.paymentOrder.paymentIntentStatus}}
+@paymentTransactionStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.paymentTransaction.paymentTransactionStatus}}
+
+### 6) Optional: open development mock checkout page
+# @name openMockCheckoutPage
+GET {{bookingHost}}/api/v1/payments/mock/checkout/{{paymentProviderType}}/{{intentCode}}
+Accept: text/html
+
+### 7) Simulate provider completion callback (webhook bridge)
+# @name completeMockCheckout
+POST {{bookingHost}}/api/v1/payments/mock/checkout/{{paymentProviderType}}/{{intentCode}}/complete
+Content-Type: application/x-www-form-urlencoded
+
+transactionStatus=Completed
+
+###
+@webhookProcessStatus = {{completeMockCheckout.response.body.$.processStatus}}
+@webhookEventId = {{completeMockCheckout.response.body.$.eventId}}
+
+### 8) Verify payment status after mock completion (expected paid)
+# @name getPaymentStatusAfterCompletion
+GET {{bookingHost}}/api/v1/orders/{{orderId}}/payments/status
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderPaymentStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.orderPaymentStatus}}
+@paymentIntentStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.paymentOrder.paymentIntentStatus}}
+@paymentTransactionStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.paymentTransaction.paymentTransactionStatus}}
+@amountPaidFinal = {{getPaymentStatusAfterCompletion.response.body.$.amountPaid}}
+@paidAtUtcFinal = {{getPaymentStatusAfterCompletion.response.body.$.paidAtUtc}}
+
+### 9) Optional: hit payment return endpoint for redirect UX callback parity
+# @name paymentReturn
+GET {{bookingHost}}/api/v1/payments/return?intentCode={{intentCode}}&transactionStatus={{paymentTransactionStatusFinal}}&providerTransactionId=mock-provider-tx&eventId={{webhookEventId}}
+Accept: application/json
