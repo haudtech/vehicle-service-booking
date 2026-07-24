@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using VehicleServiceBooking.Domain.Entities;
+using VehicleServiceBooking.Domain.Enums;
 
 namespace VehicleServiceBooking.Application.Interfaces.Repositories;
 
@@ -17,6 +18,10 @@ public interface IOrderRepository : IReadRepository<Order>, IWriteRepository<Ord
 
     Task<bool> AnyAppointmentAlreadyLinkedAsync(
         IEnumerable<Guid> appointmentIds,
+        CancellationToken cancellationToken);
+
+    Task<OrderPaymentStatusLookup?> GetOrderPaymentStatusAsync(
+        OrderPaymentStatus status,
         CancellationToken cancellationToken);
 
     Task<Order> CreateAggregateAsync(

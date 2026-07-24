@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using VehicleServiceBooking.Domain.Enums;
 
 namespace VehicleServiceBooking.Application.Interfaces.Services;
 
@@ -30,6 +31,10 @@ public sealed class PaymentProviderIntentRequest
     public Guid PaymentProviderId { get; set; }
 
     public Guid PaymentMethodId { get; set; }
+
+    public PaymentProviderType PaymentProviderType { get; set; }
+
+    public PaymentMethodType PaymentMethodType { get; set; }
 }
 
 /// <summary>

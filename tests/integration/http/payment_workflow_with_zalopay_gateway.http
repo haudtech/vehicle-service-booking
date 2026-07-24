@@ -1,0 +1,170 @@
+@authHost = http://localhost:5158
+@bookingHost = http://localhost:5280
+
+# Keep runId stable for one test run.
+@runId = 20260723_01
+@email = haud.fin@gmail.com
+@accountName = workflow11_{{runId}}
+@password = Test1234!
+
+# challengeChannel: otp_first | email_otp | authenticator_app
+@authenticatorChallengeChannel = authenticator_app
+@authenticatorLoginCode = 539211
+@orderIdOriginal = 391afe18-405d-4d1c-a46d-4dda177c59a8
+
+# Existing order Location path from create-order workflow.
+# Example: /api/v1/orders/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+@orderLocation = /api/v1/orders/{{orderIdOriginal}}
+
+# Payment lookup IDs seeded in database.
+@paymentProviderId = 00000000-0000-0000-0003-000000000001
+@paymentMethodId = 00000000-0000-0000-0008-000000000001
+@paymentProviderType = ZaloPay
+@paymentIntentIdempotencyKey = payment-intent-zalopay-{{runId}}
+
+# Manual callback simulation placeholders (only needed if provider callback is unavailable).
+# Build data/mac outside this .http file using the sandbox guide script/commands.
+@zalopayCallbackData = {"app_id":2554,"app_trans_id":"250723_manualtest001","app_time":1721731200000,"app_user":"vsb_test","amount":10000,"embed_data":"{\"intentCode\":\"{{intentCode}}\"}","item":"[]","zp_trans_id":1234567890,"server_time":1721731205000}
+@zalopayCallbackMac = replace-with-computed-hmac-key2
+
+###
+# ZaloPay gateway flow:
+# 1) Login challenge (authenticator)
+# 2) Verify login challenge (get JWT)
+# 3) Read existing order by Location
+# 4) Create payment intent (real provider path)
+# 5) Replay create payment intent with same idempotency key
+# 6) Check initial payment status
+# 7) Open checkout URL and complete payment on ZaloPay sandbox UI
+# 8A) Normal path: wait for provider callback delivery to webhook
+# 8B) Fallback path: manually post ZaloPay callback envelope (data/mac)
+# 9) Verify final payment status
+
+### 1) Login with authenticator challenge (does not return JWT)
+# @name authenticatorLoginChallenge
+POST {{authHost}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{accountName}}",
+  "email": "{{email}}",
+  "challengeChannel": "{{authenticatorChallengeChannel}}",
+  "password": "{{password}}"
+}
+
+###
+@authenticatorChallengeId = {{authenticatorLoginChallenge.response.body.$.challengeId}}
+
+### 2) Verify login challenge with authenticator TOTP (returns tokens)
+# @name authenticatorLoginVerifyCode
+POST {{authHost}}/api/v1/auth/login/verify-code
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "challengeId": "{{authenticatorChallengeId}}",
+  "code": "{{authenticatorLoginCode}}"
+}
+
+###
+@loginAccessToken = {{authenticatorLoginVerifyCode.response.body.$.accessToken}}
+@loginRefreshToken = {{authenticatorLoginVerifyCode.response.body.$.refreshToken}}
+
+### 3) Read existing order by URI from Location header
+# @name getOrderByLocation
+GET {{bookingHost}}{{orderLocation}}
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderId = {{getOrderByLocation.response.body.$.orderId}}
+@orderCode = {{getOrderByLocation.response.body.$.orderCode}}
+@orderTotalAmount = {{getOrderByLocation.response.body.$.totalAmount}}
+
+### 4) Create payment intent for existing order (real ZaloPay path)
+# @name createPaymentIntent
+POST {{bookingHost}}/api/v1/orders/{{orderId}}/payments/intent
+Content-Type: application/json
+Authorization: Bearer {{loginAccessToken}}
+Idempotency-Key: {{paymentIntentIdempotencyKey}}
+
+{
+  "paymentProviderId": "{{paymentProviderId}}",
+  "paymentMethodId": "{{paymentMethodId}}"
+}
+
+###
+@paymentOrderId = {{createPaymentIntent.response.body.$.paymentOrderId}}
+@paymentTransactionId = {{createPaymentIntent.response.body.$.paymentTransactionId}}
+@intentCode = {{createPaymentIntent.response.body.$.intentCode}}
+@checkoutUrl = {{createPaymentIntent.response.body.$.checkoutUrl}}
+@intentExpiresAtUtc = {{createPaymentIntent.response.body.$.expiresAtUtc}}
+
+### 5) Replay create payment intent with same idempotency key (expects stored response)
+# @name replayCreatePaymentIntent
+POST {{bookingHost}}/api/v1/orders/{{orderId}}/payments/intent
+Content-Type: application/json
+Authorization: Bearer {{loginAccessToken}}
+Idempotency-Key: {{paymentIntentIdempotencyKey}}
+
+{
+  "paymentProviderId": "{{paymentProviderId}}",
+  "paymentMethodId": "{{paymentMethodId}}"
+}
+
+###
+@replayedPaymentOrderId = {{replayCreatePaymentIntent.response.body.$.paymentOrderId}}
+@replayedPaymentTransactionId = {{replayCreatePaymentIntent.response.body.$.paymentTransactionId}}
+@replayedIntentCode = {{replayCreatePaymentIntent.response.body.$.intentCode}}
+
+### 6) Check payment status after intent creation (expected pending/redirected)
+# @name getPaymentStatusAfterIntent
+GET {{bookingHost}}/api/v1/orders/{{orderId}}/payments/status
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderPaymentStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.orderPaymentStatus}}
+@paymentIntentStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.paymentOrder.paymentIntentStatus}}
+@paymentTransactionStatusAfterIntent = {{getPaymentStatusAfterIntent.response.body.$.paymentTransaction.paymentTransactionStatus}}
+
+### 7) Open provider checkout URL and complete payment in ZaloPay sandbox manually
+# @name openCheckoutUrl
+GET {{checkoutUrl}}
+Accept: text/html
+
+### 8A) Normal path: if ZaloPay callback is configured/reachable, skip 8B and go to step 9.
+
+### 8B) Fallback path: manually post ZaloPay callback envelope (data/mac)
+# Use only when merchant portal callback setup is unavailable.
+# @name manualZaloPayCallback
+POST {{bookingHost}}/api/v1/payments/webhooks/{{paymentProviderType}}
+Content-Type: application/json
+
+{
+  "data": "{\"app_id\":2554,\"app_trans_id\":\"250723_manualtest001\",\"app_time\":1721731200000,\"app_user\":\"vsb_test\",\"amount\":10000,\"embed_data\":\"{\\\"intentCode\\\":\\\"{{intentCode}}\\\"}\",\"item\":\"[]\",\"zp_trans_id\":1234567890,\"server_time\":1721731205000}",
+  "mac": "{{zalopayCallbackMac}}",
+  "type": 1
+}
+
+###
+@webhookReturnCode = {{manualZaloPayCallback.response.body.$.return_code}}
+@webhookReturnMessage = {{manualZaloPayCallback.response.body.$.return_message}}
+
+### 9) Verify payment status after callback processing (expected paid on success flow)
+# @name getPaymentStatusAfterCompletion
+GET {{bookingHost}}/api/v1/orders/{{orderId}}/payments/status
+Authorization: Bearer {{loginAccessToken}}
+Accept: application/json
+
+###
+@orderPaymentStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.orderPaymentStatus}}
+@paymentIntentStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.paymentOrder.paymentIntentStatus}}
+@paymentTransactionStatusFinal = {{getPaymentStatusAfterCompletion.response.body.$.paymentTransaction.paymentTransactionStatus}}
+@amountPaidFinal = {{getPaymentStatusAfterCompletion.response.body.$.amountPaid}}
+@paidAtUtcFinal = {{getPaymentStatusAfterCompletion.response.body.$.paidAtUtc}}
+
+### 10) Optional: payment return endpoint parity check
+# @name paymentReturn
+GET {{bookingHost}}/api/v1/payments/return?intentCode={{intentCode}}&transactionStatus={{paymentTransactionStatusFinal}}&providerTransactionId=manual-or-provider-tx&eventId=manual-or-provider-event
+Accept: application/json

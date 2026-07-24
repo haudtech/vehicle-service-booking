@@ -32,6 +32,17 @@ public sealed class PaymentIntentRepository : GenericRepository<Order>, IPayment
             .ConfigureAwait(false);
     }
 
+    public async Task<PaymentOrder?> GetPaymentOrderByOrderIdAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        return await GetQueryable<PaymentOrder>(asNoTracking: false)
+            .IgnoreQueryFilters()
+            .Include(x => x.Status)
+            .Include(x => x.PaymentTransaction)
+                .ThenInclude(x => x!.Status)
+            .SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<bool> PaymentProviderExistsAsync(Guid paymentProviderId, CancellationToken cancellationToken)
     {
         return await GetQueryable<PaymentProviderLookup>()
@@ -43,6 +54,20 @@ public sealed class PaymentIntentRepository : GenericRepository<Order>, IPayment
     {
         return await GetQueryable<PaymentMethodLookup>()
             .AnyAsync(x => x.Id == paymentMethodId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<PaymentProviderLookup?> GetPaymentProviderAsync(Guid paymentProviderId, CancellationToken cancellationToken)
+    {
+        return await GetQueryable<PaymentProviderLookup>()
+            .SingleOrDefaultAsync(x => x.Id == paymentProviderId && x.IsActive, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<PaymentMethodLookup?> GetPaymentMethodAsync(Guid paymentMethodId, CancellationToken cancellationToken)
+    {
+        return await GetQueryable<PaymentMethodLookup>()
+            .SingleOrDefaultAsync(x => x.Id == paymentMethodId && x.IsActive, cancellationToken)
             .ConfigureAwait(false);
     }
 

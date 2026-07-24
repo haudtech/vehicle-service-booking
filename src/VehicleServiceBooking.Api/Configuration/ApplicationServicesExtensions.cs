@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using VehicleServiceBooking.Api.Services;
+using VehicleServiceBooking.Application.Configuration;
 using VehicleServiceBooking.Application.Configuration.Interfaces;
 using VehicleServiceBooking.Application.Interfaces;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
@@ -34,6 +35,28 @@ public static class ApplicationServicesExtensions
             var options = sp.GetRequiredService<IOptions<AuthUserProfileOptions>>().Value;
             client.BaseAddress = options.GetBaseAddress();
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
+        services.AddHttpClient<ZaloPayPaymentProviderGateway>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<PaymentProviderGatewayOptions>>().Value.ZaloPay;
+            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.RequestTimeoutSeconds));
+        });
+
+        services.AddHttpClient<IZaloPayWebhookIngressService, ZaloPayWebhookIngressService>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<PaymentProviderGatewayOptions>>().Value.ZaloPay;
+            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            {
+                client.BaseAddress = new Uri(options.BaseUrl);
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.RequestTimeoutSeconds));
         });
 
         // Register DbContext abstraction
@@ -101,7 +124,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IPaymentIntentService, PaymentIntentService>();
         services.AddScoped<IPaymentStatusQueryService, PaymentStatusQueryService>();
         services.AddScoped<IPaymentWebhookService, PaymentWebhookService>();
-        services.AddScoped<IPaymentProviderGateway, DevelopmentPaymentProviderGateway>();
+        services.AddScoped<DevelopmentPaymentProviderGateway>();
+        services.AddScoped<IPaymentProviderGateway, PaymentProviderGatewayRouter>();
         services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
         services.AddScoped<IIdempotencyService, IdempotencyService>();
         services.AddScoped<IIdempotencyRequestCoordinator, IdempotencyRequestCoordinator>();

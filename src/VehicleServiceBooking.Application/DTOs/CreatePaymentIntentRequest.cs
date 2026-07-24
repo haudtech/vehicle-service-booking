@@ -31,6 +31,8 @@ public sealed class CreatePaymentIntentResponse
 
     public string? CheckoutUrl { get; set; }
 
+    public string? CheckoutQrPayload { get; set; }
+
     public DateTime? ExpiresAtUtc { get; set; }
 
     public string OrderPaymentStatus { get; set; } = string.Empty;

@@ -69,6 +69,20 @@ public static class ApplicationOptionsExtensions
                 options => !options.Enabled || !options.RequireSignature || !string.IsNullOrWhiteSpace(options.SharedSecret),
                 $"{PaymentWebhookSecurityOptions.SectionName}:SharedSecret must be configured when signature validation is enabled.")
             .ValidateOnStart();
+
+        services
+            .AddOptions<PaymentProviderGatewayOptions>()
+            .Bind(configuration.GetSection(PaymentProviderGatewayOptions.SectionName))
+            .Validate(
+                options =>
+                    !options.ZaloPay.Enabled ||
+                    (!string.IsNullOrWhiteSpace(options.ZaloPay.BaseUrl) &&
+                     options.ZaloPay.AppId > 0 &&
+                     !string.IsNullOrWhiteSpace(options.ZaloPay.Key1) &&
+                     !string.IsNullOrWhiteSpace(options.ZaloPay.Key2) &&
+                     !string.IsNullOrWhiteSpace(options.ZaloPay.CallbackUrl)),
+                $"{PaymentProviderGatewayOptions.SectionName}:ZaloPay must configure BaseUrl, AppId, Key1, Key2, and CallbackUrl when enabled.")
+            .ValidateOnStart();
         services.AddMemoryCache();
 
         return services;
