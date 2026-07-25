@@ -56,27 +56,35 @@ public sealed class PaymentIntentService : IPaymentIntentService
                 $"Order '{orderId}' cannot create payment intent in status '{order.PaymentStatus.Status}'.");
         }
 
-        var providerExists = await _paymentIntentRepository
-            .PaymentProviderExistsAsync(request.PaymentProviderId, cancellationToken)
+        var providerLookup = await _paymentIntentRepository
+            .GetPaymentProviderAsync(request.PaymentProviderId, cancellationToken)
             .ConfigureAwait(false);
-        if (!providerExists)
+        if (providerLookup == null)
         {
             throw new InvalidOperationException($"Payment provider '{request.PaymentProviderId}' was not found or is inactive.");
         }
 
-        var methodExists = await _paymentIntentRepository
-            .PaymentMethodExistsAsync(request.PaymentMethodId, cancellationToken)
+        var methodLookup = await _paymentIntentRepository
+            .GetPaymentMethodAsync(request.PaymentMethodId, cancellationToken)
             .ConfigureAwait(false);
-        if (!methodExists)
+        if (methodLookup == null)
         {
             throw new InvalidOperationException($"Payment method '{request.PaymentMethodId}' was not found or is inactive.");
         }
 
         var utcNow = DateTime.UtcNow;
+        var existingPaymentOrder = await _paymentIntentRepository
+            .GetPaymentOrderByOrderIdAsync(order.Id, cancellationToken)
+            .ConfigureAwait(false);
 
         if (CanReuseExistingIntent(order, request, utcNow))
         {
-            var existingPaymentOrder = order.PaymentOrder!;
+            if (existingPaymentOrder == null)
+            {
+                throw new InvalidOperationException($"Order '{order.Id}' is missing a payment order for active intent reuse.");
+            }
+
+            order.PaymentOrder = existingPaymentOrder;
             _logger.LogInformation(
                 "Reusing active payment intent: orderId={OrderId}, paymentOrderId={PaymentOrderId}, intentCode={IntentCode}",
                 order.Id,
@@ -99,6 +107,7 @@ public sealed class PaymentIntentService : IPaymentIntentService
                 PaymentMethodId = existingPaymentOrder.PaymentMethodId,
                 IntentCode = existingPaymentOrder.IntentCode,
                 CheckoutUrl = existingPaymentOrder.CheckoutUrl,
+                CheckoutQrPayload = existingPaymentOrder.CheckoutUrl,
                 ExpiresAtUtc = existingPaymentOrder.ExpiresAtUtc,
                 OrderPaymentStatus = order.PaymentStatus.Name,
                 PaymentIntentStatus = existingPaymentOrder.Status.Name,
@@ -131,7 +140,9 @@ public sealed class PaymentIntentService : IPaymentIntentService
                     Amount = order.TotalAmount,
                     CurrencyId = order.CurrencyId,
                     PaymentProviderId = request.PaymentProviderId,
-                    PaymentMethodId = request.PaymentMethodId
+                    PaymentMethodId = request.PaymentMethodId,
+                    PaymentProviderType = providerLookup.Provider,
+                    PaymentMethodType = methodLookup.Method
                 },
                 cancellationToken)
             .ConfigureAwait(false);
@@ -156,7 +167,7 @@ public sealed class PaymentIntentService : IPaymentIntentService
 
         PaymentOrder? newPaymentOrder = null;
 
-        if (order.PaymentOrder == null)
+        if (existingPaymentOrder == null)
         {
             newPaymentOrder = new PaymentOrder
             {
@@ -181,17 +192,19 @@ public sealed class PaymentIntentService : IPaymentIntentService
         }
         else
         {
-            order.PaymentOrder.PaymentProviderId = request.PaymentProviderId;
-            order.PaymentOrder.PaymentMethodId = request.PaymentMethodId;
-            order.PaymentOrder.StatusId = initiatedIntentStatus.Id;
-            order.PaymentOrder.IntentCode = intentCode;
-            order.PaymentOrder.CheckoutUrl = providerResult.CheckoutUrl;
-            order.PaymentOrder.ExpiresAtUtc = providerResult.ExpiresAtUtc;
-            order.PaymentOrder.LastProviderEventId = null;
-            order.PaymentOrder.LastProviderEventAtUtc = null;
-            order.PaymentOrder.PaymentTransactionId = paymentTransaction.Id;
-            order.PaymentOrder.OrderedAtUtc = utcNow;
-            order.PaymentOrder.UpdatedAt = utcNow;
+            existingPaymentOrder.PaymentProviderId = request.PaymentProviderId;
+            existingPaymentOrder.PaymentMethodId = request.PaymentMethodId;
+            existingPaymentOrder.StatusId = initiatedIntentStatus.Id;
+            existingPaymentOrder.IntentCode = intentCode;
+            existingPaymentOrder.CheckoutUrl = providerResult.CheckoutUrl;
+            existingPaymentOrder.ExpiresAtUtc = providerResult.ExpiresAtUtc;
+            existingPaymentOrder.LastProviderEventId = null;
+            existingPaymentOrder.LastProviderEventAtUtc = null;
+            existingPaymentOrder.PaymentTransactionId = paymentTransaction.Id;
+            existingPaymentOrder.OrderedAtUtc = utcNow;
+            existingPaymentOrder.UpdatedAt = utcNow;
+
+            order.PaymentOrder = existingPaymentOrder;
         }
 
         order.PaymentStatusId = pendingOrderPaymentStatus.Id;
@@ -219,6 +232,7 @@ public sealed class PaymentIntentService : IPaymentIntentService
             PaymentMethodId = order.PaymentOrder.PaymentMethodId,
             IntentCode = order.PaymentOrder.IntentCode,
             CheckoutUrl = order.PaymentOrder.CheckoutUrl,
+            CheckoutQrPayload = order.PaymentOrder.CheckoutUrl,
             ExpiresAtUtc = order.PaymentOrder.ExpiresAtUtc,
             OrderPaymentStatus = pendingOrderPaymentStatus.Name,
             PaymentIntentStatus = initiatedIntentStatus.Name,

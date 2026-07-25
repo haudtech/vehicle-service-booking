@@ -9,6 +9,7 @@ using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Application.Interfaces.Services;
 using VehicleServiceBooking.Domain.Entities;
+using VehicleServiceBooking.Domain.Enums;
 
 namespace VehicleServiceBooking.Application.Services;
 
@@ -148,12 +149,23 @@ public sealed class OrderService : IOrderService
             currency.DecimalPlaces,
             MidpointRounding.ToEven);
 
+        var pendingOrderPaymentStatus = await _orderRepository
+            .GetOrderPaymentStatusAsync(OrderPaymentStatus.Pending, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (pendingOrderPaymentStatus == null)
+        {
+            throw new InvalidOperationException("Order payment status 'Pending' is not configured or inactive.");
+        }
+
         var order = new Order
         {
             Id = orderId,
             OrderCode = normalizedOrderCode,
             CurrencyId = request.CurrencyId,
             TotalAmount = totalAmount,
+            PaymentStatusId = pendingOrderPaymentStatus.Id,
+            AmountPaid = 0m,
             CreatedAt = utcNow,
             UpdatedAt = utcNow,
             IsActive = true

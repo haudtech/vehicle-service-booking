@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
@@ -27,17 +28,20 @@ public sealed class PaymentsController : ControllerBase
 {
     private readonly IValidator<ProcessPaymentWebhookRequest> _processWebhookValidator;
     private readonly IPaymentWebhookService _paymentWebhookService;
+    private readonly IZaloPayWebhookIngressService _zaloPayWebhookIngressService;
     private readonly PaymentWebhookSecurityOptions _webhookSecurityOptions;
     private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
         IValidator<ProcessPaymentWebhookRequest> processWebhookValidator,
         IPaymentWebhookService paymentWebhookService,
+        IZaloPayWebhookIngressService zaloPayWebhookIngressService,
         IOptions<PaymentWebhookSecurityOptions> webhookSecurityOptions,
         ILogger<PaymentsController> logger)
     {
         _processWebhookValidator = processWebhookValidator ?? throw new ArgumentNullException(nameof(processWebhookValidator));
         _paymentWebhookService = paymentWebhookService ?? throw new ArgumentNullException(nameof(paymentWebhookService));
+        _zaloPayWebhookIngressService = zaloPayWebhookIngressService ?? throw new ArgumentNullException(nameof(zaloPayWebhookIngressService));
         _webhookSecurityOptions = webhookSecurityOptions?.Value ?? throw new ArgumentNullException(nameof(webhookSecurityOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -168,13 +172,21 @@ public sealed class PaymentsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ProcessPaymentWebhookResponse>> IngestWebhook(
+    public async Task<IActionResult> IngestWebhook(
         [FromRoute] PaymentProviderType providerType,
-        [FromBody] ProcessPaymentWebhookRequest request,
+        [FromBody] JsonElement requestBody,
         CancellationToken cancellationToken = default)
     {
+        if (providerType == PaymentProviderType.ZaloPay)
+        {
+            return await IngestZaloPayWebhookAsync(requestBody, cancellationToken).ConfigureAwait(false);
+        }
+
         try
         {
+            var request = JsonSerializer.Deserialize<ProcessPaymentWebhookRequest>(requestBody.GetRawText())
+                ?? throw new InvalidOperationException("Webhook request body is required.");
+
             await _processWebhookValidator
                 .ValidateAndThrowAsync(request, cancellationToken)
                 .ConfigureAwait(false);
@@ -211,6 +223,52 @@ public sealed class PaymentsController : ControllerBase
         {
             _logger.LogError(ex, "Unexpected error in IngestWebhook: providerType={ProviderType}", providerType);
             throw;
+        }
+    }
+
+    private async Task<IActionResult> IngestZaloPayWebhookAsync(
+        JsonElement requestBody,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var request = await _zaloPayWebhookIngressService
+                .NormalizeAsync(requestBody, cancellationToken)
+                .ConfigureAwait(false);
+
+            await _processWebhookValidator
+                .ValidateAndThrowAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+
+            var response = await _paymentWebhookService
+                .ProcessAsync(PaymentProviderType.ZaloPay, request, cancellationToken)
+                .ConfigureAwait(false);
+
+            return Ok(new
+            {
+                return_code = response.IsDuplicate ? 2 : 1,
+                return_message = response.IsDuplicate ? "duplicate" : "success"
+            });
+        }
+        catch (PaymentWebhookSignatureValidationException ex)
+        {
+            _logger.LogWarning(ex, "ZaloPay webhook signature validation failed.");
+
+            return Ok(new
+            {
+                return_code = -1,
+                return_message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ZaloPay webhook processing failed.");
+
+            return Ok(new
+            {
+                return_code = 0,
+                return_message = "temporary error"
+            });
         }
     }
 

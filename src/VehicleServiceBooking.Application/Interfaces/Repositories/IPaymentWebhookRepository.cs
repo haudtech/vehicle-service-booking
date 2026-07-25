@@ -46,6 +46,10 @@ public interface IPaymentWebhookRepository
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken);
 
+    Task<T> ExecuteInExecutionStrategyAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken);
+
     void ClearChangeTracker();
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

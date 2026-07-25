@@ -6,7 +6,7 @@
 @phoneNumber = 
 @accountName = workflow11_{{runId}}
 @password = Test1234!
-@appointmentDate = 2026-07-21
+@appointmentDate = 2026-07-28
 @dealershipId = 11111111-1111-1111-1111-000000000001
 @customerId = 11111111-1111-1111-1111-010000000003
 @vehicleId = 11111111-1111-1111-1111-020000000003
@@ -17,14 +17,14 @@
 @estimatedStartTimeSlotId = 00000000-0000-0000-0000-000000000007
 @estimatedEndTimeSlotId = 00000000-0000-0000-0000-000000000008
 @idempotencyKey = appt11-{{runId}}
-@orderIdempotencyKey = order14-{{runId}}
-@orderCode = ORD-{{runId}}
+@orderIdempotencyKey = order19-{{runId}}
+@orderCode = ORD2-{{runId}}
 // challengeChannel: otp_first | email_otp | authenticator_app
 @bootstrapChallengeChannel = email_otp
 @authenticatorChallengeChannel = authenticator_app
 @emailLoginVerificationCode = 024963
 @authenticatorSetupCode = 137493
-@authenticatorLoginCode = 900514
+@authenticatorLoginCode = 739499
 
 ###
 # End-to-end workflow:

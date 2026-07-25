@@ -115,6 +115,15 @@ public sealed class PaymentWebhookRepository : GenericRepository<PaymentWebhookI
         return await DbContext.DbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<T> ExecuteInExecutionStrategyAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        var executionStrategy = DbContext.DbContext.Database.CreateExecutionStrategy();
+        return await executionStrategy.ExecuteAsync(
+            async () => await operation(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+    }
+
     public void ClearChangeTracker()
     {
         DbContext.DbContext.ChangeTracker.Clear();

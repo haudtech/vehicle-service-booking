@@ -13,9 +13,15 @@ public interface IPaymentIntentRepository
 {
     Task<Order?> GetOrderForIntentAsync(Guid orderId, CancellationToken cancellationToken);
 
+    Task<PaymentOrder?> GetPaymentOrderByOrderIdAsync(Guid orderId, CancellationToken cancellationToken);
+
     Task<bool> PaymentProviderExistsAsync(Guid paymentProviderId, CancellationToken cancellationToken);
 
     Task<bool> PaymentMethodExistsAsync(Guid paymentMethodId, CancellationToken cancellationToken);
+
+    Task<PaymentProviderLookup?> GetPaymentProviderAsync(Guid paymentProviderId, CancellationToken cancellationToken);
+
+    Task<PaymentMethodLookup?> GetPaymentMethodAsync(Guid paymentMethodId, CancellationToken cancellationToken);
 
     Task<OrderPaymentStatusLookup> GetOrderPaymentStatusAsync(
         OrderPaymentStatus status,

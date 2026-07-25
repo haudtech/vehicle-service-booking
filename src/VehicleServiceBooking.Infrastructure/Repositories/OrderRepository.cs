@@ -9,6 +9,7 @@ using VehicleServiceBooking.Application.Exceptions;
 using VehicleServiceBooking.Application.Interfaces.Persistence;
 using VehicleServiceBooking.Application.Interfaces.Repositories;
 using VehicleServiceBooking.Domain.Entities;
+using VehicleServiceBooking.Domain.Enums;
 
 namespace VehicleServiceBooking.Infrastructure.Repositories;
 
@@ -55,6 +56,16 @@ public sealed class OrderRepository : GenericRepository<Order>, IOrderRepository
         return await DbContext.OrderAppointments
             .AsNoTracking()
             .AnyAsync(x => appointmentIdList.Contains(x.AppointmentId), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<OrderPaymentStatusLookup?> GetOrderPaymentStatusAsync(
+        OrderPaymentStatus status,
+        CancellationToken cancellationToken)
+    {
+        return await GetQueryable<OrderPaymentStatusLookup>()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Status == status && x.IsActive, cancellationToken)
             .ConfigureAwait(false);
     }
 
