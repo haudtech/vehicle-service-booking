@@ -12,7 +12,7 @@ This README is the entry point for:
 ## 1) Platform Overview
 
 The platform is built around three runtime services:
-- Booking API: scheduling and appointment lifecycle
+- Booking API: scheduling and appointment lifecycle, booking authorization, and payment orchestration
 - Auth Service: identity, verification-first signup, login challenge, JWT issuance
 - Notification Functions: queue-triggered email delivery
 
@@ -20,13 +20,14 @@ Core behavior:
 - conflict-safe booking using database-level protection
 - verification-first auth and challenge-based login
 - JWT/JWKS trust between Auth and Booking
+- payment integration with ZaloPay sandbox
 - async notification delivery through queue + function worker
 
 ## 2) Service Responsibilities
 
 | Service | Main Responsibility | Key Endpoints/Behavior |
 |---|---|---|
-| VehicleServiceBooking.Api | Availability, appointments, booking authorization | /api/v1/availability, /api/v1/appointments |
+| VehicleServiceBooking.Api | Availability, appointments, booking authorization, payment orchestration | /api/v1/availability, /api/v1/appointments |
 | VehicleServiceBooking.Auth | Signup, verify-email, login challenge, token lifecycle, JWKS | /api/v1/auth/*, /api/v1/.well-known/jwks.json |
 | VehicleServiceBooking.Notification.Functions | Queue message processing and email provider delivery | Queue trigger, retry, poison handling |
 
@@ -39,6 +40,7 @@ Core behavior:
 | Data | PostgreSQL, EF Core |
 | Validation | FluentValidation |
 | Auth | JWT, JWKS, OAuth (Google) |
+| Payment | ZaloPay sandbox integration |
 | Observability | Serilog, OpenTelemetry |
 | API Docs | Swagger/OpenAPI |
 | Testing | xUnit, Moq, FluentAssertions |
@@ -162,7 +164,9 @@ scripts/
 
 - Architecture hub: docs/ARCHITECTURE/README.md
 - Auth feature docs: docs/FEATURES/AUTHENTICATION_INTEGRATION/README.md
+- Payment feature docs: docs/FEATURES/PAYMENT/README.md
 - Notification feature docs: docs/FEATURES/NOTIFICATION/README.md
+- Coding conventions: docs/GUIDANCES/CODING_CONVENTION.md
 - Integration workflows: tests/integration/http/
 - Operational scripts: scripts/
 
@@ -193,10 +197,11 @@ Use this rule consistently:
    - one source of truth per topic
    - if behavior changes in code, update the owning feature doc in the same PR
 
-## 10) Current Status
+## 11) Current Status
 
 - Runtime: .NET 8
 - Databases: PostgreSQL
 - Service model: Booking API + Auth + Notification Functions
 - Auth model: verification-first + challenge login + JWT/JWKS
+- Payment support: ZaloPay sandbox integration completed
 - Development state: active

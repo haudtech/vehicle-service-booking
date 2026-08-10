@@ -1,0 +1,1 @@
+{"message":"Payment return acknowledged. Final payment state is confirmed via webhook processing.","intentCode":"PI-20260721100427-0c462d697c1f43bfbc","transactionStatus":"Completed","providerTransactionId":"mock-provider-tx","eventId":"mock-79c6589997a24b87838eab78a9528e2b","returnedAtUtc":"2026-07-21T10:27:59.196952Z"}
