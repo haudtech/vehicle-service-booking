@@ -111,6 +111,17 @@ Checklist:
 - [x] Payment status endpoint tests.
 - [x] Migration consistency and data integrity tests.
 
+## ZaloPay Hardening Backlog
+Status: In Progress
+
+Checklist:
+- [x] Add ZaloPay callback key2 verification in webhook processing.
+- [x] Add provider-side status reconciliation/query path for ZaloPay transactions.
+- [x] Add focused tests for ZaloPay callback verification and reconciliation mapping.
+- [ ] Add telemetry for ZaloPay create-intent latency, callback failures, and reconciliation mismatches.
+- [ ] Add ZaloPay gateway bank-list API support (`getlistmerchantbanks`) for dynamic bank selection.
+- [ ] Add redirect checksum validation on return endpoint using ZaloPay key2.
+
 ## Update Log
 - 2026-07-20: Initialized payment plan checklist with Phases 1-3 marked complete from implemented schema/migration work.
 - 2026-07-20: Completed Phase 4 Step 1 (intent creation foundation): DTOs, validator, PaymentIntentService, provider gateway abstraction, DI wiring, and create-intent endpoint.
@@ -122,6 +133,9 @@ Checklist:
 - 2026-07-21: Aligned create payment intent POST with idempotency coordinator flow (Idempotency-Key, replay/conflict semantics), added controller tests for idempotency mapping, and updated integration HTTP workflow to include intent replay.
 - 2026-07-21: Added payment migration/data-integrity integration tests validating payment lookup seed coverage and key aggregate relationship integrity (with explicit note on EF InMemory uniqueness limitations).
 - 2026-07-21: Hardened PaymentWebhookService with explicit repository transaction boundary, race-safe duplicate handling on unique inbox collisions, and added PaymentWebhookServiceTransactionTests regression coverage.
+- 2026-07-21: Added real-provider integration foundation for ZaloPay ATM domestic transfers via config-driven gateway routing (real ZaloPay adapter + development fallback), including provider/method-aware intent routing and gateway unit tests.
+- 2026-07-23: Added ZaloPay hardening backlog entries for callback key2 verification, provider-side reconciliation, focused verification tests, and telemetry follow-up.
+- 2026-07-23: Completed ZaloPay callback key2 verification and `/v2/query` reconciliation flow, with focused ingress/controller tests; added follow-up tracking for bank-list API and redirect checksum validation.
 
 ## Next Gate
 Before continuing, approve optional production-grade follow-up: relational-provider webhook race integration test and retry policy/telemetry enhancements for payment webhook processing.

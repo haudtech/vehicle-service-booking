@@ -22,6 +22,8 @@ src/VehicleServiceBooking.Auth/logs/
 
 # OS
 .DS_Store
+.azurite
+Library/
 
 # Test results
 TestResults/

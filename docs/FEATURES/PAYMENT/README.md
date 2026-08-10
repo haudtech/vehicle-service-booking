@@ -13,6 +13,9 @@ This folder is the source of truth for payment feature planning and progress.
 ## Documentation Map
 1. Detailed implementation plan: [PAYMENT_IMPLEMENTATION_PLAN.md](PAYMENT_IMPLEMENTATION_PLAN.md)
 2. Phase tracking checklist: [PAYMENT_PROGRESS_CHECKLIST.md](PAYMENT_PROGRESS_CHECKLIST.md)
+3. ZaloPay implementation and architecture workflow: [ZALOPAY_IMPLEMENTATION_ARCHITECTURE_WORKFLOW.md](ZALOPAY_IMPLEMENTATION_ARCHITECTURE_WORKFLOW.md)
+4. OnePay implementation and architecture workflow: [ONEPAY_IMPLEMENTATION_ARCHITECTURE_WORKFLOW.md](ONEPAY_IMPLEMENTATION_ARCHITECTURE_WORKFLOW.md)
+5. ZaloPay sandbox integration runbook: [ZALOPAY_SANDBOX_RUNBOOK.md](ZALOPAY_SANDBOX_RUNBOOK.md)
 
 ## Related Cross-Cutting Documents
 1. Architecture entry point: [docs/ARCHITECTURE/README.md](../../ARCHITECTURE/README.md)

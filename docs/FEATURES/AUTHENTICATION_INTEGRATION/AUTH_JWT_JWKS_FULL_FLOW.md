@@ -101,6 +101,68 @@ Signature:
 - produced by Auth private RSA key
 - cannot be forged without private key
 
+### 4.1 Signing the access token in Auth
+
+1. **Build the payload**: collect subject, email, display name, roles, permissions, issue time, expiry, issuer, and audience.
+2. **Choose the signing key**: the Auth service uses its active private RSA key.
+3. **Set the header**: include `alg=RS256`, `typ=JWT`, and `kid=<key id>` for the current signing key.
+4. **Create the signed input**:
+   - Base64Url-encode the header JSON.
+   - Base64Url-encode the payload JSON.
+   - Concatenate `headerBase64Url + "." + payloadBase64Url`.
+5. **Sign the input**: compute an RSA SHA-256 signature over that concatenated string using the private key.
+6. **Assemble the JWT**: append the Base64Url-encoded signature after a second `.`.
+
+Result: the Auth service returns an access token that any verifier can authenticate using the corresponding public key.
+
+### 4.2 Why the signature matters
+
+- The signature proves the token was issued by Auth and not tampered with.
+- Any change to header or payload invalidates the signature.
+- The `kid` tells the downstream verifier which public key to use.
+- The private key stays only in Auth; the public key is shared via JWKS.
+
+### 4.3 Verifying the access token in Booking API
+
+1. **Extract the bearer token** from the `Authorization: Bearer <token>` header.
+2. **Split the token** into 3 parts:
+   - headerBase64Url
+   - payloadBase64Url
+   - signatureBase64Url
+3. **Decode the header** and read `alg` and `kid`.
+4. **Fetch JWKS** if needed:
+   - if the cached JWKS is fresh, use it.
+   - if no matching `kid` is found, refresh the JWKS and try again.
+5. **Find the matching public key** in JWKS using `kid`.
+6. **Reconstruct the signed input**:
+   - `headerBase64Url + "." + payloadBase64Url`
+7. **Validate the signature**:
+   - Base64Url-decode the `signatureBase64Url` into the raw signature bytes.
+   - Using the selected public key, verify that those bytes are a valid RSA SHA-256 signature for the reconstructed signed input.
+   - If the signature algorithm is `RS256`, the verifier computes `SHA256(header.payload)` and checks that the signature matches the signed hash under the public key.
+   - A successful verification proves the token was signed by Auth’s private key and the header/payload have not changed.
+8. **Validate claims**:
+   - `iss` matches the configured Auth issuer.
+   - `aud` matches `vehicle-booking-api`.
+   - `exp` is in the future.
+   - optional: `nbf` is in the past, if used.
+9. **Build a ClaimsPrincipal** from the payload claims.
+10. **Apply authorization policies** based on roles/permissions.
+
+If any step fails, Booking rejects the token with `401 Unauthorized` or `403 Forbidden` depending on whether authentication or authorization failed.
+
+### 4.4 How JWKS fits in
+
+- Auth publishes only public keys in `/api/v1/.well-known/jwks.json`.
+- JWKS contains fields like `kid`, `kty`, `alg`, `use`, `n`, and `e`.
+- Booking never needs the private key.
+- JWKS lets Booking verify tokens without direct shared secrets.
+
+This is the key handshake:
+- Auth signs with private RSA key.
+- Booking verifies with Auth's public key from JWKS.
+- `kid` binds the token to the correct public key.
+
 ---
 
 ## 5. Refresh token mechanism

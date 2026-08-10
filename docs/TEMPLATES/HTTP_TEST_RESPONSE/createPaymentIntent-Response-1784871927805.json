@@ -1,0 +1,14 @@
+{
+    "orderId": "391afe18-405d-4d1c-a46d-4dda177c59a8",
+    "paymentOrderId": "f6569666-8442-4cd6-9856-1a4eb7ab02ef",
+    "paymentTransactionId": "91173d69-355a-4d58-9f0c-3cbd13bc0e10",
+    "paymentProviderId": "00000000-0000-0000-0003-000000000001",
+    "paymentMethodId": "00000000-0000-0000-0008-000000000001",
+    "intentCode": "PI-20260724052553-41d6507856c0412194",
+    "checkoutUrl": "https://qcgateway.zalopay.vn/openinapp?order=eyJ6cHRyYW5zdG9rZW4iOiJBQ1VHejloU2stTU5wYl9LZk5qXzVBbGciLCJhcHBpZCI6MjU1NH0=",
+    "expiresAtUtc": "2026-07-24T05:42:18.929984Z",
+    "orderPaymentStatus": "Pending",
+    "paymentIntentStatus": "Initiated",
+    "paymentTransactionStatus": "Pending",
+    "isExistingIntent": false
+}
